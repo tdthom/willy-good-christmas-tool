@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Willy Good – Christmas Lights Tool</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #004b80;
+      color: white;
+      padding: 10px 16px;
+    }
+    nav {
+      background: #eee;
+      padding: 8px 16px;
+      display: flex;
+      gap: 8px;
+    }
+    nav button {
+      padding: 6px 12px;
+      border: 1px solid #ccc;
+      background: #fff;
+      cursor: pointer;
+    }
+    nav button.active {
+      border-color: #004b80;
+      font-weight: bold;
+    }
+    .screen {
+      display: none;
+      padding: 16px;
+    }
+    .screen.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Willy Good Christmas Lights Tool</h1>
+    <p>One app, four screens: Clients • Estimate • Photo Mockup • Proposal</p>
+  </header>
+
+  <nav>
+    <button data-screen="clients" class="active">Clients</button>
+    <button data-screen="estimate">Estimate</button>
+    <button data-screen="mockup">Photo Mockup</button>
+    <button data-screen="proposal">Proposal</button>
+  </nav>
+
+  <!-- Screen 1: Clients -->
+  <section id="screen-clients" class="screen active">
+    <h2>Clients</h2>
+    <p>This is where you’ll list customers and pick which job you’re working on.</p>
+  </section>
+
+  <!-- Screen 2: Estimate -->
+  <section id="screen-estimate" class="screen">
+    <h2>Estimate</h2>
+    <p>This is where you’ll enter roof/house measurements and see the price.</p>
+  </section>
+
+  <!-- Screen 3: Photo Mockup -->
+  <section id="screen-mockup" class="screen">
+    <h2>Photo Mockup</h2>
+    <p>This is where you’ll upload a photo and mark where lights go.</p>
+  </section>
+
+  <!-- Screen 4: Proposal -->
+  <section id="screen-proposal" class="screen">
+    <h2>Proposal / PDF</h2>
+    <p>This is where you’ll show a clean proposal with your logo and total price.</p>
+  </section>
+
+  <script>
+    const buttons = document.querySelectorAll("nav button");
+    const screens = document.querySelectorAll(".screen");
+
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const target = btn.dataset.screen;
+
+        // update buttons
+        buttons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+
+        // update screens
+        screens.forEach((s) => {
+          if (s.id === "screen-" + target) {
+            s.classList.add("active");
+          } else {
+            s.classList.remove("active");
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
