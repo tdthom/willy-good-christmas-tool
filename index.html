@@ -58,23 +58,23 @@
     <p>This is where you’ll list customers and pick which job you’re working on.</p>
   </section>
 
-     <!-- Screen 2: Estimate -->
+      <!-- Screen 2: Estimate -->
   <section id="screen-estimate" class="screen">
     <h2>Estimate</h2>
     <p>Enter your measurements below to get a quick price.</p>
 
     <h3>Feet of Lights</h3>
 
-    <label for="ridge-feet"><strong>Ridge</strong> (ft)</label><br />
+    <label for="ridge-feet"><strong>Main ridge</strong> (ft)</label><br />
     <input id="ridge-feet" type="number" min="0" step="1" placeholder="e.g. 80" /> ft
     <br /><br />
 
-    <label for="eaves-feet"><strong>Eaves / Gutters</strong> (ft)</label><br />
-    <input id="eaves-feet" type="number" min="0" step="1" placeholder="e.g. 50" /> ft
+    <label for="hip-feet"><strong>Hip ridge</strong> (ft)</label><br />
+    <input id="hip-feet" type="number" min="0" step="1" placeholder="e.g. 50" /> ft
     <br /><br />
 
-    <label for="other-feet"><strong>Other straight runs</strong> (peaks, returns, etc.)</label><br />
-    <input id="other-feet" type="number" min="0" step="1" placeholder="e.g. 20" /> ft
+    <label for="eaves-feet"><strong>Eaves / gutters</strong> (ft)</label><br />
+    <input id="eaves-feet" type="number" min="0" step="1" placeholder="e.g. 20" /> ft
     <br /><br />
 
     <h3>Pricing</h3>
@@ -94,6 +94,7 @@
       Enter values and click "Calculate Estimate" to see the price.
     </div>
   </section>
+
 
 
 
@@ -131,10 +132,10 @@
       });
     });
 
-    // Estimator logic with ridge + eaves + other
+    // Estimator logic: ridge + hip ridge + eaves
     const ridgeInput = document.getElementById("ridge-feet");
+    const hipInput = document.getElementById("hip-feet");
     const eavesInput = document.getElementById("eaves-feet");
-    const otherInput = document.getElementById("other-feet");
     const rateInput = document.getElementById("rate-per-foot");
     const containerInput = document.getElementById("container-cost");
     const calcButton = document.getElementById("calc-estimate");
@@ -143,24 +144,24 @@
     if (calcButton) {
       calcButton.addEventListener("click", () => {
         const ridge = parseFloat(ridgeInput.value) || 0;
+        const hip = parseFloat(hipInput.value) || 0;
         const eaves = parseFloat(eavesInput.value) || 0;
-        const other = parseFloat(otherInput.value) || 0;
         const rate = parseFloat(rateInput.value) || 0;
         const container = parseFloat(containerInput.value) || 0;
 
         const ridgePrice = ridge * rate;
+        const hipPrice = hip * rate;
         const eavesPrice = eaves * rate;
-        const otherPrice = other * rate;
 
-        const totalFeet = ridge + eaves + other;
-        const lightsSubtotal = ridgePrice + eavesPrice + otherPrice;
+        const totalFeet = ridge + hip + eaves;
+        const lightsSubtotal = ridgePrice + hipPrice + eavesPrice;
         const internalTotal = lightsSubtotal + container;
 
         resultBox.innerHTML = `
           <p><strong>Total feet:</strong> ${totalFeet.toFixed(0)} ft</p>
-          <p><strong>Ridge:</strong> ${ridge.toFixed(0)} ft → $${ridgePrice.toFixed(2)}</p>
-          <p><strong>Eaves / Gutters:</strong> ${eaves.toFixed(0)} ft → $${eavesPrice.toFixed(2)}</p>
-          <p><strong>Other:</strong> ${other.toFixed(0)} ft → $${otherPrice.toFixed(2)}</p>
+          <p><strong>Main ridge:</strong> ${ridge.toFixed(0)} ft → $${ridgePrice.toFixed(2)}</p>
+          <p><strong>Hip ridge:</strong> ${hip.toFixed(0)} ft → $${hipPrice.toFixed(2)}</p>
+          <p><strong>Eaves / gutters:</strong> ${eaves.toFixed(0)} ft → $${eavesPrice.toFixed(2)}</p>
           <hr />
           <p><strong>Customer price (lights only):</strong> $${lightsSubtotal.toFixed(2)}</p>
           <p><strong>Internal container cost (not shown on proposal):</strong> $${container.toFixed(2)}</p>
@@ -169,6 +170,8 @@
       });
     }
   </script>
+
+  
 
 
 </body>
