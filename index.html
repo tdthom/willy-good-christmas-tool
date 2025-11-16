@@ -58,11 +58,31 @@
     <p>This is where you’ll list customers and pick which job you’re working on.</p>
   </section>
 
-  <!-- Screen 2: Estimate -->
+    <!-- Screen 2: Estimate -->
   <section id="screen-estimate" class="screen">
     <h2>Estimate</h2>
-    <p>This is where you’ll enter roof/house measurements and see the price.</p>
+    <p>Enter your measurements below to get a quick price.</p>
+
+    <label for="total-feet"><strong>Total feet of lights</strong> (ridge, eaves, etc.)</label><br />
+    <input id="total-feet" type="number" min="0" step="1" placeholder="e.g. 150" /> ft
+    <br /><br />
+
+    <label for="rate-per-foot"><strong>Price per foot</strong> you want to charge</label><br />
+    <input id="rate-per-foot" type="number" min="0" step="0.01" value="4.00" /> $/ft
+    <br /><br />
+
+    <label for="container-cost"><strong>Container cost (internal only)</strong></label><br />
+    <input id="container-cost" type="number" min="0" step="0.01" value="0.00" /> $
+    <br /><br />
+
+    <button id="calc-estimate">Calculate Estimate</button>
+
+    <h3>Result</h3>
+    <div id="estimate-result">
+      Enter values and click "Calculate Estimate" to see the price.
+    </div>
   </section>
+
 
   <!-- Screen 3: Photo Mockup -->
   <section id="screen-mockup" class="screen">
@@ -76,7 +96,8 @@
     <p>This is where you’ll show a clean proposal with your logo and total price.</p>
   </section>
 
-  <script>
+    <script>
+    // Navigation: switch between screens
     const buttons = document.querySelectorAll("nav button");
     const screens = document.querySelectorAll(".screen");
 
@@ -84,11 +105,9 @@
       btn.addEventListener("click", () => {
         const target = btn.dataset.screen;
 
-        // update buttons
         buttons.forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
 
-        // update screens
         screens.forEach((s) => {
           if (s.id === "screen-" + target) {
             s.classList.add("active");
@@ -98,6 +117,31 @@
         });
       });
     });
+
+    // Simple estimator logic
+    const feetInput = document.getElementById("total-feet");
+    const rateInput = document.getElementById("rate-per-foot");
+    const containerInput = document.getElementById("container-cost");
+    const calcButton = document.getElementById("calc-estimate");
+    const resultBox = document.getElementById("estimate-result");
+
+    if (calcButton) {
+      calcButton.addEventListener("click", () => {
+        const feet = parseFloat(feetInput.value) || 0;
+        const rate = parseFloat(rateInput.value) || 0;
+        const container = parseFloat(containerInput.value) || 0;
+
+        const lightsSubtotal = feet * rate;
+        const internalTotal = lightsSubtotal + container;
+
+        resultBox.innerHTML = `
+          <p><strong>Customer price (lights only):</strong> $${lightsSubtotal.toFixed(2)}</p>
+          <p><strong>Internal container cost (not shown on proposal):</strong> $${container.toFixed(2)}</p>
+          <p><strong>Internal total (lights + container):</strong> $${internalTotal.toFixed(2)}</p>
+        `;
+      });
+    }
   </script>
+
 </body>
 </html>
