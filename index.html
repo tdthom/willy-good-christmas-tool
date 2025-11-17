@@ -158,11 +158,46 @@
 
 
 
-  <!-- Screen 3: Photo Mockup -->
+    <!-- Screen 3: Photo Mockup -->
   <section id="screen-mockup" class="screen">
-    <h2>Photo Mockup</h2>
-    <p>This is where you’ll upload a photo and mark where lights go.</p>
+    <h2>Photo / Satellite Mockup</h2>
+    <p>Upload a front photo or satellite screenshot, set a scale, and draw your light runs.</p>
+
+    <ol>
+      <li>Upload a screenshot (front photo or satellite view).</li>
+      <li>Click <strong>Set scale</strong> and draw a line of known length (for example, a 40 ft wall).</li>
+      <li>Click <strong>Measure runs</strong> and click along the roof lines to measure.</li>
+    </ol>
+
+    <input type="file" id="mockup-image-input" accept="image/*" />
+    <br /><br />
+
+    <button id="mockup-set-scale">1) Set scale</button>
+    <label for="mockup-scale-feet"><small>Known distance (ft):</small></label>
+    <input id="mockup-scale-feet" type="number" min="0" step="0.1" value="40" style="width:80px;" />
+    <br /><br />
+
+    <button id="mockup-measure-mode">2) Measure runs</button>
+    <button id="mockup-clear">Clear lines</button>
+
+    <div style="margin-top: 1rem;">
+      <canvas
+        id="mockup-canvas"
+        width="800"
+        height="500"
+        style="border:1px solid #ccc; max-width:100%;"
+      ></canvas>
+    </div>
+
+    <div id="mockup-info" style="margin-top: 0.5rem; font-size: 0.9rem;">
+      No image loaded.
+    </div>
+
+    <div id="mockup-totals" style="margin-top: 0.5rem; font-size: 0.9rem;">
+      <!-- length details will appear here -->
+    </div>
   </section>
+
 
     <!-- Screen 4: Proposal -->
   <section id="screen-proposal" class="screen">
@@ -177,7 +212,7 @@
   </section>
 
 
-    <script>
+     <script>
     // -----------------------------
     // Navigation: switch between screens
     // -----------------------------
@@ -557,7 +592,275 @@
 
     // Initial proposal render on page load
     renderProposal();
+
+    // -----------------------------
+    // Photo / Satellite mockup measurement
+    // -----------------------------
+    const mockupImageInput = document.getElementById("mockup-image-input");
+    const mockupSetScaleBtn = document.getElementById("mockup-set-scale");
+    const mockupMeasureBtn = document.getElementById("mockup-measure-mode");
+    const mockupClearBtn = document.getElementById("mockup-clear");
+    const mockupScaleFeetInput = document.getElementById("mockup-scale-feet");
+    const mockupCanvas = document.getElementById("mockup-canvas");
+    const mockupInfo = document.getElementById("mockup-info");
+    const mockupTotals = document.getElementById("mockup-totals");
+    const mockupCtx = mockupCanvas ? mockupCanvas.getContext("2d") : null;
+
+    let mockupImage = null;
+    let mockupMode = "none"; // "scale" or "measure"
+    let scalePoints = [];
+    let runSegments = [];
+    let feetPerPixel = null;
+    let drawImageParams = null;
+
+    function mockupSetInfo(text) {
+      if (mockupInfo) {
+        mockupInfo.textContent = text;
+      }
+    }
+
+    function drawMockupBase() {
+      if (!mockupCtx || !mockupCanvas) return;
+      mockupCtx.clearRect(0, 0, mockupCanvas.width, mockupCanvas.height);
+      if (mockupImage && drawImageParams) {
+        mockupCtx.drawImage(
+          mockupImage,
+          drawImageParams.x,
+          drawImageParams.y,
+          drawImageParams.w,
+          drawImageParams.h
+        );
+      }
+    }
+
+    function redrawMockup() {
+      if (!mockupCtx || !mockupCanvas) return;
+      drawMockupBase();
+
+      // draw scale line
+      if (scalePoints.length === 2) {
+        mockupCtx.strokeStyle = "red";
+        mockupCtx.lineWidth = 2;
+        mockupCtx.beginPath();
+        mockupCtx.moveTo(scalePoints[0].x, scalePoints[0].y);
+        mockupCtx.lineTo(scalePoints[1].x, scalePoints[1].y);
+        mockupCtx.stroke();
+      }
+
+      // draw measured runs
+      if (runSegments.length > 0) {
+        mockupCtx.strokeStyle = "blue";
+        mockupCtx.lineWidth = 2;
+        mockupCtx.beginPath();
+        runSegments.forEach((seg) => {
+          mockupCtx.moveTo(seg.from.x, seg.from.y);
+          mockupCtx.lineTo(seg.to.x, seg.to.y);
+        });
+        mockupCtx.stroke();
+      }
+    }
+
+    function pixelDistance(p1, p2) {
+      const dx = p1.x - p2.x;
+      const dy = p1.y - p2.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function updateMockupTotals() {
+      if (!mockupTotals) return;
+      if (!mockupImage) {
+        mockupTotals.innerHTML = "";
+        return;
+      }
+      let html = "";
+      if (feetPerPixel) {
+        html += `<p>Scale: 1 pixel ≈ ${feetPerPixel.toFixed(4)} ft</p>`;
+      } else {
+        html += "<p>No scale set yet.</p>";
+      }
+
+      if (runSegments.length === 0) {
+        html += "<p>No measured runs yet.</p>";
+      } else {
+        let total = 0;
+        html += "<ul>";
+        runSegments.forEach((seg, idx) => {
+          total += seg.feet;
+          html += `<li>Run ${idx + 1}: ${seg.feet.toFixed(1)} ft</li>`;
+        });
+        html += "</ul>";
+        html += `<p><strong>Total measured length:</strong> ${total.toFixed(1)} ft</p>`;
+      }
+      mockupTotals.innerHTML = html;
+    }
+
+    if (mockupImageInput && mockupCtx && mockupCanvas) {
+      mockupImageInput.addEventListener("change", (event) => {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            mockupImage = img;
+            // fit image into canvas while preserving aspect ratio
+            const canvasWidth = mockupCanvas.width;
+            const canvasHeight = mockupCanvas.height;
+            const imgAspect = img.width / img.height;
+            const canvasAspect = canvasWidth / canvasHeight;
+            let drawWidth, drawHeight, offsetX, offsetY;
+            if (imgAspect > canvasAspect) {
+              drawWidth = canvasWidth;
+              drawHeight = canvasWidth / imgAspect;
+              offsetX = 0;
+              offsetY = (canvasHeight - drawHeight) / 2;
+            } else {
+              drawHeight = canvasHeight;
+              drawWidth = canvasHeight * imgAspect;
+              offsetX = (canvasWidth - drawWidth) / 2;
+              offsetY = 0;
+            }
+            drawImageParams = {
+              x: offsetX,
+              y: offsetY,
+              w: drawWidth,
+              h: drawHeight,
+            };
+
+            scalePoints = [];
+            runSegments = [];
+            feetPerPixel = null;
+            mockupMode = "none";
+
+            drawMockupBase();
+            mockupSetInfo(
+              "Image loaded. Step 1: click 'Set scale' and draw a line of known length."
+            );
+            updateMockupTotals();
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    if (mockupSetScaleBtn) {
+      mockupSetScaleBtn.addEventListener("click", () => {
+        if (!mockupImage) {
+          mockupSetInfo("Upload an image first.");
+          return;
+        }
+        mockupMode = "scale";
+        scalePoints = [];
+        runSegments = [];
+        feetPerPixel = null;
+        redrawMockup();
+        mockupSetInfo(
+          "Scale mode: click two points on a known distance (e.g., 40 ft front width)."
+        );
+        updateMockupTotals();
+      });
+    }
+
+    if (mockupMeasureBtn) {
+      mockupMeasureBtn.addEventListener("click", () => {
+        if (!mockupImage) {
+          mockupSetInfo("Upload an image first.");
+          return;
+        }
+        if (!feetPerPixel) {
+          mockupSetInfo("Set the scale first, then measure runs.");
+          return;
+        }
+        mockupMode = "measure";
+        runSegments = [];
+        redrawMockup();
+        mockupSetInfo("Measure mode: click along each run; each segment will be measured.");
+        updateMockupTotals();
+      });
+    }
+
+    if (mockupClearBtn) {
+      mockupClearBtn.addEventListener("click", () => {
+        if (!mockupImage) {
+          scalePoints = [];
+          runSegments = [];
+          feetPerPixel = null;
+          drawMockupBase();
+          mockupSetInfo("No image loaded.");
+          updateMockupTotals();
+          return;
+        }
+        scalePoints = [];
+        runSegments = [];
+        feetPerPixel = null;
+        mockupMode = "none";
+        redrawMockup();
+        mockupSetInfo("Cleared lines. Set scale again if needed.");
+        updateMockupTotals();
+      });
+    }
+
+    if (mockupCanvas && mockupCtx) {
+      let lastMeasurePoint = null;
+
+      mockupCanvas.addEventListener("click", (event) => {
+        if (!mockupImage) return;
+
+        const rect = mockupCanvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const point = { x, y };
+
+        if (mockupMode === "scale") {
+          scalePoints.push(point);
+          if (scalePoints.length > 2) {
+            scalePoints = [point];
+          }
+          if (scalePoints.length === 2) {
+            const pixels = pixelDistance(scalePoints[0], scalePoints[1]);
+            const feet = parseFloat(mockupScaleFeetInput.value) || 0;
+            if (feet <= 0 || pixels === 0) {
+              feetPerPixel = null;
+              mockupSetInfo(
+                "Enter a positive known distance in feet, then click two points again."
+              );
+            } else {
+              feetPerPixel = feet / pixels;
+              mockupSetInfo(
+                `Scale set: ${feet.toFixed(1)} ft = ${pixels.toFixed(
+                  1
+                )} pixels. 1 pixel ≈ ${feetPerPixel.toFixed(4)} ft.`
+              );
+            }
+          }
+          redrawMockup();
+          updateMockupTotals();
+        } else if (mockupMode === "measure") {
+          if (!feetPerPixel) {
+            mockupSetInfo("Set the scale first.");
+            return;
+          }
+          if (!lastMeasurePoint) {
+            lastMeasurePoint = point;
+          } else {
+            const pixels = pixelDistance(lastMeasurePoint, point);
+            const feet = pixels * feetPerPixel;
+            runSegments.push({
+              from: lastMeasurePoint,
+              to: point,
+              feet,
+            });
+            lastMeasurePoint = point;
+          }
+          redrawMockup();
+          updateMockupTotals();
+        }
+      });
+    }
   </script>
+
 
 
 
