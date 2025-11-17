@@ -536,40 +536,82 @@
     }
 
     if (saveClientButton) {
-      saveClientButton.addEventListener("click", () => {
-        const name = (clientNameInput.value || "").trim();
-        const phone = (clientPhoneInput.value || "").trim();
-        const email = (clientEmailInput.value || "").trim();
-        const address = (clientAddressInput.value || "").trim();
-        const preferred = (clientPreferredInput.value || "").trim();
-        const notes = (clientNotesInput.value || "").trim();
-          const defaultRate =
-    clientRateInput && clientRateInput.value !== ""
-      ? parseFloat(clientRateInput.value)
-      : null;
+       if (saveClientButton) {
+   saveClientButton.addEventListener("click", () => {
+     if (!clientNameInput) return;
 
-  const defaultTakedown =
-    clientTakedownRateInput && clientTakedownRateInput.value !== ""
-      ? parseFloat(clientTakedownRateInput.value)
-      : null;
+     const name = (clientNameInput.value || "").trim();
+     if (!name) {
+       alert("Client name is required.");
+       return;
+     }
 
-  const lightsOwned = clientLightsOwnedSelect
-    ? clientLightsOwnedSelect.value || "unknown"
-    : "unknown";
+     const phone = clientPhoneInput ? clientPhoneInput.value.trim() : "";
+     const email = clientEmailInput ? clientEmailInput.value.trim() : "";
+     const address = clientAddressInput ? clientAddressInput.value.trim() : "";
+     const preferred = clientPreferredInput ? clientPreferredInput.value.trim() : "";
+     const notes = clientNotesInput ? clientNotesInput.value.trim() : "";
 
+     const defaultRate =
+       clientRateInput && clientRateInput.value !== ""
+         ? parseFloat(clientRateInput.value)
+         : null;
 
-        const newClient = {
-          id: Date.now(),
-          name,
-          phone,
-          email,
-          address,
-          preferred,
-          notes,
-          defaultRate,
-          defaultTakedown,
-          lightsOwned,
-        };
+     const defaultTakedown =
+       clientTakedownRateInput && clientTakedownRateInput.value !== ""
+         ? parseFloat(clientTakedownRateInput.value)
+         : null;
+
+     const lightsOwned = clientLightsOwnedSelect
+       ? clientLightsOwnedSelect.value || "unknown"
+       : "unknown";
+
+     // either update current client or create a new one
+     let client;
+     if (typeof currentClientId === "number") {
+       client = clients.find((c) => c.id === currentClientId);
+     }
+
+     if (client) {
+       // update existing
+       client.name = name;
+       client.phone = phone;
+       client.email = email;
+       client.address = address;
+       client.preferred = preferred;
+       client.notes = notes;
+       client.defaultRate = defaultRate;
+       client.defaultTakedown = defaultTakedown;
+       client.lightsOwned = lightsOwned;
+     } else {
+       // create new
+       client = {
+         id: Date.now(),
+         name,
+         phone,
+         email,
+         address,
+         preferred,
+         notes,
+         defaultRate,
+         defaultTakedown,
+         lightsOwned,
+       };
+       clients.push(client);
+       currentClientId = client.id;
+     }
+
+     // persist & re-render
+     try {
+       localStorage.setItem("wgc_clients", JSON.stringify(clients));
+     } catch (e) {
+       console.warn("Could not save clients to localStorage:", e);
+     }
+
+     renderClientsList();
+     updateCurrentClientSummary();
+   });
+ }
 
 
         if (!name) {
