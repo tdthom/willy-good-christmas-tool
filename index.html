@@ -535,83 +535,88 @@
         .join("");
     }
 
-    if (saveClientButton) {
-       if (saveClientButton) {
-   saveClientButton.addEventListener("click", () => {
-     if (!clientNameInput) return;
+        if (saveClientButton) {
+      saveClientButton.addEventListener("click", () => {
+        // Make sure the form exists
+        if (!clientNameInput) {
+          alert("Client form is not loaded correctly.");
+          return;
+        }
 
-     const name = (clientNameInput.value || "").trim();
-     if (!name) {
-       alert("Client name is required.");
-       return;
-     }
+        const name = (clientNameInput.value || "").trim();
+        if (!name) {
+          alert("Client name is required.");
+          return;
+        }
 
-     const phone = clientPhoneInput ? clientPhoneInput.value.trim() : "";
-     const email = clientEmailInput ? clientEmailInput.value.trim() : "";
-     const address = clientAddressInput ? clientAddressInput.value.trim() : "";
-     const preferred = clientPreferredInput ? clientPreferredInput.value.trim() : "";
-     const notes = clientNotesInput ? clientNotesInput.value.trim() : "";
+        const phone = clientPhoneInput ? clientPhoneInput.value.trim() : "";
+        const email = clientEmailInput ? clientEmailInput.value.trim() : "";
+        const address = clientAddressInput ? clientAddressInput.value.trim() : "";
+        const preferred = clientPreferredInput ? clientPreferredInput.value.trim() : "";
+        const notes = clientNotesInput ? clientNotesInput.value.trim() : "";
 
-     const defaultRate =
-       clientRateInput && clientRateInput.value !== ""
-         ? parseFloat(clientRateInput.value)
-         : null;
+        const defaultRate =
+          clientRateInput && clientRateInput.value !== ""
+            ? parseFloat(clientRateInput.value)
+            : null;
 
-     const defaultTakedown =
-       clientTakedownRateInput && clientTakedownRateInput.value !== ""
-         ? parseFloat(clientTakedownRateInput.value)
-         : null;
+        const defaultTakedown =
+          clientTakedownRateInput && clientTakedownRateInput.value !== ""
+            ? parseFloat(clientTakedownRateInput.value)
+            : null;
 
-     const lightsOwned = clientLightsOwnedSelect
-       ? clientLightsOwnedSelect.value || "unknown"
-       : "unknown";
+        const lightsOwned = clientLightsOwnedSelect
+          ? clientLightsOwnedSelect.value || "unknown"
+          : "unknown";
 
-     // either update current client or create a new one
-     let client;
-     if (typeof currentClientId === "number") {
-       client = clients.find((c) => c.id === currentClientId);
-     }
+        // Either update the current client or create a new one
+        let client =
+          typeof currentClientId === "number"
+            ? clients.find((c) => c.id === currentClientId)
+            : null;
 
-     if (client) {
-       // update existing
-       client.name = name;
-       client.phone = phone;
-       client.email = email;
-       client.address = address;
-       client.preferred = preferred;
-       client.notes = notes;
-       client.defaultRate = defaultRate;
-       client.defaultTakedown = defaultTakedown;
-       client.lightsOwned = lightsOwned;
-     } else {
-       // create new
-       client = {
-         id: Date.now(),
-         name,
-         phone,
-         email,
-         address,
-         preferred,
-         notes,
-         defaultRate,
-         defaultTakedown,
-         lightsOwned,
-       };
-       clients.push(client);
-       currentClientId = client.id;
-     }
+        if (client) {
+          // Update existing client
+          client.name = name;
+          client.phone = phone;
+          client.email = email;
+          client.address = address;
+          client.preferred = preferred;
+          client.notes = notes;
+          client.defaultRate = defaultRate;
+          client.defaultTakedown = defaultTakedown;
+          client.lightsOwned = lightsOwned;
+        } else {
+          // Create new client
+          client = {
+            id: Date.now(),
+            name,
+            phone,
+            email,
+            address,
+            preferred,
+            notes,
+            defaultRate,
+            defaultTakedown,
+            lightsOwned,
+          };
+          clients.push(client);
+          currentClientId = client.id;
+        }
 
-     // persist & re-render
-     try {
-       localStorage.setItem("wgc_clients", JSON.stringify(clients));
-     } catch (e) {
-       console.warn("Could not save clients to localStorage:", e);
-     }
+        // Save to localStorage
+        try {
+          localStorage.setItem("wgc_clients", JSON.stringify(clients));
+        } catch (e) {
+          console.warn("Could not save clients to localStorage:", e);
+        }
 
-     renderClientsList();
-     updateCurrentClientSummary();
-   });
- }
+        // Refresh UI
+        renderClientsList();
+        updateCurrentClientSummary();
+      });
+    }
+
 
 
         if (!name) {
