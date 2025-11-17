@@ -37,6 +37,20 @@
     .screen.active {
       display: block;
     }
+      .proposal-card {
+      border: 1px solid #ccc;
+      padding: 16px;
+      margin-top: 16px;
+      max-width: 650px;
+      background: #fff;
+    }
+    .proposal-card-inner h3 {
+      margin-top: 0.5rem;
+    }
+    .proposal-totals p {
+      margin: 0.2rem 0;
+    }
+
   </style>
 </head>
 <body>
@@ -150,13 +164,20 @@
     <p>This is where you’ll upload a photo and mark where lights go.</p>
   </section>
 
-  <!-- Screen 4: Proposal -->
+    <!-- Screen 4: Proposal -->
   <section id="screen-proposal" class="screen">
-    <h2>Proposal / PDF</h2>
-    <p>This is where you’ll show a clean proposal with your logo and total price.</p>
+    <h2>Proposal</h2>
+    <p>Preview what you can send to the client. Use your browser’s Print → “Save as PDF” to export.</p>
+
+    <button id="refresh-proposal" style="margin-bottom: 0.5rem;">Refresh proposal</button>
+
+    <div id="proposal-content" class="proposal-card">
+      <em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate Estimate" first.</em>
+    </div>
   </section>
 
-      <script>
+
+    <script>
     // -----------------------------
     // Navigation: switch between screens
     // -----------------------------
@@ -181,10 +202,11 @@
     });
 
     // -----------------------------
-    // Clients: save in localStorage
+    // Clients & estimate storage (localStorage)
     // -----------------------------
     const CLIENTS_KEY = "wgc-clients-v1";
     const CURRENT_CLIENT_KEY = "wgc-current-client-id";
+    const ESTIMATE_KEY = "wgc-last-estimate-v1";
 
     function loadClients() {
       try {
@@ -229,6 +251,28 @@
       }
     }
 
+    function loadLastEstimate() {
+      try {
+        const raw = localStorage.getItem(ESTIMATE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch (e) {
+        console.warn("Could not load last estimate", e);
+        return null;
+      }
+    }
+
+    function saveLastEstimate(data) {
+      try {
+        localStorage.setItem(ESTIMATE_KEY, JSON.stringify(data));
+      } catch (e) {
+        console.warn("Could not save last estimate", e);
+      }
+    }
+
+    // -----------------------------
+    // Clients UI
+    // -----------------------------
     const clientNameInput = document.getElementById("client-name");
     const clientPhoneInput = document.getElementById("client-phone");
     const clientEmailInput = document.getElementById("client-email");
@@ -339,7 +383,6 @@
       });
     }
 
-    // Handle "Use for estimate" button clicks
     if (clientsList) {
       clientsList.addEventListener("click", (event) => {
         const btn = event.target.closest(".use-client-button");
@@ -355,7 +398,7 @@
       });
     }
 
-    // Initial render
+    // Initial client render
     renderClientsList();
     updateCurrentClientSummary();
 
@@ -404,6 +447,34 @@
         // Internal total (pre-tax) including container
         const internalTotal = customerSubtotal + container;
 
+        // Save last estimate snapshot (for proposal)
+        const currentClient = getCurrentClient();
+        const estimateSnapshot = {
+          timestamp: new Date().toISOString(),
+          totalFeet,
+          ridge,
+          hip,
+          eaves,
+          rate,
+          takedownRate,
+          taxRatePercent,
+          installSubtotal,
+          takedownSubtotal,
+          customerSubtotal,
+          taxAmount,
+          customerTotalWithTax,
+          client: currentClient
+            ? {
+                name: currentClient.name,
+                address: currentClient.address,
+                phone: currentClient.phone,
+                email: currentClient.email,
+                preferred: currentClient.preferred,
+              }
+            : null,
+        };
+        saveLastEstimate(estimateSnapshot);
+
         resultBox.innerHTML = `
           <p><strong>Total feet:</strong> ${totalFeet.toFixed(0)} ft</p>
           <p><strong>Main ridge:</strong> ${ridge.toFixed(0)} ft → $${ridgePrice.toFixed(2)}</p>
@@ -421,7 +492,73 @@
         `;
       });
     }
+
+    // -----------------------------
+    // Proposal rendering
+    // -----------------------------
+    const proposalContent = document.getElementById("proposal-content");
+    const refreshProposalButton = document.getElementById("refresh-proposal");
+
+    function renderProposal() {
+      if (!proposalContent) return;
+      const est = loadLastEstimate();
+
+      if (!est) {
+        proposalContent.innerHTML =
+          '<em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate Estimate" first.</em>';
+        return;
+      }
+
+      const client = est.client || getCurrentClient();
+      const dateStr = est.timestamp
+        ? new Date(est.timestamp).toLocaleDateString()
+        : "";
+
+      let clientHtml = "";
+      if (client) {
+        clientHtml = `
+          <div class="proposal-header">
+            <strong>${client.name || ""}</strong><br />
+            ${client.address ? client.address + "<br />" : ""}
+            ${client.phone ? "Phone: " + client.phone + "<br />" : ""}
+            ${client.email ? "Email: " + client.email + "<br />" : ""}
+            ${client.preferred ? "Preferred install: " + client.preferred + "<br />" : ""}
+          </div>
+        `;
+      } else {
+        clientHtml = "<p><em>No client selected.</em></p>";
+      }
+
+      proposalContent.innerHTML = `
+        <div class="proposal-card-inner">
+          <p><strong>Proposal date:</strong> ${dateStr}</p>
+          ${clientHtml}
+          <h3>Christmas Light Installation & Takedown</h3>
+          <p><strong>Total feet:</strong> ${est.totalFeet.toFixed(0)} ft (ridge, hip, eaves)</p>
+          <ul>
+            <li>Install: $${est.installSubtotal.toFixed(2)} (@ $${est.rate.toFixed(2)}/ft)</li>
+            <li>Takedown: $${est.takedownSubtotal.toFixed(2)} (@ $${est.takedownRate.toFixed(2)}/ft)</li>
+          </ul>
+          <div class="proposal-totals">
+            <p>Subtotal (install + takedown): $${est.customerSubtotal.toFixed(2)}</p>
+            <p>Sales tax (${est.taxRatePercent.toFixed(2)}%): $${est.taxAmount.toFixed(2)}</p>
+            <p><strong>Total investment: $${est.customerTotalWithTax.toFixed(2)}</strong></p>
+          </div>
+          <p style="font-size:0.85rem;margin-top:1rem;">
+            This proposal includes professional installation, season-long use, and scheduled takedown of lights.
+          </p>
+        </div>
+      `;
+    }
+
+    if (refreshProposalButton) {
+      refreshProposalButton.addEventListener("click", renderProposal);
+    }
+
+    // Initial proposal render on page load
+    renderProposal();
   </script>
+
 
 
 
