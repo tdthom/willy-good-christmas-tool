@@ -52,11 +52,45 @@
     <button data-screen="proposal">Proposal</button>
   </nav>
 
-  <!-- Screen 1: Clients -->
+    <!-- Screen 1: Clients -->
   <section id="screen-clients" class="screen active">
     <h2>Clients</h2>
-    <p>This is where you’ll list customers and pick which job you’re working on.</p>
+    <p>Save basic client details and their preferred install date/week.</p>
+
+    <h3>Add / update client</h3>
+
+    <label for="client-name"><strong>Client name</strong></label><br />
+    <input id="client-name" type="text" placeholder="e.g. John Smith" />
+    <br /><br />
+
+    <label for="client-phone"><strong>Phone</strong></label><br />
+    <input id="client-phone" type="tel" placeholder="e.g. 555-123-4567" />
+    <br /><br />
+
+    <label for="client-email"><strong>Email</strong></label><br />
+    <input id="client-email" type="email" placeholder="e.g. john@example.com" />
+    <br /><br />
+
+    <label for="client-address"><strong>Service address</strong></label><br />
+    <textarea id="client-address" rows="3" placeholder="Street, city, ZIP"></textarea>
+    <br /><br />
+
+    <label for="client-preferred"><strong>Preferred install date/week</strong></label><br />
+    <input id="client-preferred" type="text" placeholder="e.g. Week of Nov 25 or 2025-11-28" />
+    <br /><br />
+
+    <label for="client-notes"><strong>Notes</strong></label><br />
+    <textarea id="client-notes" rows="3" placeholder="Gate code, roof access, special requests…"></textarea>
+    <br /><br />
+
+    <button id="save-client">Save client</button>
+
+    <h3>Saved clients</h3>
+    <ul id="clients-list">
+      <!-- Filled in by script -->
+    </ul>
   </section>
+
 
       <!-- Screen 2: Estimate -->
   <section id="screen-estimate" class="screen">
@@ -119,7 +153,9 @@
   </section>
 
     <script>
+    // -----------------------------
     // Navigation: switch between screens
+    // -----------------------------
     const buttons = document.querySelectorAll("nav button");
     const screens = document.querySelectorAll(".screen");
 
@@ -140,7 +176,114 @@
       });
     });
 
-    // Estimator logic: ridge + hip ridge + eaves + takedown + tax
+    // -----------------------------
+    // Clients: save in localStorage
+    // -----------------------------
+    const CLIENTS_KEY = "wgc-clients-v1";
+
+    function loadClients() {
+      try {
+        const raw = localStorage.getItem(CLIENTS_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        console.warn("Could not load clients", e);
+        return [];
+      }
+    }
+
+    function saveClients(clients) {
+      try {
+        localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
+      } catch (e) {
+        console.warn("Could not save clients", e);
+      }
+    }
+
+    const clientNameInput = document.getElementById("client-name");
+    const clientPhoneInput = document.getElementById("client-phone");
+    const clientEmailInput = document.getElementById("client-email");
+    const clientAddressInput = document.getElementById("client-address");
+    const clientPreferredInput = document.getElementById("client-preferred");
+    const clientNotesInput = document.getElementById("client-notes");
+    const saveClientButton = document.getElementById("save-client");
+    const clientsList = document.getElementById("clients-list");
+
+    let clients = loadClients();
+
+    function renderClientsList() {
+      if (!clientsList) return;
+
+      if (!clients.length) {
+        clientsList.innerHTML = "<li>No clients saved yet.</li>";
+        return;
+      }
+
+      clientsList.innerHTML = clients
+        .map((c) => {
+          const safeName = c.name || "(No name)";
+          const safeAddress = c.address || "";
+          const safePhone = c.phone || "-";
+          const safeEmail = c.email || "-";
+          const safePreferred = c.preferred || "-";
+
+          return `
+            <li>
+              <strong>${safeName}</strong><br />
+              ${safeAddress ? safeAddress + "<br />" : ""}
+              Phone: ${safePhone} | Email: ${safeEmail}<br />
+              Preferred install: ${safePreferred}
+            </li>
+          `;
+        })
+        .join("");
+    }
+
+    if (saveClientButton) {
+      saveClientButton.addEventListener("click", () => {
+        const name = (clientNameInput.value || "").trim();
+        const phone = (clientPhoneInput.value || "").trim();
+        const email = (clientEmailInput.value || "").trim();
+        const address = (clientAddressInput.value || "").trim();
+        const preferred = (clientPreferredInput.value || "").trim();
+        const notes = (clientNotesInput.value || "").trim();
+
+        if (!name) {
+          alert("Please enter at least a client name.");
+          return;
+        }
+
+        const newClient = {
+          id: Date.now(),
+          name,
+          phone,
+          email,
+          address,
+          preferred,
+          notes,
+        };
+
+        clients.push(newClient);
+        saveClients(clients);
+        renderClientsList();
+
+        // Clear form
+        clientNameInput.value = "";
+        clientPhoneInput.value = "";
+        clientEmailInput.value = "";
+        clientAddressInput.value = "";
+        clientPreferredInput.value = "";
+        clientNotesInput.value = "";
+      });
+    }
+
+    // Render list on load
+    renderClientsList();
+
+    // -----------------------------
+    // Estimator logic: ridge + hip + eaves + takedown + tax
+    // -----------------------------
     const ridgeInput = document.getElementById("ridge-feet");
     const hipInput = document.getElementById("hip-feet");
     const eavesInput = document.getElementById("eaves-feet");
@@ -201,6 +344,7 @@
       });
     }
   </script>
+
 
 
 
