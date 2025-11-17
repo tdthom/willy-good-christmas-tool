@@ -91,12 +91,16 @@
     </ul>
   </section>
 
-
-      <!-- Screen 2: Estimate -->
+  <!-- Screen 2: Estimate -->
   <section id="screen-estimate" class="screen">
     <h2>Estimate</h2>
     <p>Enter your measurements below to get a quick price.</p>
 
+    <div id="current-client-summary" style="margin-bottom: 1rem; font-size: 0.9rem;">
+      <em>No client selected. Go to the Clients tab and click "Use for estimate".</em>
+    </div>
+
+  
     <h3>Feet of Lights</h3>
 
     <label for="ridge-feet"><strong>Main ridge</strong> (ft)</label><br />
@@ -152,7 +156,7 @@
     <p>This is where you’ll show a clean proposal with your logo and total price.</p>
   </section>
 
-    <script>
+      <script>
     // -----------------------------
     // Navigation: switch between screens
     // -----------------------------
@@ -180,6 +184,7 @@
     // Clients: save in localStorage
     // -----------------------------
     const CLIENTS_KEY = "wgc-clients-v1";
+    const CURRENT_CLIENT_KEY = "wgc-current-client-id";
 
     function loadClients() {
       try {
@@ -201,6 +206,29 @@
       }
     }
 
+    function loadCurrentClientId() {
+      try {
+        const raw = localStorage.getItem(CURRENT_CLIENT_KEY);
+        if (!raw) return null;
+        const id = parseInt(raw, 10);
+        return Number.isNaN(id) ? null : id;
+      } catch {
+        return null;
+      }
+    }
+
+    function saveCurrentClientId(id) {
+      try {
+        if (id == null) {
+          localStorage.removeItem(CURRENT_CLIENT_KEY);
+        } else {
+          localStorage.setItem(CURRENT_CLIENT_KEY, String(id));
+        }
+      } catch (e) {
+        console.warn("Could not save current client id", e);
+      }
+    }
+
     const clientNameInput = document.getElementById("client-name");
     const clientPhoneInput = document.getElementById("client-phone");
     const clientEmailInput = document.getElementById("client-email");
@@ -209,8 +237,31 @@
     const clientNotesInput = document.getElementById("client-notes");
     const saveClientButton = document.getElementById("save-client");
     const clientsList = document.getElementById("clients-list");
+    const currentClientSummaryDiv = document.getElementById("current-client-summary");
 
     let clients = loadClients();
+    let currentClientId = loadCurrentClientId();
+
+    function getCurrentClient() {
+      if (currentClientId == null) return null;
+      return clients.find((c) => c.id === currentClientId) || null;
+    }
+
+    function updateCurrentClientSummary() {
+      if (!currentClientSummaryDiv) return;
+      const c = getCurrentClient();
+      if (!c) {
+        currentClientSummaryDiv.innerHTML =
+          '<em>No client selected. Go to the Clients tab and click "Use for estimate".</em>';
+      } else {
+        currentClientSummaryDiv.innerHTML = `
+          <strong>Current client:</strong> ${c.name}<br />
+          ${c.address ? c.address + "<br />" : ""}
+          ${c.phone ? "Phone: " + c.phone + "<br />" : ""}
+          ${c.preferred ? "Preferred install: " + c.preferred : ""}
+        `;
+      }
+    }
 
     function renderClientsList() {
       if (!clientsList) return;
@@ -227,13 +278,17 @@
           const safePhone = c.phone || "-";
           const safeEmail = c.email || "-";
           const safePreferred = c.preferred || "-";
+          const isCurrent = c.id === currentClientId;
 
           return `
-            <li>
-              <strong>${safeName}</strong><br />
+            <li data-client-id="${c.id}">
+              <strong>${safeName}</strong>${isCurrent ? " (current)" : ""}<br />
               ${safeAddress ? safeAddress + "<br />" : ""}
               Phone: ${safePhone} | Email: ${safeEmail}<br />
-              Preferred install: ${safePreferred}
+              Preferred install: ${safePreferred}<br />
+              <button class="use-client-button" data-client-id="${c.id}">
+                Use for estimate
+              </button>
             </li>
           `;
         })
@@ -266,7 +321,13 @@
 
         clients.push(newClient);
         saveClients(clients);
+
+        // Make the new client the current client
+        currentClientId = newClient.id;
+        saveCurrentClientId(currentClientId);
+
         renderClientsList();
+        updateCurrentClientSummary();
 
         // Clear form
         clientNameInput.value = "";
@@ -278,8 +339,25 @@
       });
     }
 
-    // Render list on load
+    // Handle "Use for estimate" button clicks
+    if (clientsList) {
+      clientsList.addEventListener("click", (event) => {
+        const btn = event.target.closest(".use-client-button");
+        if (!btn) return;
+
+        const id = parseInt(btn.dataset.clientId, 10);
+        if (Number.isNaN(id)) return;
+
+        currentClientId = id;
+        saveCurrentClientId(currentClientId);
+        renderClientsList();
+        updateCurrentClientSummary();
+      });
+    }
+
+    // Initial render
     renderClientsList();
+    updateCurrentClientSummary();
 
     // -----------------------------
     // Estimator logic: ridge + hip + eaves + takedown + tax
@@ -344,6 +422,7 @@
       });
     }
   </script>
+
 
 
 
