@@ -158,7 +158,7 @@
 
 
 
-    <!-- Screen 3: Photo Mockup -->
+     <!-- Screen 3: Photo Mockup -->
   <section id="screen-mockup" class="screen">
     <h2>Photo / Satellite Mockup</h2>
     <p>Upload a front photo or satellite screenshot, set a scale, and draw your light runs.</p>
@@ -166,7 +166,7 @@
     <ol>
       <li>Upload a screenshot (front photo or satellite view).</li>
       <li>Click <strong>Set scale</strong> and draw a line of known length (for example, a 40 ft wall).</li>
-      <li>Click <strong>Measure runs</strong> and click along the roof lines to measure.</li>
+      <li>Select the run type (ridge / eaves / gable), click <strong>Measure runs</strong>, and click along the roof lines.</li>
     </ol>
 
     <input type="file" id="mockup-image-input" accept="image/*" />
@@ -178,14 +178,27 @@
     <br /><br />
 
     <button id="mockup-measure-mode">2) Measure runs</button>
+    <button id="mockup-undo">Undo last segment</button>
     <button id="mockup-clear">Clear lines</button>
+    <br /><br />
+
+    <label for="mockup-run-type"><strong>Current run type:</strong></label>
+    <select id="mockup-run-type">
+      <option value="ridge">Ridge / hip / shingle</option>
+      <option value="eaves">Eaves / gutters</option>
+      <option value="gable">Gable returns / other</option>
+    </select>
+    <br /><br />
+
+    <button id="mockup-zoom-in">Zoom in</button>
+    <button id="mockup-zoom-out">Zoom out</button>
 
     <div style="margin-top: 1rem;">
       <canvas
         id="mockup-canvas"
         width="800"
         height="500"
-        style="border:1px solid #ccc; max-width:100%;"
+        style="border:1px solid #ccc; max-width:100%; transform-origin: 0 0;"
       ></canvas>
     </div>
 
@@ -197,6 +210,7 @@
       <!-- length details will appear here -->
     </div>
   </section>
+
 
 
     <!-- Screen 4: Proposal -->
@@ -593,14 +607,18 @@
     // Initial proposal render on page load
     renderProposal();
 
-    // -----------------------------
+        // -----------------------------
     // Photo / Satellite mockup measurement
     // -----------------------------
     const mockupImageInput = document.getElementById("mockup-image-input");
     const mockupSetScaleBtn = document.getElementById("mockup-set-scale");
     const mockupMeasureBtn = document.getElementById("mockup-measure-mode");
+    const mockupUndoBtn = document.getElementById("mockup-undo");
     const mockupClearBtn = document.getElementById("mockup-clear");
+    const mockupZoomInBtn = document.getElementById("mockup-zoom-in");
+    const mockupZoomOutBtn = document.getElementById("mockup-zoom-out");
     const mockupScaleFeetInput = document.getElementById("mockup-scale-feet");
+    const mockupRunTypeSelect = document.getElementById("mockup-run-type");
     const mockupCanvas = document.getElementById("mockup-canvas");
     const mockupInfo = document.getElementById("mockup-info");
     const mockupTotals = document.getElementById("mockup-totals");
@@ -609,14 +627,28 @@
     let mockupImage = null;
     let mockupMode = "none"; // "scale" or "measure"
     let scalePoints = [];
-    let runSegments = [];
+    let runSegments = []; // {from, to, feet, type}
     let feetPerPixel = null;
     let drawImageParams = null;
+    let mockupZoom = 1;
+    const MOCKUP_MIN_ZOOM = 0.5;
+    const MOCKUP_MAX_ZOOM = 4;
+
+    const typeColors = {
+      ridge: "red",
+      eaves: "blue",
+      gable: "green",
+    };
 
     function mockupSetInfo(text) {
       if (mockupInfo) {
         mockupInfo.textContent = text;
       }
+    }
+
+    function applyMockupZoom() {
+      if (!mockupCanvas) return;
+      mockupCanvas.style.transform = `scale(${mockupZoom})`;
     }
 
     function drawMockupBase() {
@@ -633,13 +665,19 @@
       }
     }
 
+    function pixelDistance(p1, p2) {
+      const dx = p1.x - p2.x;
+      const dy = p1.y - p2.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
     function redrawMockup() {
       if (!mockupCtx || !mockupCanvas) return;
       drawMockupBase();
 
       // draw scale line
       if (scalePoints.length === 2) {
-        mockupCtx.strokeStyle = "red";
+        mockupCtx.strokeStyle = "#ffa500"; // orange
         mockupCtx.lineWidth = 2;
         mockupCtx.beginPath();
         mockupCtx.moveTo(scalePoints[0].x, scalePoints[0].y);
@@ -648,22 +686,14 @@
       }
 
       // draw measured runs
-      if (runSegments.length > 0) {
-        mockupCtx.strokeStyle = "blue";
-        mockupCtx.lineWidth = 2;
+      runSegments.forEach((seg) => {
         mockupCtx.beginPath();
-        runSegments.forEach((seg) => {
-          mockupCtx.moveTo(seg.from.x, seg.from.y);
-          mockupCtx.lineTo(seg.to.x, seg.to.y);
-        });
+        mockupCtx.strokeStyle = typeColors[seg.type] || "blue";
+        mockupCtx.lineWidth = 2;
+        mockupCtx.moveTo(seg.from.x, seg.from.y);
+        mockupCtx.lineTo(seg.to.x, seg.to.y);
         mockupCtx.stroke();
-      }
-    }
-
-    function pixelDistance(p1, p2) {
-      const dx = p1.x - p2.x;
-      const dy = p1.y - p2.y;
-      return Math.sqrt(dx * dx + dy * dy);
+      });
     }
 
     function updateMockupTotals() {
@@ -672,6 +702,7 @@
         mockupTotals.innerHTML = "";
         return;
       }
+
       let html = "";
       if (feetPerPixel) {
         html += `<p>Scale: 1 pixel ≈ ${feetPerPixel.toFixed(4)} ft</p>`;
@@ -681,19 +712,61 @@
 
       if (runSegments.length === 0) {
         html += "<p>No measured runs yet.</p>";
-      } else {
-        let total = 0;
-        html += "<ul>";
-        runSegments.forEach((seg, idx) => {
-          total += seg.feet;
-          html += `<li>Run ${idx + 1}: ${seg.feet.toFixed(1)} ft</li>`;
-        });
-        html += "</ul>";
-        html += `<p><strong>Total measured length:</strong> ${total.toFixed(1)} ft</p>`;
+        mockupTotals.innerHTML = html;
+        return;
       }
+
+      const totalsByType = {
+        ridge: 0,
+        eaves: 0,
+        gable: 0,
+      };
+
+      runSegments.forEach((seg) => {
+        if (totalsByType[seg.type] != null) {
+          totalsByType[seg.type] += seg.feet;
+        }
+      });
+
+      let grandTotal = 0;
+      grandTotal += totalsByType.ridge;
+      grandTotal += totalsByType.eaves;
+      grandTotal += totalsByType.gable;
+
+      html += "<ul>";
+      if (totalsByType.ridge > 0) {
+        html += `<li><strong>Ridge / hip / shingle:</strong> ${totalsByType.ridge.toFixed(
+          1
+        )} ft</li>`;
+      }
+      if (totalsByType.eaves > 0) {
+        html += `<li><strong>Eaves / gutters:</strong> ${totalsByType.eaves.toFixed(
+          1
+        )} ft</li>`;
+      }
+      if (totalsByType.gable > 0) {
+        html += `<li><strong>Gable returns / other:</strong> ${totalsByType.gable.toFixed(
+          1
+        )} ft</li>`;
+      }
+      html += "</ul>";
+      html += `<p><strong>Total measured length (all types):</strong> ${grandTotal.toFixed(
+        1
+      )} ft</p>`;
+
       mockupTotals.innerHTML = html;
     }
 
+    function getCanvasPointFromEvent(event) {
+      const rect = mockupCanvas.getBoundingClientRect();
+      const xScreen = event.clientX - rect.left;
+      const yScreen = event.clientY - rect.top;
+      const x = xScreen / mockupZoom;
+      const y = yScreen / mockupZoom;
+      return { x, y };
+    }
+
+    // Image loading
     if (mockupImageInput && mockupCtx && mockupCanvas) {
       mockupImageInput.addEventListener("change", (event) => {
         const file = event.target.files && event.target.files[0];
@@ -704,7 +777,6 @@
           const img = new Image();
           img.onload = () => {
             mockupImage = img;
-            // fit image into canvas while preserving aspect ratio
             const canvasWidth = mockupCanvas.width;
             const canvasHeight = mockupCanvas.height;
             const imgAspect = img.width / img.height;
@@ -732,6 +804,8 @@
             runSegments = [];
             feetPerPixel = null;
             mockupMode = "none";
+            mockupZoom = 1;
+            applyMockupZoom();
 
             drawMockupBase();
             mockupSetInfo(
@@ -745,6 +819,7 @@
       });
     }
 
+    // Set scale mode
     if (mockupSetScaleBtn) {
       mockupSetScaleBtn.addEventListener("click", () => {
         if (!mockupImage) {
@@ -763,6 +838,7 @@
       });
     }
 
+    // Measure mode
     if (mockupMeasureBtn) {
       mockupMeasureBtn.addEventListener("click", () => {
         if (!mockupImage) {
@@ -774,13 +850,29 @@
           return;
         }
         mockupMode = "measure";
-        runSegments = [];
         redrawMockup();
-        mockupSetInfo("Measure mode: click along each run; each segment will be measured.");
+        mockupSetInfo(
+          "Measure mode: choose run type, then click along each run; each segment will be measured."
+        );
         updateMockupTotals();
       });
     }
 
+    // Zoom buttons
+    if (mockupZoomInBtn) {
+      mockupZoomInBtn.addEventListener("click", () => {
+        mockupZoom = Math.min(mockupZoom + 0.25, MOCKUP_MAX_ZOOM);
+        applyMockupZoom();
+      });
+    }
+    if (mockupZoomOutBtn) {
+      mockupZoomOutBtn.addEventListener("click", () => {
+        mockupZoom = Math.max(mockupZoom - 0.25, MOCKUP_MIN_ZOOM);
+        applyMockupZoom();
+      });
+    }
+
+    // Clear all lines
     if (mockupClearBtn) {
       mockupClearBtn.addEventListener("click", () => {
         if (!mockupImage) {
@@ -802,16 +894,25 @@
       });
     }
 
+    // Undo last segment
+    if (mockupUndoBtn) {
+      mockupUndoBtn.addEventListener("click", () => {
+        if (runSegments.length > 0) {
+          runSegments.pop();
+          redrawMockup();
+          updateMockupTotals();
+        }
+      });
+    }
+
+    // Canvas click handling (scale + measure)
     if (mockupCanvas && mockupCtx) {
       let lastMeasurePoint = null;
 
       mockupCanvas.addEventListener("click", (event) => {
         if (!mockupImage) return;
 
-        const rect = mockupCanvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        const point = { x, y };
+        const point = getCanvasPointFromEvent(event);
 
         if (mockupMode === "scale") {
           scalePoints.push(point);
@@ -842,6 +943,10 @@
             mockupSetInfo("Set the scale first.");
             return;
           }
+          const runType = mockupRunTypeSelect
+            ? mockupRunTypeSelect.value
+            : "ridge";
+
           if (!lastMeasurePoint) {
             lastMeasurePoint = point;
           } else {
@@ -851,6 +956,7 @@
               from: lastMeasurePoint,
               to: point,
               feet,
+              type: runType,
             });
             lastMeasurePoint = point;
           }
@@ -859,6 +965,10 @@
         }
       });
     }
+
+    // Apply initial zoom
+    applyMockupZoom();
+
   </script>
 
 
