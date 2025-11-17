@@ -182,7 +182,7 @@
     <button id="mockup-clear">Clear lines</button>
     <br /><br />
 
-    <label for="mockup-run-type"><strong>Current run type:</strong></label>
+        <label for="mockup-run-type"><strong>Current run type (for clips):</strong></label>
     <select id="mockup-run-type">
       <option value="ridge">Ridge / hip / shingle</option>
       <option value="eaves">Eaves / gutters</option>
@@ -190,8 +190,21 @@
     </select>
     <br /><br />
 
+    <label for="mockup-bulb-color"><strong>Bulb color scheme (for customer view):</strong></label>
+    <select id="mockup-bulb-color">
+      <option value="#ffd700">Warm white</option>
+      <option value="#ffffff">Pure white</option>
+      <option value="#ff0000">Red</option>
+      <option value="#00ff00">Green</option>
+      <option value="#00bfff">Cool white / icy blue</option>
+      <option value="#ff00ff">Multi-color (sample)</option>
+    </select>
+    <br /><br />
+
     <button id="mockup-zoom-in">Zoom in</button>
     <button id="mockup-zoom-out">Zoom out</button>
+    <button id="mockup-send-to-estimate">Send ridge / eaves totals to Estimate</button>
+
 
     <div style="margin-top: 1rem;">
       <canvas
@@ -607,7 +620,7 @@
     // Initial proposal render on page load
     renderProposal();
 
-        // -----------------------------
+     // -----------------------------
     // Photo / Satellite mockup measurement
     // -----------------------------
     const mockupImageInput = document.getElementById("mockup-image-input");
@@ -617,17 +630,21 @@
     const mockupClearBtn = document.getElementById("mockup-clear");
     const mockupZoomInBtn = document.getElementById("mockup-zoom-in");
     const mockupZoomOutBtn = document.getElementById("mockup-zoom-out");
+    const mockupSendToEstimateBtn = document.getElementById("mockup-send-to-estimate");
     const mockupScaleFeetInput = document.getElementById("mockup-scale-feet");
     const mockupRunTypeSelect = document.getElementById("mockup-run-type");
+    const mockupBulbColorSelect = document.getElementById("mockup-bulb-color");
     const mockupCanvas = document.getElementById("mockup-canvas");
     const mockupInfo = document.getElementById("mockup-info");
     const mockupTotals = document.getElementById("mockup-totals");
     const mockupCtx = mockupCanvas ? mockupCanvas.getContext("2d") : null;
 
+
     let mockupImage = null;
     let mockupMode = "none"; // "scale" or "measure"
     let scalePoints = [];
-    let runSegments = []; // {from, to, feet, type}
+    let runSegments = []; // {from, to, feet, type, color}
+
     let feetPerPixel = null;
     let drawImageParams = null;
     let mockupZoom = 1;
@@ -685,15 +702,16 @@
         mockupCtx.stroke();
       }
 
-      // draw measured runs
+     // draw measured runs (use bulb color for customer view)
       runSegments.forEach((seg) => {
         mockupCtx.beginPath();
-        mockupCtx.strokeStyle = typeColors[seg.type] || "blue";
-        mockupCtx.lineWidth = 2;
+        mockupCtx.strokeStyle = seg.color || typeColors[seg.type] || "blue";
+        mockupCtx.lineWidth = 3;
         mockupCtx.moveTo(seg.from.x, seg.from.y);
         mockupCtx.lineTo(seg.to.x, seg.to.y);
         mockupCtx.stroke();
       });
+
     }
 
     function updateMockupTotals() {
@@ -904,6 +922,36 @@
         }
       });
     }
+    // Send measured ridge/eaves totals into the Estimate tab
+    if (mockupSendToEstimateBtn) {
+      mockupSendToEstimateBtn.addEventListener("click", () => {
+        if (!feetPerPixel || runSegments.length === 0) {
+          alert("Measure your runs first before sending to Estimate.");
+          return;
+        }
+
+        const totalsByType = { ridge: 0, eaves: 0, gable: 0 };
+        runSegments.forEach((seg) => {
+          if (totalsByType[seg.type] != null) {
+            totalsByType[seg.type] += seg.feet;
+          }
+        });
+
+        // Fill Estimate fields (ridge = ridge/hip total, eaves = eaves total)
+        if (ridgeInput) {
+          ridgeInput.value = totalsByType.ridge.toFixed(1); // ridge + hip combined
+        }
+        if (eavesInput) {
+          eavesInput.value = totalsByType.eaves.toFixed(1);
+        }
+
+        mockupSetInfo(
+          `Sent measured totals to Estimate: ridge=${totalsByType.ridge.toFixed(
+            1
+          )} ft, eaves=${totalsByType.eaves.toFixed(1)} ft. You can still adjust by hand.`
+        );
+      });
+    }
 
     // Canvas click handling (scale + measure)
     if (mockupCanvas && mockupCtx) {
@@ -938,14 +986,17 @@
           }
           redrawMockup();
           updateMockupTotals();
-        } else if (mockupMode === "measure") {
+                } else if (mockupMode === "measure") {
           if (!feetPerPixel) {
             mockupSetInfo("Set the scale first.");
             return;
           }
+
           const runType = mockupRunTypeSelect
             ? mockupRunTypeSelect.value
             : "ridge";
+          const color =
+            (mockupBulbColorSelect && mockupBulbColorSelect.value) || "#ffd700";
 
           if (!lastMeasurePoint) {
             lastMeasurePoint = point;
@@ -957,12 +1008,14 @@
               to: point,
               feet,
               type: runType,
+              color,
             });
             lastMeasurePoint = point;
           }
           redrawMockup();
           updateMockupTotals();
         }
+
       });
     }
 
