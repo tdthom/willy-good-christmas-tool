@@ -208,9 +208,18 @@
     </select>
     <br /><br />
 
+    <label for="mockup-bulb-size"><strong>Bulb size:</strong></label>
+    <select id="mockup-bulb-size">
+      <option value="small">Small</option>
+      <option value="medium" selected>Medium</option>
+      <option value="large">Large</option>
+    </select>
+    <br /><br />
+
     <button id="mockup-zoom-in">Zoom in</button>
     <button id="mockup-zoom-out">Zoom out</button>
     <button id="mockup-send-to-estimate">Send ridge / eaves totals to Estimate</button>
+
 
 
 
@@ -644,10 +653,12 @@
     const mockupRunTypeSelect = document.getElementById("mockup-run-type");
     const mockupBulbColorSelect = document.getElementById("mockup-bulb-color");
     const mockupBulbSpacingSelect = document.getElementById("mockup-bulb-spacing");
+    const mockupBulbSizeSelect = document.getElementById("mockup-bulb-size");
     const mockupCanvas = document.getElementById("mockup-canvas");
     const mockupInfo = document.getElementById("mockup-info");
     const mockupTotals = document.getElementById("mockup-totals");
     const mockupCtx = mockupCanvas ? mockupCanvas.getContext("2d") : null;
+
 
 
 
@@ -716,7 +727,7 @@
         mockupCtx.stroke();
       }
 
-              // draw measured runs – cleaner bulbs, less glow
+     // draw measured runs – teardrop bulbs with adjustable size
       runSegments.forEach((seg) => {
         const color = seg.color || typeColors[seg.type] || "blue";
 
@@ -731,8 +742,9 @@
         const dx = seg.to.x - seg.from.x;
         const dy = seg.to.y - seg.from.y;
         const lengthPx = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
 
-        // 12" or 15" → pixel spacing
+        // Bulb spacing in pixels (based on 12" / 15")
         let spacingInches = 12;
         if (mockupBulbSpacingSelect) {
           const val = parseFloat(mockupBulbSpacingSelect.value);
@@ -744,12 +756,21 @@
           const spacingFt = spacingInches / 12; // inches → feet
           spacingPx = spacingFt / feetPerPixel;
         } else {
-          // no scale set: just a reasonable visual spacing
-          spacingPx = 22;
+          spacingPx = 22; // visual default if no scale
         }
 
-        // keep spacing from getting crazy small or huge
         spacingPx = Math.min(Math.max(spacingPx, 8), 50);
+
+        // Bulb size (small / medium / large)
+        let baseSize = 3;
+        if (mockupBulbSizeSelect) {
+          const sizeVal = mockupBulbSizeSelect.value;
+          if (sizeVal === "small") baseSize = 2.5;
+          else if (sizeVal === "medium") baseSize = 3.2;
+          else if (sizeVal === "large") baseSize = 4.0;
+        }
+        const bulbHeight = baseSize * 2.4;
+        const glowRadius = bulbHeight * 0.9;
 
         const count = Math.max(1, Math.round(lengthPx / spacingPx));
 
@@ -758,28 +779,50 @@
           const x = seg.from.x + dx * t;
           const y = seg.from.y + dy * t;
 
-          // subtle glow (smaller so it doesn't turn into frosting)
           mockupCtx.save();
-          mockupCtx.globalAlpha = 0.25;
-          mockupCtx.fillStyle = color;
-          mockupCtx.beginPath();
-          mockupCtx.arc(x, y, 5, 0, Math.PI * 2);
-          mockupCtx.fill();
-          mockupCtx.restore();
+          mockupCtx.translate(x, y);
+          mockupCtx.rotate(angle);
 
-          // bulb body (small bright dot)
+          // soft glow
           mockupCtx.beginPath();
+          mockupCtx.globalAlpha = 0.22;
           mockupCtx.fillStyle = color;
-          mockupCtx.strokeStyle = "#f0f0f0";
+          mockupCtx.arc(0, 0, glowRadius, 0, Math.PI * 2);
+          mockupCtx.fill();
+          mockupCtx.globalAlpha = 1;
+
+          // teardrop bulb (tip pointing out from the fascia)
+          mockupCtx.beginPath();
+          mockupCtx.moveTo(0, -bulbHeight / 2); // tip
+          mockupCtx.quadraticCurveTo(
+            baseSize,
+            0,
+            0,
+            bulbHeight / 2
+          );
+          mockupCtx.quadraticCurveTo(
+            -baseSize,
+            0,
+            0,
+            -bulbHeight / 2
+          );
+          mockupCtx.closePath();
+          mockupCtx.fillStyle = color;
+          mockupCtx.strokeStyle = "#f5f5f5";
           mockupCtx.lineWidth = 0.8;
-          mockupCtx.arc(x, y, 3, 0, Math.PI * 2);
           mockupCtx.fill();
           mockupCtx.stroke();
 
-          // tiny socket under bulb to hint at C9 shape
-          mockupCtx.beginPath();
+          // small dark socket under the bulb
           mockupCtx.fillStyle = "#444";
-          mockupCtx.fillRect(x - 1.2, y + 3, 2.4, 2.4);
+          mockupCtx.fillRect(
+            -baseSize * 0.6,
+            bulbHeight / 2,
+            baseSize * 1.2,
+            baseSize * 0.6
+          );
+
+          mockupCtx.restore();
         }
       });
 
@@ -995,6 +1038,29 @@
         }
       });
     }
+    // Change all bulbs to the selected color instantly
+    if (mockupBulbColorSelect) {
+      mockupBulbColorSelect.addEventListener("change", () => {
+        const color = mockupBulbColorSelect.value;
+        runSegments.forEach((seg) => {
+          seg.color = color;
+        });
+        redrawMockup();
+      });
+    }
+
+    // Redraw when spacing or size changes
+    if (mockupBulbSpacingSelect) {
+      mockupBulbSpacingSelect.addEventListener("change", () => {
+        redrawMockup();
+      });
+    }
+    if (mockupBulbSizeSelect) {
+      mockupBulbSizeSelect.addEventListener("change", () => {
+        redrawMockup();
+      });
+    }
+
     // Send measured ridge/eaves totals into the Estimate tab
     if (mockupSendToEstimateBtn) {
       mockupSendToEstimateBtn.addEventListener("click", () => {
