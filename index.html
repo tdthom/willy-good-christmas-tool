@@ -65,7 +65,7 @@
 
   </style>
      
-  
+
 
 </head>
 <body>
@@ -462,7 +462,7 @@
       }
     }
 
-    // -----------------------------
+        // -----------------------------
     // Clients UI
     // -----------------------------
     const clientNameInput = document.getElementById("client-name");
@@ -477,7 +477,6 @@
     const clientRateInput = document.getElementById("client-rate");
     const clientTakedownRateInput = document.getElementById("client-takedown-rate");
     const clientLightsOwnedSelect = document.getElementById("client-lights-owned");
-   
 
     let clients = loadClients();
     let currentClientId = loadCurrentClientId();
@@ -520,12 +519,33 @@
           const safePreferred = c.preferred || "-";
           const isCurrent = c.id === currentClientId;
 
+          const rateInfo =
+            c.defaultRate != null
+              ? `Install: $${c.defaultRate.toFixed(2)}/ft; `
+              : "";
+          const tdInfo =
+            c.defaultTakedown != null
+              ? `Takedown: $${c.defaultTakedown.toFixed(2)}/ft; `
+              : "";
+          const lightsInfo =
+            c.lightsOwned === "company"
+              ? "Lights: company-owned"
+              : c.lightsOwned === "customer"
+              ? "Lights: customer-owned & stored"
+              : "";
+
+          const extraLine =
+            rateInfo || tdInfo || lightsInfo
+              ? `<small>${rateInfo}${tdInfo}${lightsInfo}</small><br />`
+              : "";
+
           return `
             <li data-client-id="${c.id}">
               <strong>${safeName}</strong>${isCurrent ? " (current)" : ""}<br />
               ${safeAddress ? safeAddress + "<br />" : ""}
               Phone: ${safePhone} | Email: ${safeEmail}<br />
               Preferred install: ${safePreferred}<br />
+              ${extraLine}
               <button class="use-client-button" data-client-id="${c.id}">
                 Use for estimate
               </button>
@@ -535,9 +555,8 @@
         .join("");
     }
 
-        if (saveClientButton) {
+    if (saveClientButton) {
       saveClientButton.addEventListener("click", () => {
-        // Make sure the form exists
         if (!clientNameInput) {
           alert("Client form is not loaded correctly.");
           return;
@@ -569,14 +588,13 @@
           ? clientLightsOwnedSelect.value || "unknown"
           : "unknown";
 
-        // Either update the current client or create a new one
         let client =
           typeof currentClientId === "number"
             ? clients.find((c) => c.id === currentClientId)
             : null;
 
         if (client) {
-          // Update existing client
+          // update existing
           client.name = name;
           client.phone = phone;
           client.email = email;
@@ -587,7 +605,7 @@
           client.defaultTakedown = defaultTakedown;
           client.lightsOwned = lightsOwned;
         } else {
-          // Create new client
+          // create new
           client = {
             id: Date.now(),
             name,
@@ -604,53 +622,10 @@
           currentClientId = client.id;
         }
 
-        // Save to localStorage
-        try {
-          localStorage.setItem("wgc_clients", JSON.stringify(clients));
-        } catch (e) {
-          console.warn("Could not save clients to localStorage:", e);
-        }
-
-        // Refresh UI
-        renderClientsList();
-        updateCurrentClientSummary();
-      });
-    }
-
-
-
-        if (!name) {
-          alert("Please enter at least a client name.");
-          return;
-        }
-
-        const newClient = {
-          id: Date.now(),
-          name,
-          phone,
-          email,
-          address,
-          preferred,
-          notes,
-        };
-
-        clients.push(newClient);
         saveClients(clients);
-
-        // Make the new client the current client
-        currentClientId = newClient.id;
         saveCurrentClientId(currentClientId);
-
         renderClientsList();
         updateCurrentClientSummary();
-
-        // Clear form
-        clientNameInput.value = "";
-        clientPhoneInput.value = "";
-        clientEmailInput.value = "";
-        clientAddressInput.value = "";
-        clientPreferredInput.value = "";
-        clientNotesInput.value = "";
       });
     }
 
@@ -666,47 +641,27 @@
         saveCurrentClientId(currentClientId);
         renderClientsList();
         updateCurrentClientSummary();
+
         const picked = clients.find((c) => c.id === currentClientId);
         if (picked) {
-          if (rateInput && picked.defaultRate != null) {
+          // apply default install/takedown to Estimate tab if available
+          if (typeof rateInput !== "undefined" && rateInput && picked.defaultRate != null) {
             rateInput.value = picked.defaultRate.toFixed(2);
           }
-          if (takedownRateInput && picked.defaultTakedown != null) {
+          if (
+            typeof takedownRateInput !== "undefined" &&
+            takedownRateInput &&
+            picked.defaultTakedown != null
+          ) {
             takedownRateInput.value = picked.defaultTakedown.toFixed(2);
           }
         }
-
+      });
+    }
 
     // Initial client render
     renderClientsList();
     updateCurrentClientSummary();
-              const rateInfo =
-            c.defaultRate != null
-              ? `Install: $${c.defaultRate.toFixed(2)}/ft; `
-              : "";
-          const tdInfo =
-            c.defaultTakedown != null
-              ? `Takedown: $${c.defaultTakedown.toFixed(2)}/ft; `
-              : "";
-          const lightsInfo =
-            c.lightsOwned === "company"
-              ? "Lights: company-owned"
-              : c.lightsOwned === "customer"
-              ? "Lights: customer-owned"
-              : "";
-
-          return `
-            <li data-client-id="${c.id}">
-              <strong>${safeName}</strong>${isCurrent ? " (current)" : ""}<br />
-              ${safeAddress ? safeAddress + "<br />" : ""}
-              Phone: ${safePhone} | Email: ${safeEmail}<br />
-              Preferred install: ${safePreferred}<br />
-              <small>${rateInfo}${tdInfo}${lightsInfo}</small><br />
-              <button class="use-client-button" data-client-id="${c.id}">
-                Use for estimate
-              </button>
-            </li>
-          `;
 
 
     // -----------------------------
