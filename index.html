@@ -716,11 +716,11 @@
         mockupCtx.stroke();
       }
 
-              // draw measured runs – show as spaced "bulbs"
+              // draw measured runs – cleaner bulbs, less glow
       runSegments.forEach((seg) => {
         const color = seg.color || typeColors[seg.type] || "blue";
 
-        // Underline (wire)
+        // Thin wire under the bulbs
         mockupCtx.beginPath();
         mockupCtx.strokeStyle = color;
         mockupCtx.lineWidth = 1;
@@ -728,11 +728,11 @@
         mockupCtx.lineTo(seg.to.x, seg.to.y);
         mockupCtx.stroke();
 
-        // Compute spacing in pixels
         const dx = seg.to.x - seg.from.x;
         const dy = seg.to.y - seg.from.y;
         const lengthPx = Math.sqrt(dx * dx + dy * dy);
 
+        // 12" or 15" → pixel spacing
         let spacingInches = 12;
         if (mockupBulbSpacingSelect) {
           const val = parseFloat(mockupBulbSpacingSelect.value);
@@ -744,12 +744,12 @@
           const spacingFt = spacingInches / 12; // inches → feet
           spacingPx = spacingFt / feetPerPixel;
         } else {
-          // no scale set: fall back to a visual guess
-          spacingPx = 20;
+          // no scale set: just a reasonable visual spacing
+          spacingPx = 22;
         }
 
-        // Clamp spacing so it looks reasonable on screen
-        spacingPx = Math.min(Math.max(spacingPx, 6), 60);
+        // keep spacing from getting crazy small or huge
+        spacingPx = Math.min(Math.max(spacingPx, 8), 50);
 
         const count = Math.max(1, Math.round(lengthPx / spacingPx));
 
@@ -758,25 +758,31 @@
           const x = seg.from.x + dx * t;
           const y = seg.from.y + dy * t;
 
-          // glow
+          // subtle glow (smaller so it doesn't turn into frosting)
           mockupCtx.save();
-          mockupCtx.globalAlpha = 0.35;
+          mockupCtx.globalAlpha = 0.25;
           mockupCtx.fillStyle = color;
           mockupCtx.beginPath();
-          mockupCtx.arc(x, y, 7, 0, Math.PI * 2);
+          mockupCtx.arc(x, y, 5, 0, Math.PI * 2);
           mockupCtx.fill();
           mockupCtx.restore();
 
-          // bulb
+          // bulb body (small bright dot)
           mockupCtx.beginPath();
           mockupCtx.fillStyle = color;
-          mockupCtx.strokeStyle = "#ffffff";
-          mockupCtx.lineWidth = 1;
-          mockupCtx.arc(x, y, 4.5, 0, Math.PI * 2);
+          mockupCtx.strokeStyle = "#f0f0f0";
+          mockupCtx.lineWidth = 0.8;
+          mockupCtx.arc(x, y, 3, 0, Math.PI * 2);
           mockupCtx.fill();
           mockupCtx.stroke();
+
+          // tiny socket under bulb to hint at C9 shape
+          mockupCtx.beginPath();
+          mockupCtx.fillStyle = "#444";
+          mockupCtx.fillRect(x - 1.2, y + 3, 2.4, 2.4);
         }
       });
+
 
 
     }
