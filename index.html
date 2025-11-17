@@ -1542,16 +1542,7 @@
         }
       });
     }
-    // Change all bulbs to the selected color instantly
-    if (mockupBulbColorSelect) {
-      mockupBulbColorSelect.addEventListener("change", () => {
-        const color = mockupBulbColorSelect.value;
-        runSegments.forEach((seg) => {
-          seg.color = color;
-        });
-        redrawMockup();
-      });
-    }
+    
 
      // Re-draw when colors / pattern / spacing / size change
     if (mockupColorModeSelect) {
@@ -1671,34 +1662,32 @@
           redrawMockup();
           updateMockupTotals();
          
-           } else if (mockupMode === "measure") {
-          // You can still draw visually even if scale isn't set
-          const runType = mockupRunTypeSelect
-            ? mockupRunTypeSelect.value
-            : "ridge";
-          const color =
-            (mockupBulbColorSelect && mockupBulbColorSelect.value) || "#ffd700";
+                } else if (mockupMode === "measure") {
+       // Measure and store the run; colors are handled later by the pattern settings
+       const runType = mockupRunTypeSelect
+         ? mockupRunTypeSelect.value
+         : "ridge";
 
-          if (!lastMeasurePoint) {
-            lastMeasurePoint = point;
-          } else {
-            const pixels = pixelDistance(lastMeasurePoint, point);
-            const feet = feetPerPixel ? pixels * feetPerPixel : 0; // 0 if no scale yet
+       if (!lastMeasurePoint) {
+         lastMeasurePoint = point;
+       } else {
+         const pixels = pixelDistance(lastMeasurePoint, point);
+         const feet = feetPerPixel ? pixels * feetPerPixel : 0; // 0 if no scale yet
 
-            runSegments.push({
-              from: lastMeasurePoint,
-              to: point,
-              feet,
-              type: runType,
-              color,
-            });
+         runSegments.push({
+           from: lastMeasurePoint,
+           to: point,
+           feet,
+           type: runType,
+         });
 
-            lastMeasurePoint = point;
-          }
+         lastMeasurePoint = point;
+       }
 
-          redrawMockup();
-          updateMockupTotals();
-        }
+       redrawMockup();
+       updateMockupTotals();
+     }
+
 
 
       });
