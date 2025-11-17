@@ -77,21 +77,25 @@
     <input id="eaves-feet" type="number" min="0" step="1" placeholder="e.g. 20" /> ft
     <br /><br />
 
-     <h3>Pricing</h3>
+         <h3>Pricing</h3>
 
- <label for="rate-per-foot"><strong>Price per foot</strong> you want to charge</label><br />
- <input id="rate-per-foot" type="number" min="0" step="0.01" value="4.00" /> $/ft
- <br /><br />
+    <label for="rate-per-foot"><strong>Install price per foot</strong> you want to charge</label><br />
+    <input id="rate-per-foot" type="number" min="0" step="0.01" value="4.00" /> $/ft
+    <br /><br />
 
- <label for="tax-rate"><strong>Sales tax rate</strong> (%)</label><br />
- <input id="tax-rate" type="number" min="0" step="0.01" value="8.25" /> %
- <br /><br />
+    <label for="takedown-rate"><strong>Takedown price per foot</strong></label><br />
+    <input id="takedown-rate" type="number" min="0" step="0.01" value="2.00" /> $/ft
+    <br /><br />
 
- <label for="container-cost"><strong>Container cost (internal only)</strong></label><br />
- <input id="container-cost" type="number" min="0" step="0.01" value="0.00" /> $
- <br /><br />
+    <label for="tax-rate"><strong>Sales tax rate</strong> (%)</label><br />
+    <input id="tax-rate" type="number" min="0" step="0.01" value="8.25" /> %
+    <br /><br />
 
- <button id="calc-estimate">Calculate Estimate</button>
+    <label for="container-cost"><strong>Container cost (internal only)</strong></label><br />
+    <input id="container-cost" type="number" min="0" step="0.01" value="0.00" /> $
+    <br /><br />
+
+    <button id="calc-estimate">Calculate Estimate</button>
 
     <h3>Result</h3>
     <div id="estimate-result">
@@ -114,76 +118,90 @@
     <p>This is where you’ll show a clean proposal with your logo and total price.</p>
   </section>
 
-      <script>
-  // Navigation: switch between screens
-  const buttons = document.querySelectorAll("nav button");
-  const screens = document.querySelectorAll(".screen");
+    <script>
+    // Navigation: switch between screens
+    const buttons = document.querySelectorAll("nav button");
+    const screens = document.querySelectorAll(".screen");
 
-  buttons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const target = btn.dataset.screen;
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const target = btn.dataset.screen;
 
-      buttons.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
+        buttons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
 
-      screens.forEach((s) => {
-        if (s.id === "screen-" + target) {
-          s.classList.add("active");
-        } else {
-          s.classList.remove("active");
-        }
+        screens.forEach((s) => {
+          if (s.id === "screen-" + target) {
+            s.classList.add("active");
+          } else {
+            s.classList.remove("active");
+          }
+        });
       });
     });
-  });
 
-  // Estimator logic: ridge + hip ridge + eaves + tax
-  const ridgeInput = document.getElementById("ridge-feet");
-  const hipInput = document.getElementById("hip-feet");
-  const eavesInput = document.getElementById("eaves-feet");
-  const rateInput = document.getElementById("rate-per-foot");
-  const taxRateInput = document.getElementById("tax-rate");
-  const containerInput = document.getElementById("container-cost");
-  const calcButton = document.getElementById("calc-estimate");
-  const resultBox = document.getElementById("estimate-result");
+    // Estimator logic: ridge + hip ridge + eaves + takedown + tax
+    const ridgeInput = document.getElementById("ridge-feet");
+    const hipInput = document.getElementById("hip-feet");
+    const eavesInput = document.getElementById("eaves-feet");
+    const rateInput = document.getElementById("rate-per-foot");
+    const takedownRateInput = document.getElementById("takedown-rate");
+    const taxRateInput = document.getElementById("tax-rate");
+    const containerInput = document.getElementById("container-cost");
+    const calcButton = document.getElementById("calc-estimate");
+    const resultBox = document.getElementById("estimate-result");
 
-  if (calcButton) {
-    calcButton.addEventListener("click", () => {
-      const ridge = parseFloat(ridgeInput.value) || 0;
-      const hip = parseFloat(hipInput.value) || 0;
-      const eaves = parseFloat(eavesInput.value) || 0;
-      const rate = parseFloat(rateInput.value) || 0;
-      const taxRatePercent = parseFloat(taxRateInput.value) || 0;
-      const container = parseFloat(containerInput.value) || 0;
+    if (calcButton) {
+      calcButton.addEventListener("click", () => {
+        const ridge = parseFloat(ridgeInput.value) || 0;
+        const hip = parseFloat(hipInput.value) || 0;
+        const eaves = parseFloat(eavesInput.value) || 0;
+        const rate = parseFloat(rateInput.value) || 0;
+        const takedownRate = parseFloat(takedownRateInput.value) || 0;
+        const taxRatePercent = parseFloat(taxRateInput.value) || 0;
+        const container = parseFloat(containerInput.value) || 0;
 
-      const ridgePrice = ridge * rate;
-      const hipPrice = hip * rate;
-      const eavesPrice = eaves * rate;
+        const totalFeet = ridge + hip + eaves;
 
-      const totalFeet = ridge + hip + eaves;
-      const lightsSubtotal = ridgePrice + hipPrice + eavesPrice;
+        // Install prices
+        const ridgePrice = ridge * rate;
+        const hipPrice = hip * rate;
+        const eavesPrice = eaves * rate;
+        const installSubtotal = ridgePrice + hipPrice + eavesPrice;
 
-      const taxRate = taxRatePercent / 100;
-      const taxAmount = lightsSubtotal * taxRate;
-      const customerTotalWithTax = lightsSubtotal + taxAmount;
+        // Takedown
+        const takedownSubtotal = totalFeet * takedownRate;
 
-      const internalTotal = lightsSubtotal + container; // pre-tax internal total
+        // Customer subtotal before tax
+        const customerSubtotal = installSubtotal + takedownSubtotal;
 
-      resultBox.innerHTML = `
-        <p><strong>Total feet:</strong> ${totalFeet.toFixed(0)} ft</p>
-        <p><strong>Main ridge:</strong> ${ridge.toFixed(0)} ft → $${ridgePrice.toFixed(2)}</p>
-        <p><strong>Hip ridge:</strong> ${hip.toFixed(0)} ft → $${hipPrice.toFixed(2)}</p>
-        <p><strong>Eaves / gutters:</strong> ${eaves.toFixed(0)} ft → $${eavesPrice.toFixed(2)}</p>
-        <hr />
-        <p><strong>Customer price (lights only):</strong> $${lightsSubtotal.toFixed(2)}</p>
-        <p><strong>Sales tax (${taxRatePercent.toFixed(2)}%):</strong> $${taxAmount.toFixed(2)}</p>
-        <p><strong>Customer total (with tax):</strong> $${customerTotalWithTax.toFixed(2)}</p>
-        <br />
-        <p><strong>Internal container cost (not shown on proposal):</strong> $${container.toFixed(2)}</p>
-        <p><strong>Internal total (lights + container, pre-tax):</strong> $${internalTotal.toFixed(2)}</p>
-      `;
-    });
-  }
-</script>
+        // Tax
+        const taxRate = taxRatePercent / 100;
+        const taxAmount = customerSubtotal * taxRate;
+        const customerTotalWithTax = customerSubtotal + taxAmount;
+
+        // Internal total (pre-tax) including container
+        const internalTotal = customerSubtotal + container;
+
+        resultBox.innerHTML = `
+          <p><strong>Total feet:</strong> ${totalFeet.toFixed(0)} ft</p>
+          <p><strong>Main ridge:</strong> ${ridge.toFixed(0)} ft → $${ridgePrice.toFixed(2)}</p>
+          <p><strong>Hip ridge:</strong> ${hip.toFixed(0)} ft → $${hipPrice.toFixed(2)}</p>
+          <p><strong>Eaves / gutters:</strong> ${eaves.toFixed(0)} ft → $${eavesPrice.toFixed(2)}</p>
+          <hr />
+          <p><strong>Install subtotal:</strong> $${installSubtotal.toFixed(2)}</p>
+          <p><strong>Takedown subtotal:</strong> $${takedownSubtotal.toFixed(2)}</p>
+          <p><strong>Customer subtotal (install + takedown, before tax):</strong> $${customerSubtotal.toFixed(2)}</p>
+          <p><strong>Sales tax (${taxRatePercent.toFixed(2)}%):</strong> $${taxAmount.toFixed(2)}</p>
+          <p><strong>Customer total (with tax):</strong> $${customerTotalWithTax.toFixed(2)}</p>
+          <br />
+          <p><strong>Internal container cost (not shown on proposal):</strong> $${container.toFixed(2)}</p>
+          <p><strong>Internal total (install + takedown + container, pre-tax):</strong> $${internalTotal.toFixed(2)}</p>
+        `;
+      });
+    }
+  </script>
+
 
 
   
