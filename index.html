@@ -182,7 +182,7 @@
     <button id="mockup-clear">Clear lines</button>
     <br /><br />
 
-       <label for="mockup-run-type"><strong>Current run type (for clips):</strong></label>
+      <label for="mockup-run-type"><strong>Current run type (for clips):</strong></label>
     <select id="mockup-run-type">
       <option value="ridge">Ridge / hip / shingle</option>
       <option value="eaves">Eaves / gutters</option>
@@ -201,9 +201,17 @@
     </select>
     <br /><br />
 
+    <label for="mockup-bulb-spacing"><strong>Bulb spacing:</strong></label>
+    <select id="mockup-bulb-spacing">
+      <option value="12">12" spacing</option>
+      <option value="15">15" spacing</option>
+    </select>
+    <br /><br />
+
     <button id="mockup-zoom-in">Zoom in</button>
     <button id="mockup-zoom-out">Zoom out</button>
     <button id="mockup-send-to-estimate">Send ridge / eaves totals to Estimate</button>
+
 
 
 
@@ -635,6 +643,7 @@
     const mockupScaleFeetInput = document.getElementById("mockup-scale-feet");
     const mockupRunTypeSelect = document.getElementById("mockup-run-type");
     const mockupBulbColorSelect = document.getElementById("mockup-bulb-color");
+    const mockupBulbSpacingSelect = document.getElementById("mockup-bulb-spacing");
     const mockupCanvas = document.getElementById("mockup-canvas");
     const mockupInfo = document.getElementById("mockup-info");
     const mockupTotals = document.getElementById("mockup-totals");
@@ -642,10 +651,12 @@
 
 
 
+
     let mockupImage = null;
     let mockupMode = "none"; // "scale" or "measure"
     let scalePoints = [];
     let runSegments = []; // {from, to, feet, type, color}
+
 
 
     let feetPerPixel = null;
@@ -705,11 +716,11 @@
         mockupCtx.stroke();
       }
 
-          // draw measured runs – show as colored "bulbs" for the customer
+              // draw measured runs – show as spaced "bulbs"
       runSegments.forEach((seg) => {
         const color = seg.color || typeColors[seg.type] || "blue";
 
-        // faint line under bulbs
+        // Underline (wire)
         mockupCtx.beginPath();
         mockupCtx.strokeStyle = color;
         mockupCtx.lineWidth = 1;
@@ -717,12 +728,30 @@
         mockupCtx.lineTo(seg.to.x, seg.to.y);
         mockupCtx.stroke();
 
-        // bulbs along the line
+        // Compute spacing in pixels
         const dx = seg.to.x - seg.from.x;
         const dy = seg.to.y - seg.from.y;
         const lengthPx = Math.sqrt(dx * dx + dy * dy);
-        const spacing = 20; // pixels between bulbs
-        const count = Math.max(1, Math.floor(lengthPx / spacing));
+
+        let spacingInches = 12;
+        if (mockupBulbSpacingSelect) {
+          const val = parseFloat(mockupBulbSpacingSelect.value);
+          if (!Number.isNaN(val) && val > 0) spacingInches = val;
+        }
+
+        let spacingPx;
+        if (feetPerPixel) {
+          const spacingFt = spacingInches / 12; // inches → feet
+          spacingPx = spacingFt / feetPerPixel;
+        } else {
+          // no scale set: fall back to a visual guess
+          spacingPx = 20;
+        }
+
+        // Clamp spacing so it looks reasonable on screen
+        spacingPx = Math.min(Math.max(spacingPx, 6), 60);
+
+        const count = Math.max(1, Math.round(lengthPx / spacingPx));
 
         for (let i = 0; i <= count; i++) {
           const t = count === 0 ? 0 : i / count;
@@ -731,10 +760,10 @@
 
           // glow
           mockupCtx.save();
-          mockupCtx.globalAlpha = 0.3;
+          mockupCtx.globalAlpha = 0.35;
           mockupCtx.fillStyle = color;
           mockupCtx.beginPath();
-          mockupCtx.arc(x, y, 6, 0, Math.PI * 2);
+          mockupCtx.arc(x, y, 7, 0, Math.PI * 2);
           mockupCtx.fill();
           mockupCtx.restore();
 
@@ -743,7 +772,7 @@
           mockupCtx.fillStyle = color;
           mockupCtx.strokeStyle = "#ffffff";
           mockupCtx.lineWidth = 1;
-          mockupCtx.arc(x, y, 3.5, 0, Math.PI * 2);
+          mockupCtx.arc(x, y, 4.5, 0, Math.PI * 2);
           mockupCtx.fill();
           mockupCtx.stroke();
         }
@@ -1054,8 +1083,8 @@
           redrawMockup();
           updateMockupTotals();
          
-        } else if (mockupMode === "measure") {
-          // Allow drawing even if scale isn't set (for front-photo visuals).
+           } else if (mockupMode === "measure") {
+          // You can still draw visually even if scale isn't set
           const runType = mockupRunTypeSelect
             ? mockupRunTypeSelect.value
             : "ridge";
@@ -1066,7 +1095,8 @@
             lastMeasurePoint = point;
           } else {
             const pixels = pixelDistance(lastMeasurePoint, point);
-            const feet = feetPerPixel ? pixels * feetPerPixel : 0; // 0 ft if no scale
+            const feet = feetPerPixel ? pixels * feetPerPixel : 0; // 0 if no scale yet
+
             runSegments.push({
               from: lastMeasurePoint,
               to: point,
@@ -1074,11 +1104,14 @@
               type: runType,
               color,
             });
+
             lastMeasurePoint = point;
           }
+
           redrawMockup();
           updateMockupTotals();
         }
+
 
       });
     }
