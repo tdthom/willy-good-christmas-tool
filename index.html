@@ -182,7 +182,7 @@
     <button id="mockup-clear">Clear lines</button>
     <br /><br />
 
-        <label for="mockup-run-type"><strong>Current run type (for clips):</strong></label>
+       <label for="mockup-run-type"><strong>Current run type (for clips):</strong></label>
     <select id="mockup-run-type">
       <option value="ridge">Ridge / hip / shingle</option>
       <option value="eaves">Eaves / gutters</option>
@@ -204,6 +204,7 @@
     <button id="mockup-zoom-in">Zoom in</button>
     <button id="mockup-zoom-out">Zoom out</button>
     <button id="mockup-send-to-estimate">Send ridge / eaves totals to Estimate</button>
+
 
 
     <div style="margin-top: 1rem;">
@@ -640,10 +641,12 @@
     const mockupCtx = mockupCanvas ? mockupCanvas.getContext("2d") : null;
 
 
+
     let mockupImage = null;
     let mockupMode = "none"; // "scale" or "measure"
     let scalePoints = [];
     let runSegments = []; // {from, to, feet, type, color}
+
 
     let feetPerPixel = null;
     let drawImageParams = null;
@@ -702,15 +705,50 @@
         mockupCtx.stroke();
       }
 
-     // draw measured runs (use bulb color for customer view)
+          // draw measured runs – show as colored "bulbs" for the customer
       runSegments.forEach((seg) => {
+        const color = seg.color || typeColors[seg.type] || "blue";
+
+        // faint line under bulbs
         mockupCtx.beginPath();
-        mockupCtx.strokeStyle = seg.color || typeColors[seg.type] || "blue";
-        mockupCtx.lineWidth = 3;
+        mockupCtx.strokeStyle = color;
+        mockupCtx.lineWidth = 1;
         mockupCtx.moveTo(seg.from.x, seg.from.y);
         mockupCtx.lineTo(seg.to.x, seg.to.y);
         mockupCtx.stroke();
+
+        // bulbs along the line
+        const dx = seg.to.x - seg.from.x;
+        const dy = seg.to.y - seg.from.y;
+        const lengthPx = Math.sqrt(dx * dx + dy * dy);
+        const spacing = 20; // pixels between bulbs
+        const count = Math.max(1, Math.floor(lengthPx / spacing));
+
+        for (let i = 0; i <= count; i++) {
+          const t = count === 0 ? 0 : i / count;
+          const x = seg.from.x + dx * t;
+          const y = seg.from.y + dy * t;
+
+          // glow
+          mockupCtx.save();
+          mockupCtx.globalAlpha = 0.3;
+          mockupCtx.fillStyle = color;
+          mockupCtx.beginPath();
+          mockupCtx.arc(x, y, 6, 0, Math.PI * 2);
+          mockupCtx.fill();
+          mockupCtx.restore();
+
+          // bulb
+          mockupCtx.beginPath();
+          mockupCtx.fillStyle = color;
+          mockupCtx.strokeStyle = "#ffffff";
+          mockupCtx.lineWidth = 1;
+          mockupCtx.arc(x, y, 3.5, 0, Math.PI * 2);
+          mockupCtx.fill();
+          mockupCtx.stroke();
+        }
       });
+
 
     }
 
@@ -952,6 +990,35 @@
         );
       });
     }
+    // Send measured ridge/eaves totals into the Estimate tab
+    if (mockupSendToEstimateBtn) {
+      mockupSendToEstimateBtn.addEventListener("click", () => {
+        if (!feetPerPixel || runSegments.length === 0) {
+          alert("For Estimate: set your scale and measure runs first (on a top-down/satellite image).");
+          return;
+        }
+
+        const totalsByType = { ridge: 0, eaves: 0, gable: 0 };
+        runSegments.forEach((seg) => {
+          if (totalsByType[seg.type] != null) {
+            totalsByType[seg.type] += seg.feet;
+          }
+        });
+
+        if (ridgeInput) {
+          ridgeInput.value = totalsByType.ridge.toFixed(1);
+        }
+        if (eavesInput) {
+          eavesInput.value = totalsByType.eaves.toFixed(1);
+        }
+
+        mockupSetInfo(
+          `Sent to Estimate: ridge ${totalsByType.ridge.toFixed(
+            1
+          )} ft, eaves ${totalsByType.eaves.toFixed(1)} ft. You can still adjust those fields by hand.`
+        );
+      });
+    }
 
     // Canvas click handling (scale + measure)
     if (mockupCanvas && mockupCtx) {
@@ -986,12 +1053,9 @@
           }
           redrawMockup();
           updateMockupTotals();
-                } else if (mockupMode === "measure") {
-          if (!feetPerPixel) {
-            mockupSetInfo("Set the scale first.");
-            return;
-          }
-
+         
+        } else if (mockupMode === "measure") {
+          // Allow drawing even if scale isn't set (for front-photo visuals).
           const runType = mockupRunTypeSelect
             ? mockupRunTypeSelect.value
             : "ridge";
@@ -1002,7 +1066,7 @@
             lastMeasurePoint = point;
           } else {
             const pixels = pixelDistance(lastMeasurePoint, point);
-            const feet = pixels * feetPerPixel;
+            const feet = feetPerPixel ? pixels * feetPerPixel : 0; // 0 ft if no scale
             runSegments.push({
               from: lastMeasurePoint,
               to: point,
