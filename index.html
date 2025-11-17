@@ -127,10 +127,11 @@
     <input id="client-takedown-rate" type="number" step="0.01" style="width:120px;" /><br /><br />
 
     <label for="client-lights-owned"><strong>Lights:</strong></label><br />
-    <select id="client-lights-owned" style="width:160px;">
-      <option value="company">Company-owned & stored</option>
-      <option value="customer">Customer owns lights</option>
-      <option value="unknown">Not set</option>
+   <select id="client-lights-owned" style="width: 220px;">
+   <option value="company">Company-owned lights</option>
+   <option value="customer">Customer owns lights & stored</option>
+   <option value="unknown">Not set</option>
+
     </select>
     <br /><br />
 
@@ -542,9 +543,20 @@
         const address = (clientAddressInput.value || "").trim();
         const preferred = (clientPreferredInput.value || "").trim();
         const notes = (clientNotesInput.value || "").trim();
-        const defaultRate = parseFloat(clientRateInput.value) || null;
-        const defaultTakedown = parseFloat(clientTakedownRateInput.value) || null;
-        const lightsOwned = clientLightsOwnedSelect.value || "unknown";
+          const defaultRate =
+    clientRateInput && clientRateInput.value !== ""
+      ? parseFloat(clientRateInput.value)
+      : null;
+
+  const defaultTakedown =
+    clientTakedownRateInput && clientTakedownRateInput.value !== ""
+      ? parseFloat(clientTakedownRateInput.value)
+      : null;
+
+  const lightsOwned = clientLightsOwnedSelect
+    ? clientLightsOwnedSelect.value || "unknown"
+    : "unknown";
+
 
         const newClient = {
           id: Date.now(),
@@ -1694,11 +1706,6 @@
     applyMockupZoom();
 
   </script>
-
-
-
-
-
 
 
   
