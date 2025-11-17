@@ -52,18 +52,37 @@
     }
 
   </style>
+      .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .company-logo {
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+    }
+
 </head>
 <body>
-  <header>
-    <h1>Willy Good Christmas Lights Tool</h1>
-    <p>One app, four screens: Clients • Estimate • Photo Mockup • Proposal</p>
+   <header>
+    <div class="header-left">
+      <img src="logo.png" alt="Willy Good Christmas Lights" class="company-logo" />
+      <div>
+        <h1>Willy Good Christmas Lights Tool</h1>
+        <p>One app, four screens: Clients • Estimate • Roof Measure • Photo Mockup • Proposal</p>
+      </div>
+    </div>
   </header>
+
 
   <nav>
     <button data-screen="clients" class="active">Clients</button>
     <button data-screen="estimate">Estimate</button>
+    <button data-screen="roof">Roof Measure</button>
     <button data-screen="mockup">Photo Mockup</button>
     <button data-screen="proposal">Proposal</button>
+
   </nav>
 
     <!-- Screen 1: Clients -->
@@ -96,6 +115,21 @@
     <label for="client-notes"><strong>Notes</strong></label><br />
     <textarea id="client-notes" rows="3" placeholder="Gate code, roof access, special requests…"></textarea>
     <br /><br />
+    
+    <label for="client-rate"><strong>Default install rate ($/ft):</strong></label><br />
+    <input id="client-rate" type="number" step="0.01" style="width:120px;" /><br /><br />
+
+    <label for="client-takedown-rate"><strong>Default takedown rate ($/ft):</strong></label><br />
+    <input id="client-takedown-rate" type="number" step="0.01" style="width:120px;" /><br /><br />
+
+    <label for="client-lights-owned"><strong>Lights:</strong></label><br />
+    <select id="client-lights-owned" style="width:160px;">
+      <option value="company">Company-owned & stored</option>
+      <option value="customer">Customer owns lights</option>
+      <option value="unknown">Not set</option>
+    </select>
+    <br /><br />
+
 
     <button id="save-client">Save client</button>
 
@@ -155,10 +189,63 @@
     </div>
   </section>
 
+  <!-- Screen 3: Roof Measure (top-down) -->
+  <section id="screen-roof" class="screen">
+    <h2>Roof Measure (Top View)</h2>
+    <p>Use a satellite or drone screenshot to measure ridge, hip, and eaves from above.</p>
+
+    <ol>
+      <li>Upload a top-down screenshot of the roof.</li>
+      <li>Click <strong>Set scale</strong> and draw a line of known length (e.g., 40 ft front width).</li>
+      <li>Select run type (ridge / eaves / gable), click <strong>Measure</strong>, and trace the roof lines.</li>
+    </ol>
+
+    <input type="file" id="roof-image-input" accept="image/*" />
+    <br /><br />
+
+    <button id="roof-set-scale">1) Set scale</button>
+    <label for="roof-scale-feet"><small>Known distance (ft):</small></label>
+    <input id="roof-scale-feet" type="number" min="0" step="0.1" value="40" style="width:80px;" />
+    <br /><br />
+
+    <button id="roof-measure-mode">2) Measure runs</button>
+    <button id="roof-undo">Undo last segment</button>
+    <button id="roof-clear">Clear lines</button>
+    <br /><br />
+
+    <label for="roof-run-type"><strong>Run type:</strong></label>
+    <select id="roof-run-type">
+      <option value="ridge">Ridge / hip / shingle</option>
+      <option value="eaves">Eaves / gutters</option>
+      <option value="gable">Gable returns / other</option>
+    </select>
+    <br /><br />
+
+    <button id="roof-zoom-in">Zoom in</button>
+    <button id="roof-zoom-out">Zoom out</button>
+    <button id="roof-send-to-estimate">Send ridge / eaves totals to Estimate</button>
+
+    <div style="margin-top: 1rem;">
+      <canvas
+        id="roof-canvas"
+        width="800"
+        height="500"
+        style="border:1px solid #ccc; max-width:100%; transform-origin: 0 0;"
+      ></canvas>
+    </div>
+
+    <div id="roof-info" style="margin-top: 0.5rem; font-size: 0.9rem;">
+      No image loaded.
+    </div>
+
+    <div id="roof-totals" style="margin-top: 0.5rem; font-size: 0.9rem;">
+      <!-- totals appear here -->
+    </div>
+  </section>
 
 
 
-     <!-- Screen 3: Photo Mockup -->
+     <!-- Screen 4: Photo Mockup -->
   <section id="screen-mockup" class="screen">
     <h2>Photo / Satellite Mockup</h2>
     <p>Upload a front photo or satellite screenshot, set a scale, and draw your light runs.</p>
@@ -182,7 +269,7 @@
     <button id="mockup-clear">Clear lines</button>
     <br /><br />
 
-      <label for="mockup-run-type"><strong>Current run type (for clips):</strong></label>
+    <label for="mockup-run-type"><strong>Current run type (for clips):</strong></label>
     <select id="mockup-run-type">
       <option value="ridge">Ridge / hip / shingle</option>
       <option value="eaves">Eaves / gutters</option>
@@ -190,15 +277,20 @@
     </select>
     <br /><br />
 
-    <label for="mockup-bulb-color"><strong>Bulb color scheme (for customer view):</strong></label>
-    <select id="mockup-bulb-color">
-      <option value="#ffd700">Warm white</option>
-      <option value="#ffffff">Pure white</option>
-      <option value="#ff0000">Red</option>
-      <option value="#00ff00">Green</option>
-      <option value="#00bfff">Cool white / icy blue</option>
-      <option value="#ff00ff">Multi-color (sample)</option>
+    <strong>Color pattern:</strong>
+    <select id="mockup-color-mode">
+      <option value="single">Single color</option>
+      <option value="two">2 colors (alternate)</option>
+      <option value="three">3 colors (1-2-3 pattern)</option>
     </select>
+    <br /><br />
+
+    <label for="mockup-color1"><strong>Color 1:</strong></label>
+    <input type="color" id="mockup-color1" value="#ffffff" />
+    <label for="mockup-color2" style="margin-left:1rem;"><strong>Color 2:</strong></label>
+    <input type="color" id="mockup-color2" value="#ff0000" />
+    <label for="mockup-color3" style="margin-left:1rem;"><strong>Color 3:</strong></label>
+    <input type="color" id="mockup-color3" value="#00ff00" />
     <br /><br />
 
     <label for="mockup-bulb-spacing"><strong>Bulb spacing:</strong></label>
@@ -214,6 +306,12 @@
       <option value="medium" selected>Medium</option>
       <option value="large">Large</option>
     </select>
+    <br /><br />
+
+    <label>
+      <input type="checkbox" id="mockup-show-wire" checked />
+      Show wire under bulbs (for editing only)
+    </label>
     <br /><br />
 
     <button id="mockup-zoom-in">Zoom in</button>
@@ -244,7 +342,7 @@
 
 
 
-    <!-- Screen 4: Proposal -->
+    <!-- Screen 5: Proposal -->
   <section id="screen-proposal" class="screen">
     <h2>Proposal</h2>
     <p>Preview what you can send to the client. Use your browser’s Print → “Save as PDF” to export.</p>
@@ -253,7 +351,16 @@
 
     <div id="proposal-content" class="proposal-card">
       <em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate Estimate" first.</em>
-    </div>
+            <div class="proposal-card-inner">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+            <img src="logo.png" alt="Company logo" class="company-logo" />
+            <div>
+              <h3 style="margin:0;">Willy Good Christmas Lights</h3>
+              <p style="margin:0; font-size:0.8rem;">Phone: 806.215.7047 • william@willygoodcleaning.com</p>
+            </div>
+          </div>
+          <!-- existing proposal content continues here -->
+
   </section>
 
 
@@ -362,6 +469,10 @@
     const saveClientButton = document.getElementById("save-client");
     const clientsList = document.getElementById("clients-list");
     const currentClientSummaryDiv = document.getElementById("current-client-summary");
+    const clientRateInput = document.getElementById("client-rate");
+    const clientTakedownRateInput = document.getElementById("client-takedown-rate");
+    const clientLightsOwnedSelect = document.getElementById("client-lights-owned");
+   
 
     let clients = loadClients();
     let currentClientId = loadCurrentClientId();
@@ -427,6 +538,23 @@
         const address = (clientAddressInput.value || "").trim();
         const preferred = (clientPreferredInput.value || "").trim();
         const notes = (clientNotesInput.value || "").trim();
+        const defaultRate = parseFloat(clientRateInput.value) || null;
+        const defaultTakedown = parseFloat(clientTakedownRateInput.value) || null;
+        const lightsOwned = clientLightsOwnedSelect.value || "unknown";
+
+        const newClient = {
+          id: Date.now(),
+          name,
+          phone,
+          email,
+          address,
+          preferred,
+          notes,
+          defaultRate,
+          defaultTakedown,
+          lightsOwned,
+        };
+
 
         if (!name) {
           alert("Please enter at least a client name.");
@@ -475,12 +603,48 @@
         saveCurrentClientId(currentClientId);
         renderClientsList();
         updateCurrentClientSummary();
-      });
-    }
+        const picked = clients.find((c) => c.id === currentClientId);
+        if (picked) {
+          if (rateInput && picked.defaultRate != null) {
+            rateInput.value = picked.defaultRate.toFixed(2);
+          }
+          if (takedownRateInput && picked.defaultTakedown != null) {
+            takedownRateInput.value = picked.defaultTakedown.toFixed(2);
+          }
+        }
+
 
     // Initial client render
     renderClientsList();
     updateCurrentClientSummary();
+              const rateInfo =
+            c.defaultRate != null
+              ? `Install: $${c.defaultRate.toFixed(2)}/ft; `
+              : "";
+          const tdInfo =
+            c.defaultTakedown != null
+              ? `Takedown: $${c.defaultTakedown.toFixed(2)}/ft; `
+              : "";
+          const lightsInfo =
+            c.lightsOwned === "company"
+              ? "Lights: company-owned"
+              : c.lightsOwned === "customer"
+              ? "Lights: customer-owned"
+              : "";
+
+          return `
+            <li data-client-id="${c.id}">
+              <strong>${safeName}</strong>${isCurrent ? " (current)" : ""}<br />
+              ${safeAddress ? safeAddress + "<br />" : ""}
+              Phone: ${safePhone} | Email: ${safeEmail}<br />
+              Preferred install: ${safePreferred}<br />
+              <small>${rateInfo}${tdInfo}${lightsInfo}</small><br />
+              <button class="use-client-button" data-client-id="${c.id}">
+                Use for estimate
+              </button>
+            </li>
+          `;
+
 
     // -----------------------------
     // Estimator logic: ridge + hip + eaves + takedown + tax
@@ -637,6 +801,316 @@
 
     // Initial proposal render on page load
     renderProposal();
+    // -----------------------------
+    // Roof Measure (top-down) screen
+    // -----------------------------
+    const roofImageInput = document.getElementById("roof-image-input");
+    const roofSetScaleBtn = document.getElementById("roof-set-scale");
+    const roofMeasureBtn = document.getElementById("roof-measure-mode");
+    const roofUndoBtn = document.getElementById("roof-undo");
+    const roofClearBtn = document.getElementById("roof-clear");
+    const roofZoomInBtn = document.getElementById("roof-zoom-in");
+    const roofZoomOutBtn = document.getElementById("roof-zoom-out");
+    const roofSendToEstimateBtn = document.getElementById("roof-send-to-estimate");
+    const roofScaleFeetInput = document.getElementById("roof-scale-feet");
+    const roofRunTypeSelect = document.getElementById("roof-run-type");
+    const roofCanvas = document.getElementById("roof-canvas");
+    const roofInfo = document.getElementById("roof-info");
+    const roofTotals = document.getElementById("roof-totals");
+    const roofCtx = roofCanvas ? roofCanvas.getContext("2d") : null;
+
+    let roofImage = null;
+    let roofMode = "none"; // "scale" or "measure"
+    let roofScalePoints = [];
+    let roofSegments = []; // {from, to, feet, type}
+    let roofFeetPerPixel = null;
+    let roofDrawParams = null;
+    let roofZoom = 1;
+
+    function roofSetInfo(text) {
+      if (roofInfo) roofInfo.textContent = text;
+    }
+
+    function roofApplyZoom() {
+      if (!roofCanvas) return;
+      roofCanvas.style.transform = `scale(${roofZoom})`;
+    }
+
+    function roofDrawBase() {
+      if (!roofCtx || !roofCanvas) return;
+      roofCtx.clearRect(0, 0, roofCanvas.width, roofCanvas.height);
+      if (roofImage && roofDrawParams) {
+        roofCtx.drawImage(
+          roofImage,
+          roofDrawParams.x,
+          roofDrawParams.y,
+          roofDrawParams.w,
+          roofDrawParams.h
+        );
+      }
+    }
+
+    function roofPixelDist(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function roofRedraw() {
+      if (!roofCtx || !roofCanvas) return;
+      roofDrawBase();
+
+      // scale line
+      if (roofScalePoints.length === 2) {
+        roofCtx.strokeStyle = "#ffa500";
+        roofCtx.lineWidth = 2;
+        roofCtx.beginPath();
+        roofCtx.moveTo(roofScalePoints[0].x, roofScalePoints[0].y);
+        roofCtx.lineTo(roofScalePoints[1].x, roofScalePoints[1].y);
+        roofCtx.stroke();
+      }
+
+      // segments by type
+      roofSegments.forEach((seg) => {
+        let color = "#ff0000";
+        if (seg.type === "eaves") color = "#0000ff";
+        else if (seg.type === "gable") color = "#008000";
+
+        roofCtx.beginPath();
+        roofCtx.strokeStyle = color;
+        roofCtx.lineWidth = 3;
+        roofCtx.moveTo(seg.from.x, seg.from.y);
+        roofCtx.lineTo(seg.to.x, seg.to.y);
+        roofCtx.stroke();
+      });
+    }
+
+    function roofUpdateTotals() {
+      if (!roofTotals) return;
+      if (!roofImage) {
+        roofTotals.innerHTML = "";
+        return;
+      }
+
+      const totals = { ridge: 0, eaves: 0, gable: 0 };
+      roofSegments.forEach((seg) => {
+        if (totals[seg.type] != null) totals[seg.type] += seg.feet || 0;
+      });
+
+      const all = totals.ridge + totals.eaves + totals.gable;
+
+      let html = "";
+      if (roofFeetPerPixel) {
+        html += `<p>Scale: 1 pixel ≈ ${roofFeetPerPixel.toFixed(4)} ft</p>`;
+      } else {
+        html += "<p>No scale set yet.</p>";
+      }
+      html += "<ul>";
+      html += `<li><strong>Ridge / hip / shingle:</strong> ${totals.ridge.toFixed(1)} ft</li>`;
+      html += `<li><strong>Eaves / gutters:</strong> ${totals.eaves.toFixed(1)} ft</li>`;
+      html += `<li><strong>Gable returns / other:</strong> ${totals.gable.toFixed(1)} ft</li>`;
+      html += "</ul>";
+      html += `<p><strong>Total measured length (all types):</strong> ${all.toFixed(
+        1
+      )} ft</p>`;
+
+      roofTotals.innerHTML = html;
+    }
+
+    function roofCanvasPoint(evt) {
+      const rect = roofCanvas.getBoundingClientRect();
+      return {
+        x: (evt.clientX - rect.left) / roofZoom,
+        y: (evt.clientY - rect.top) / roofZoom,
+      };
+    }
+
+    // Image upload
+    if (roofImageInput && roofCtx && roofCanvas) {
+      roofImageInput.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onload = () => {
+            roofImage = img;
+            const cw = roofCanvas.width;
+            const ch = roofCanvas.height;
+            const imgAspect = img.width / img.height;
+            const canvasAspect = cw / ch;
+            let w, h, ox, oy;
+            if (imgAspect > canvasAspect) {
+              w = cw;
+              h = cw / imgAspect;
+              ox = 0;
+              oy = (ch - h) / 2;
+            } else {
+              h = ch;
+              w = ch * imgAspect;
+              ox = (cw - w) / 2;
+              oy = 0;
+            }
+            roofDrawParams = { x: ox, y: oy, w, h };
+            roofScalePoints = [];
+            roofSegments = [];
+            roofFeetPerPixel = null;
+            roofMode = "none";
+            roofZoom = 1;
+            roofApplyZoom();
+            roofDrawBase();
+            roofSetInfo("Image loaded. Step 1: set scale.");
+            roofUpdateTotals();
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Set scale
+    if (roofSetScaleBtn) {
+      roofSetScaleBtn.addEventListener("click", () => {
+        if (!roofImage) {
+          roofSetInfo("Upload an image first.");
+          return;
+        }
+        roofMode = "scale";
+        roofScalePoints = [];
+        roofSegments = [];
+        roofFeetPerPixel = null;
+        roofRedraw();
+        roofSetInfo("Scale mode: click two points on a known distance.");
+        roofUpdateTotals();
+      });
+    }
+
+    // Measure mode
+    if (roofMeasureBtn) {
+      roofMeasureBtn.addEventListener("click", () => {
+        if (!roofImage) {
+          roofSetInfo("Upload an image first.");
+          return;
+        }
+        if (!roofFeetPerPixel) {
+          roofSetInfo("Set scale first, then measure.");
+          return;
+        }
+        roofMode = "measure";
+        roofRedraw();
+        roofSetInfo("Measure mode: pick run type and click along each run.");
+      });
+    }
+
+    // Zoom buttons
+    if (roofZoomInBtn) {
+      roofZoomInBtn.addEventListener("click", () => {
+        roofZoom = Math.min(roofZoom + 0.25, 4);
+        roofApplyZoom();
+      });
+    }
+    if (roofZoomOutBtn) {
+      roofZoomOutBtn.addEventListener("click", () => {
+        roofZoom = Math.max(roofZoom - 0.25, 0.5);
+        roofApplyZoom();
+      });
+    }
+
+    // Clear & undo
+    if (roofClearBtn) {
+      roofClearBtn.addEventListener("click", () => {
+        roofScalePoints = [];
+        roofSegments = [];
+        roofFeetPerPixel = null;
+        roofMode = "none";
+        roofRedraw();
+        roofSetInfo("Cleared. Set scale again if needed.");
+        roofUpdateTotals();
+      });
+    }
+    if (roofUndoBtn) {
+      roofUndoBtn.addEventListener("click", () => {
+        if (roofSegments.length > 0) {
+          roofSegments.pop();
+          roofRedraw();
+          roofUpdateTotals();
+        }
+      });
+    }
+
+    // Send to Estimate
+    if (roofSendToEstimateBtn) {
+      roofSendToEstimateBtn.addEventListener("click", () => {
+        if (!roofFeetPerPixel || roofSegments.length === 0) {
+          alert("Measure roof runs first.");
+          return;
+        }
+        const totals = { ridge: 0, eaves: 0, gable: 0 };
+        roofSegments.forEach((seg) => {
+          if (totals[seg.type] != null) totals[seg.type] += seg.feet || 0;
+        });
+        if (ridgeInput) ridgeInput.value = totals.ridge.toFixed(1);
+        if (eavesInput) eavesInput.value = totals.eaves.toFixed(1);
+        roofSetInfo(
+          `Sent to Estimate: ridge ${totals.ridge.toFixed(
+            1
+          )} ft, eaves ${totals.eaves.toFixed(1)} ft.`
+        );
+      });
+    }
+
+    // Canvas clicks
+    if (roofCanvas && roofCtx) {
+      let lastPoint = null;
+      roofCanvas.addEventListener("click", (evt) => {
+        if (!roofImage) return;
+        const pt = roofCanvasPoint(evt);
+
+        if (roofMode === "scale") {
+          roofScalePoints.push(pt);
+          if (roofScalePoints.length > 2) roofScalePoints = [pt];
+          if (roofScalePoints.length === 2) {
+            const pixels = roofPixelDist(roofScalePoints[0], roofScalePoints[1]);
+            const feet = parseFloat(roofScaleFeetInput.value) || 0;
+            if (feet > 0 && pixels > 0) {
+              roofFeetPerPixel = feet / pixels;
+              roofSetInfo(
+                `Scale set: ${feet.toFixed(1)} ft = ${pixels.toFixed(
+                  1
+                )} px.`
+              );
+            } else {
+              roofFeetPerPixel = null;
+              roofSetInfo("Enter a positive known distance and click again.");
+            }
+          }
+          roofRedraw();
+          roofUpdateTotals();
+        } else if (roofMode === "measure") {
+          if (!roofFeetPerPixel) {
+            roofSetInfo("Set scale first.");
+            return;
+          }
+          const type = roofRunTypeSelect ? roofRunTypeSelect.value : "ridge";
+          if (!lastPoint) {
+            lastPoint = pt;
+          } else {
+            const pixels = roofPixelDist(lastPoint, pt);
+            const feet = pixels * roofFeetPerPixel;
+            roofSegments.push({
+              from: lastPoint,
+              to: pt,
+              feet,
+              type,
+            });
+            lastPoint = pt;
+          }
+          roofRedraw();
+          roofUpdateTotals();
+        }
+      });
+      roofApplyZoom();
+    }
 
      // -----------------------------
     // Photo / Satellite mockup measurement
@@ -651,25 +1125,22 @@
     const mockupSendToEstimateBtn = document.getElementById("mockup-send-to-estimate");
     const mockupScaleFeetInput = document.getElementById("mockup-scale-feet");
     const mockupRunTypeSelect = document.getElementById("mockup-run-type");
-    const mockupBulbColorSelect = document.getElementById("mockup-bulb-color");
+    const mockupColorModeSelect = document.getElementById("mockup-color-mode");
+    const mockupColor1Input = document.getElementById("mockup-color1");
+    const mockupColor2Input = document.getElementById("mockup-color2");
+    const mockupColor3Input = document.getElementById("mockup-color3");
     const mockupBulbSpacingSelect = document.getElementById("mockup-bulb-spacing");
     const mockupBulbSizeSelect = document.getElementById("mockup-bulb-size");
+    const mockupShowWireCheckbox = document.getElementById("mockup-show-wire");
     const mockupCanvas = document.getElementById("mockup-canvas");
     const mockupInfo = document.getElementById("mockup-info");
     const mockupTotals = document.getElementById("mockup-totals");
     const mockupCtx = mockupCanvas ? mockupCanvas.getContext("2d") : null;
 
-
-
-
-
     let mockupImage = null;
     let mockupMode = "none"; // "scale" or "measure"
     let scalePoints = [];
-    let runSegments = []; // {from, to, feet, type, color}
-
-
-
+    let runSegments = []; // {from, to, feet, type}
     let feetPerPixel = null;
     let drawImageParams = null;
     let mockupZoom = 1;
@@ -727,57 +1198,72 @@
         mockupCtx.stroke();
       }
 
-     // draw measured runs – teardrop bulbs with adjustable size
+      // draw measured runs – teardrop bulbs with color patterns
       runSegments.forEach((seg) => {
-        const color = seg.color || typeColors[seg.type] || "blue";
-
-        // Thin wire under the bulbs
-        mockupCtx.beginPath();
-        mockupCtx.strokeStyle = color;
-        mockupCtx.lineWidth = 1;
-        mockupCtx.moveTo(seg.from.x, seg.from.y);
-        mockupCtx.lineTo(seg.to.x, seg.to.y);
-        mockupCtx.stroke();
-
         const dx = seg.to.x - seg.from.x;
         const dy = seg.to.y - seg.from.y;
         const lengthPx = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
 
-        // Bulb spacing in pixels (based on 12" / 15")
+        // Show or hide the wire under bulbs
+        if (!mockupShowWireCheckbox || mockupShowWireCheckbox.checked) {
+          mockupCtx.beginPath();
+          mockupCtx.strokeStyle = "#555";
+          mockupCtx.lineWidth = 1;
+          mockupCtx.moveTo(seg.from.x, seg.from.y);
+          mockupCtx.lineTo(seg.to.x, seg.to.y);
+          mockupCtx.stroke();
+        }
+
+        // Spacing: 12" / 15"
         let spacingInches = 12;
         if (mockupBulbSpacingSelect) {
           const val = parseFloat(mockupBulbSpacingSelect.value);
           if (!Number.isNaN(val) && val > 0) spacingInches = val;
         }
-
         let spacingPx;
         if (feetPerPixel) {
-          const spacingFt = spacingInches / 12; // inches → feet
+          const spacingFt = spacingInches / 12;
           spacingPx = spacingFt / feetPerPixel;
         } else {
-          spacingPx = 22; // visual default if no scale
+          spacingPx = 22; // visual default
         }
-
         spacingPx = Math.min(Math.max(spacingPx, 8), 50);
 
-        // Bulb size (small / medium / large)
-        let baseSize = 3;
+        // Bulb size small/medium/large
+        let baseSize = 3.0;
         if (mockupBulbSizeSelect) {
           const sizeVal = mockupBulbSizeSelect.value;
-          if (sizeVal === "small") baseSize = 2.5;
-          else if (sizeVal === "medium") baseSize = 3.2;
+          if (sizeVal === "small") baseSize = 2.2;
           else if (sizeVal === "large") baseSize = 4.0;
         }
         const bulbHeight = baseSize * 2.4;
         const glowRadius = bulbHeight * 0.9;
 
-        const count = Math.max(1, Math.round(lengthPx / spacingPx));
+        // Color pattern: single / two / three
+        const mode = mockupColorModeSelect
+          ? mockupColorModeSelect.value
+          : "single";
+        const c1 =
+          (mockupColor1Input && mockupColor1Input.value) || "#ffffff";
+        const c2 =
+          (mockupColor2Input && mockupColor2Input.value) || "#ff0000";
+        const c3 =
+          (mockupColor3Input && mockupColor3Input.value) || "#00ff00";
 
+        const count = Math.max(1, Math.round(lengthPx / spacingPx));
         for (let i = 0; i <= count; i++) {
           const t = count === 0 ? 0 : i / count;
           const x = seg.from.x + dx * t;
           const y = seg.from.y + dy * t;
+
+          let color = c1;
+          if (mode === "two") {
+            color = i % 2 === 0 ? c1 : c2;
+          } else if (mode === "three") {
+            const idx = i % 3;
+            color = idx === 0 ? c1 : idx === 1 ? c2 : c3;
+          }
 
           mockupCtx.save();
           mockupCtx.translate(x, y);
@@ -791,7 +1277,7 @@
           mockupCtx.fill();
           mockupCtx.globalAlpha = 1;
 
-          // teardrop bulb (tip pointing out from the fascia)
+          // teardrop bulb
           mockupCtx.beginPath();
           mockupCtx.moveTo(0, -bulbHeight / 2); // tip
           mockupCtx.quadraticCurveTo(
@@ -813,7 +1299,7 @@
           mockupCtx.fill();
           mockupCtx.stroke();
 
-          // small dark socket under the bulb
+          // small socket
           mockupCtx.fillStyle = "#444";
           mockupCtx.fillRect(
             -baseSize * 0.6,
@@ -1049,17 +1535,29 @@
       });
     }
 
-    // Redraw when spacing or size changes
+     // Re-draw when colors / pattern / spacing / size change
+    if (mockupColorModeSelect) {
+      mockupColorModeSelect.addEventListener("change", redrawMockup);
+    }
+    if (mockupColor1Input) {
+      mockupColor1Input.addEventListener("change", redrawMockup);
+    }
+    if (mockupColor2Input) {
+      mockupColor2Input.addEventListener("change", redrawMockup);
+    }
+    if (mockupColor3Input) {
+      mockupColor3Input.addEventListener("change", redrawMockup);
+    }
     if (mockupBulbSpacingSelect) {
-      mockupBulbSpacingSelect.addEventListener("change", () => {
-        redrawMockup();
-      });
+      mockupBulbSpacingSelect.addEventListener("change", redrawMockup);
     }
     if (mockupBulbSizeSelect) {
-      mockupBulbSizeSelect.addEventListener("change", () => {
-        redrawMockup();
-      });
+      mockupBulbSizeSelect.addEventListener("change", redrawMockup);
     }
+    if (mockupShowWireCheckbox) {
+      mockupShowWireCheckbox.addEventListener("change", redrawMockup);
+    }
+
 
     // Send measured ridge/eaves totals into the Estimate tab
     if (mockupSendToEstimateBtn) {
