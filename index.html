@@ -86,6 +86,9 @@
     <button data-screen="roof">Roof Measure</button>
     <button data-screen="mockup">Photo Mockup</button>
     <button data-screen="proposal">Proposal</button>
+    <button id="print-current" style="margin-left:auto;">
+     Print / Save this screen
+    </button>
 
   </nav>
 
@@ -170,13 +173,25 @@
 
     <h3>Pricing</h3>
 
-    <label for="rate-per-foot"><strong>Install price per foot</strong> you want to charge</label><br />
-    <input id="rate-per-foot" type="number" min="0" step="0.01" value="4.00" /> $/ft
-    <br /><br />
+<label for="rate-per-foot"><strong>Install price per foot (labor)</strong></label><br />
+<input id="rate-per-foot" type="number" min="0" step="0.01" value="4.00" /> $/ft
+<br /><br />
 
-    <label for="takedown-rate"><strong>Takedown price per foot</strong></label><br />
-    <input id="takedown-rate" type="number" min="0" step="0.01" value="2.00" /> $/ft
-    <br /><br />
+<label for="equip-rate"><strong>Equipment cost per foot</strong> (wire / sockets / clips / supplies)</label><br />
+<input id="equip-rate" type="number" min="0" step="0.01" value="0.00" /> $/ft
+<br /><br />
+
+<label for="equip-mode"><strong>Equipment pricing includes:</strong></label><br />
+<select id="equip-mode">
+  <option value="equip-only">Equipment only</option>
+  <option value="equip-plus-install">Equipment + installation included</option>
+</select>
+<br /><br />
+
+<label for="takedown-rate"><strong>Takedown price per foot (labor)</strong></label><br />
+<input id="takedown-rate" type="number" min="0" step="0.01" value="2.00" /> $/ft
+<br /><br />
+
 
     <label for="tax-rate"><strong>Sales tax rate</strong> (%)</label><br />
     <input id="tax-rate" type="number" min="0" step="0.01" value="8.25" /> %
@@ -253,7 +268,7 @@
      <!-- Screen 4: Photo Mockup -->
   <section id="screen-mockup" class="screen">
     <h2>Photo / Satellite Mockup</h2>
-    <p>Upload a front photo or satellite screenshot, set a scale, and draw your light runs.</p>
+    <p>Upload a front photo or satellite screenshot, and draw your light runs.</p>
 
     <ol>
       <li>Upload a screenshot (front photo or satellite view).</li>
@@ -321,9 +336,7 @@
 
     <button id="mockup-zoom-in">Zoom in</button>
     <button id="mockup-zoom-out">Zoom out</button>
-    <button id="mockup-send-to-estimate">Send ridge / eaves totals to Estimate</button>
-
-
+    <!-- Visual-only mockup, so no send-to-estimate button needed -->
 
 
 
@@ -364,6 +377,19 @@
               <p style="margin:0; font-size:0.8rem;">Phone: 806.215.7047 • william@willygoodcleaning.com</p>
             </div>
           </div>
+      <div id="proposal-mockup-wrapper" style="margin-top:16px; display:none;">
+      <h3>Visual mockup</h3>
+      <img
+        id="proposal-mockup-image"
+        src=""
+        alt="Christmas lights mockup"
+        style="max-width:100%; border:1px solid #ccc;"
+      />
+      <p style="font-size:0.8rem; margin-top:4px;">
+        Mockup is for visual reference only; final installation may vary slightly based on field conditions.
+      </p>
+    </div>
+   
           <!-- existing proposal content continues here -->
 
   </section>
@@ -392,6 +418,12 @@
         });
       });
     });
+    const printButton = document.getElementById("print-current");
+    if (printButton) {
+      printButton.addEventListener("click", () => {
+        window.print(); // in the Print dialog, choose "Save as PDF"
+      });
+    }
 
     // -----------------------------
     // Clients & estimate storage (localStorage)
@@ -676,55 +708,72 @@
     const containerInput = document.getElementById("container-cost");
     const calcButton = document.getElementById("calc-estimate");
     const resultBox = document.getElementById("estimate-result");
+    const equipRateInput = document.getElementById("equip-rate");
+    const equipModeSelect = document.getElementById("equip-mode");
+
 
     if (calcButton) {
       calcButton.addEventListener("click", () => {
-        const ridge = parseFloat(ridgeInput.value) || 0;
+                const ridge = parseFloat(ridgeInput.value) || 0;
         const hip = parseFloat(hipInput.value) || 0;
         const eaves = parseFloat(eavesInput.value) || 0;
         const rate = parseFloat(rateInput.value) || 0;
+        const equipRate = parseFloat(equipRateInput.value) || 0;
         const takedownRate = parseFloat(takedownRateInput.value) || 0;
         const taxRatePercent = parseFloat(taxRateInput.value) || 0;
         const container = parseFloat(containerInput.value) || 0;
 
         const totalFeet = ridge + hip + eaves;
 
-        // Install prices
+        // Labor – install
         const ridgePrice = ridge * rate;
         const hipPrice = hip * rate;
         const eavesPrice = eaves * rate;
         const installSubtotal = ridgePrice + hipPrice + eavesPrice;
 
-        // Takedown
+        // Labor – takedown
         const takedownSubtotal = totalFeet * takedownRate;
 
-        // Customer subtotal before tax
-        const customerSubtotal = installSubtotal + takedownSubtotal;
+        // Equipment (taxable)
+        const equipSubtotal = totalFeet * equipRate;
 
-        // Tax
+        // Labor subtotal (not taxed)
+        const laborSubtotal = installSubtotal + takedownSubtotal;
+
+        // Customer subtotal before tax
+        const customerSubtotal = laborSubtotal + equipSubtotal;
+
+        // Tax on equipment only
         const taxRate = taxRatePercent / 100;
-        const taxAmount = customerSubtotal * taxRate;
+        const taxableBase = equipSubtotal; // equipment/supplies only
+        const taxAmount = taxableBase * taxRate;
+
         const customerTotalWithTax = customerSubtotal + taxAmount;
 
-        // Internal total (pre-tax) including container
+        // Internal total (pre-tax) including container, for your eyes only
         const internalTotal = customerSubtotal + container;
 
         // Save last estimate snapshot (for proposal)
         const currentClient = getCurrentClient();
-        const estimateSnapshot = {
+                const estimateSnapshot = {
           timestamp: new Date().toISOString(),
           totalFeet,
           ridge,
           hip,
           eaves,
           rate,
+          equipRate,
           takedownRate,
           taxRatePercent,
           installSubtotal,
           takedownSubtotal,
+          equipSubtotal,
+          laborSubtotal,
           customerSubtotal,
+          taxableBase,
           taxAmount,
           customerTotalWithTax,
+          equipMode: equipModeSelect ? equipModeSelect.value : "equip-only",
           client: currentClient
             ? {
                 name: currentClient.name,
@@ -735,23 +784,29 @@
               }
             : null,
         };
+
         saveLastEstimate(estimateSnapshot);
 
-        resultBox.innerHTML = `
+          resultBox.innerHTML = `
           <p><strong>Total feet:</strong> ${totalFeet.toFixed(0)} ft</p>
           <p><strong>Main ridge:</strong> ${ridge.toFixed(0)} ft → $${ridgePrice.toFixed(2)}</p>
           <p><strong>Hip ridge:</strong> ${hip.toFixed(0)} ft → $${hipPrice.toFixed(2)}</p>
           <p><strong>Eaves / gutters:</strong> ${eaves.toFixed(0)} ft → $${eavesPrice.toFixed(2)}</p>
           <hr />
-          <p><strong>Install subtotal:</strong> $${installSubtotal.toFixed(2)}</p>
-          <p><strong>Takedown subtotal:</strong> $${takedownSubtotal.toFixed(2)}</p>
-          <p><strong>Customer subtotal (install + takedown, before tax):</strong> $${customerSubtotal.toFixed(2)}</p>
-          <p><strong>Sales tax (${taxRatePercent.toFixed(2)}%):</strong> $${taxAmount.toFixed(2)}</p>
+          <p><strong>Install labor subtotal:</strong> $${installSubtotal.toFixed(2)}</p>
+          <p><strong>Takedown labor subtotal:</strong> $${takedownSubtotal.toFixed(2)}</p>
+          <p><strong>Labor subtotal (install + takedown, not taxed):</strong> $${laborSubtotal.toFixed(2)}</p>
+          <p><strong>Equipment subtotal (taxable):</strong> $${equipSubtotal.toFixed(2)}</p>
+          <p><strong>Subtotal before tax:</strong> $${customerSubtotal.toFixed(2)}</p>
+          <p><strong>Sales tax on equipment only (${taxRatePercent.toFixed(
+            2
+          )}%):</strong> $${taxAmount.toFixed(2)}</p>
           <p><strong>Customer total (with tax):</strong> $${customerTotalWithTax.toFixed(2)}</p>
           <br />
           <p><strong>Internal container cost (not shown on proposal):</strong> $${container.toFixed(2)}</p>
-          <p><strong>Internal total (install + takedown + container, pre-tax):</strong> $${internalTotal.toFixed(2)}</p>
+          <p><strong>Internal total (labor + equipment + container, pre-tax):</strong> $${internalTotal.toFixed(2)}</p>
         `;
+
       });
     }
 
@@ -770,6 +825,19 @@
           '<em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate Estimate" first.</em>';
         return;
       }
+    function updateProposalMockupSnapshot() {
+      const imgEl = document.getElementById("proposal-mockup-image");
+      const wrapper = document.getElementById("proposal-mockup-wrapper");
+      if (!imgEl || !wrapper || !mockupCanvas || !mockupImage) return;
+
+      try {
+        const dataUrl = mockupCanvas.toDataURL("image/png");
+        imgEl.src = dataUrl;
+        wrapper.style.display = "block";
+      } catch (e) {
+        console.warn("Could not capture mockup canvas:", e);
+      }
+    }
 
       const client = est.client || getCurrentClient();
       const dateStr = est.timestamp
@@ -796,16 +864,24 @@
           <p><strong>Proposal date:</strong> ${dateStr}</p>
           ${clientHtml}
           <h3>Christmas Light Installation & Takedown</h3>
-          <p><strong>Total feet:</strong> ${est.totalFeet.toFixed(0)} ft (ridge, hip, eaves)</p>
+                    <p><strong>Total feet:</strong> ${est.totalFeet.toFixed(0)} ft (ridge, hip, eaves)</p>
           <ul>
-            <li>Install: $${est.installSubtotal.toFixed(2)} (@ $${est.rate.toFixed(2)}/ft)</li>
-            <li>Takedown: $${est.takedownSubtotal.toFixed(2)} (@ $${est.takedownRate.toFixed(2)}/ft)</li>
+            <li>Install labor: $${est.installSubtotal.toFixed(2)} (@ $${est.rate.toFixed(2)}/ft)</li>
+            <li>Takedown labor: $${est.takedownSubtotal.toFixed(2)} (@ $${est.takedownRate.toFixed(2)}/ft)</li>
+            <li>Equipment (wire / sockets / clips / supplies): $${est.equipSubtotal.toFixed(
+              2
+            )} (@ $${est.equipRate.toFixed(2)}/ft)</li>
           </ul>
           <div class="proposal-totals">
-            <p>Subtotal (install + takedown): $${est.customerSubtotal.toFixed(2)}</p>
-            <p>Sales tax (${est.taxRatePercent.toFixed(2)}%): $${est.taxAmount.toFixed(2)}</p>
+            <p>Labor subtotal (install + takedown, not taxed): $${est.laborSubtotal.toFixed(2)}</p>
+            <p>Equipment subtotal (taxable): $${est.equipSubtotal.toFixed(2)}</p>
+            <p>Subtotal before tax: $${est.customerSubtotal.toFixed(2)}</p>
+            <p>Sales tax on equipment only (${est.taxRatePercent.toFixed(
+              2
+            )}%): $${est.taxAmount.toFixed(2)}</p>
             <p><strong>Total investment: $${est.customerTotalWithTax.toFixed(2)}</strong></p>
           </div>
+
           <p style="font-size:0.85rem;margin-top:1rem;">
             This proposal includes professional installation, season-long use, and scheduled takedown of lights.
           </p>
@@ -1140,9 +1216,6 @@
     const mockupClearBtn = document.getElementById("mockup-clear");
     const mockupZoomInBtn = document.getElementById("mockup-zoom-in");
     const mockupZoomOutBtn = document.getElementById("mockup-zoom-out");
-    const mockupSendToEstimateBtn = document.getElementById("mockup-send-to-estimate");
-    const mockupScaleFeetInput = document.getElementById("mockup-scale-feet");
-    const mockupRunTypeSelect = document.getElementById("mockup-run-type");
     const mockupColorModeSelect = document.getElementById("mockup-color-mode");
     const mockupColor1Input = document.getElementById("mockup-color1");
     const mockupColor2Input = document.getElementById("mockup-color2");
@@ -1222,6 +1295,9 @@
         const dy = seg.to.y - seg.from.y;
         const lengthPx = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
+      // keep Proposal tab's mockup snapshot in sync
+      updateProposalMockupSnapshot();
+
 
         // Show or hide the wire under bulbs
         if (!mockupShowWireCheckbox || mockupShowWireCheckbox.checked) {
@@ -1334,12 +1410,23 @@
 
     }
 
-    function updateMockupTotals() {
+        function updateMockupTotals() {
       if (!mockupTotals) return;
       if (!mockupImage) {
         mockupTotals.innerHTML = "";
         return;
       }
+
+      mockupTotals.innerHTML = `
+        <p>
+          This mockup is for <strong>customer visualization only</strong>.
+          Lengths here are not used for pricing.  
+          Use the <strong>Roof Measure</strong> tab for accurate ridge / eave footage.
+        </p>
+      `;
+    }
+
+    
 
       let html = "";
       if (feetPerPixel) {
@@ -1438,14 +1525,15 @@
               h: drawHeight,
             };
 
-            scalePoints = [];
+                        scalePoints = [];
             runSegments = [];
-            feetPerPixel = null;
-            mockupMode = "none";
+            feetPerPixel = null;   // not used for pricing anymore
+            mockupMode = "measure";
             mockupZoom = 1;
             applyMockupZoom();
 
-            drawMockupBase();
+            redrawMockup();        // draw image + any runs
+
             mockupSetInfo(
               "Image loaded. Step 1: click 'Set scale' and draw a line of known length."
             );
@@ -1458,43 +1546,42 @@
     }
 
     // Set scale mode
-    if (mockupSetScaleBtn) {
+        if (mockupSetScaleBtn) {
       mockupSetScaleBtn.addEventListener("click", () => {
         if (!mockupImage) {
           mockupSetInfo("Upload an image first.");
           return;
         }
-        mockupMode = "scale";
+        // Clear runs and stay in drawing mode
+        mockupMode = "measure";
         scalePoints = [];
         runSegments = [];
         feetPerPixel = null;
         redrawMockup();
         mockupSetInfo(
-          "Scale mode: click two points on a known distance (e.g., 40 ft front width)."
+          "Cleared lines. Click along roof/eave lines to draw lights. Visual only – not to scale."
         );
         updateMockupTotals();
       });
     }
 
+
     // Measure mode
-    if (mockupMeasureBtn) {
+        if (mockupMeasureBtn) {
       mockupMeasureBtn.addEventListener("click", () => {
         if (!mockupImage) {
           mockupSetInfo("Upload an image first.");
           return;
         }
-        if (!feetPerPixel) {
-          mockupSetInfo("Set the scale first, then measure runs.");
-          return;
-        }
         mockupMode = "measure";
         redrawMockup();
         mockupSetInfo(
-          "Measure mode: choose run type, then click along each run; each segment will be measured."
+          "Drawing mode: choose run type, then click along each run to place bulbs. For customer view only."
         );
         updateMockupTotals();
       });
     }
+
 
     // Zoom buttons
     if (mockupZoomInBtn) {
@@ -1568,68 +1655,9 @@
     }
 
 
-    // Send measured ridge/eaves totals into the Estimate tab
-    if (mockupSendToEstimateBtn) {
-      mockupSendToEstimateBtn.addEventListener("click", () => {
-        if (!feetPerPixel || runSegments.length === 0) {
-          alert("Measure your runs first before sending to Estimate.");
-          return;
-        }
-
-        const totalsByType = { ridge: 0, eaves: 0, gable: 0 };
-        runSegments.forEach((seg) => {
-          if (totalsByType[seg.type] != null) {
-            totalsByType[seg.type] += seg.feet;
-          }
-        });
-
-        // Fill Estimate fields (ridge = ridge/hip total, eaves = eaves total)
-        if (ridgeInput) {
-          ridgeInput.value = totalsByType.ridge.toFixed(1); // ridge + hip combined
-        }
-        if (eavesInput) {
-          eavesInput.value = totalsByType.eaves.toFixed(1);
-        }
-
-        mockupSetInfo(
-          `Sent measured totals to Estimate: ridge=${totalsByType.ridge.toFixed(
-            1
-          )} ft, eaves=${totalsByType.eaves.toFixed(1)} ft. You can still adjust by hand.`
-        );
-      });
-    }
-    // Send measured ridge/eaves totals into the Estimate tab
-    if (mockupSendToEstimateBtn) {
-      mockupSendToEstimateBtn.addEventListener("click", () => {
-        if (!feetPerPixel || runSegments.length === 0) {
-          alert("For Estimate: set your scale and measure runs first (on a top-down/satellite image).");
-          return;
-        }
-
-        const totalsByType = { ridge: 0, eaves: 0, gable: 0 };
-        runSegments.forEach((seg) => {
-          if (totalsByType[seg.type] != null) {
-            totalsByType[seg.type] += seg.feet;
-          }
-        });
-
-        if (ridgeInput) {
-          ridgeInput.value = totalsByType.ridge.toFixed(1);
-        }
-        if (eavesInput) {
-          eavesInput.value = totalsByType.eaves.toFixed(1);
-        }
-
-        mockupSetInfo(
-          `Sent to Estimate: ridge ${totalsByType.ridge.toFixed(
-            1
-          )} ft, eaves ${totalsByType.eaves.toFixed(1)} ft. You can still adjust those fields by hand.`
-        );
-      });
-    }
-
+    
     // Canvas click handling (scale + measure)
-    if (mockupCanvas && mockupCtx) {
+       if (mockupCanvas && mockupCtx) {
       let lastMeasurePoint = null;
 
       mockupCanvas.addEventListener("click", (event) => {
@@ -1637,61 +1665,33 @@
 
         const point = getCanvasPointFromEvent(event);
 
-        if (mockupMode === "scale") {
-          scalePoints.push(point);
-          if (scalePoints.length > 2) {
-            scalePoints = [point];
+        if (mockupMode === "measure") {
+          const runType = mockupRunTypeSelect
+            ? mockupRunTypeSelect.value
+            : "ridge";
+
+          if (!lastMeasurePoint) {
+            lastMeasurePoint = point;
+          } else {
+            const pixels = pixelDistance(lastMeasurePoint, point);
+            const feet = feetPerPixel ? pixels * feetPerPixel : 0; // not used for pricing
+
+            runSegments.push({
+              from: lastMeasurePoint,
+              to: point,
+              feet,
+              type: runType,
+            });
+
+            lastMeasurePoint = point;
           }
-          if (scalePoints.length === 2) {
-            const pixels = pixelDistance(scalePoints[0], scalePoints[1]);
-            const feet = parseFloat(mockupScaleFeetInput.value) || 0;
-            if (feet <= 0 || pixels === 0) {
-              feetPerPixel = null;
-              mockupSetInfo(
-                "Enter a positive known distance in feet, then click two points again."
-              );
-            } else {
-              feetPerPixel = feet / pixels;
-              mockupSetInfo(
-                `Scale set: ${feet.toFixed(1)} ft = ${pixels.toFixed(
-                  1
-                )} pixels. 1 pixel ≈ ${feetPerPixel.toFixed(4)} ft.`
-              );
-            }
-          }
+
           redrawMockup();
           updateMockupTotals();
-         
-                } else if (mockupMode === "measure") {
-       // Measure and store the run; colors are handled later by the pattern settings
-       const runType = mockupRunTypeSelect
-         ? mockupRunTypeSelect.value
-         : "ridge";
-
-       if (!lastMeasurePoint) {
-         lastMeasurePoint = point;
-       } else {
-         const pixels = pixelDistance(lastMeasurePoint, point);
-         const feet = feetPerPixel ? pixels * feetPerPixel : 0; // 0 if no scale yet
-
-         runSegments.push({
-           from: lastMeasurePoint,
-           to: point,
-           feet,
-           type: runType,
-         });
-
-         lastMeasurePoint = point;
-       }
-
-       redrawMockup();
-       updateMockupTotals();
-     }
-
-
-
+        }
       });
     }
+
 
     // Apply initial zoom
     applyMockupZoom();
