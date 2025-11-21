@@ -396,1310 +396,1091 @@
 
 
      <script>
-    // -----------------------------
-    // Navigation: switch between screens
-    // -----------------------------
-    const buttons = document.querySelectorAll("nav button");
-    const screens = document.querySelectorAll(".screen");
+// Navigation: tabs
+const navButtons = document.querySelectorAll("nav button[data-screen]");
+const screens = document.querySelectorAll(".screen");
 
-    buttons.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const target = btn.dataset.screen;
+navButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const target = btn.dataset.screen;
 
-        buttons.forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
+    navButtons.forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
 
-        screens.forEach((s) => {
-          if (s.id === "screen-" + target) {
-            s.classList.add("active");
-          } else {
-            s.classList.remove("active");
-          }
-        });
-      });
-    });
-    const printButton = document.getElementById("print-current");
-    if (printButton) {
-      printButton.addEventListener("click", () => {
-        window.print(); // in the Print dialog, choose "Save as PDF"
-      });
-    }
-
-    // -----------------------------
-    // Clients & estimate storage (localStorage)
-    // -----------------------------
-    const CLIENTS_KEY = "wgc-clients-v1";
-    const CURRENT_CLIENT_KEY = "wgc-current-client-id";
-    const ESTIMATE_KEY = "wgc-last-estimate-v1";
-
-    function loadClients() {
-      try {
-        const raw = localStorage.getItem(CLIENTS_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch (e) {
-        console.warn("Could not load clients", e);
-        return [];
-      }
-    }
-
-    function saveClients(clients) {
-      try {
-        localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
-      } catch (e) {
-        console.warn("Could not save clients", e);
-      }
-    }
-
-    function loadCurrentClientId() {
-      try {
-        const raw = localStorage.getItem(CURRENT_CLIENT_KEY);
-        if (!raw) return null;
-        const id = parseInt(raw, 10);
-        return Number.isNaN(id) ? null : id;
-      } catch {
-        return null;
-      }
-    }
-
-    function saveCurrentClientId(id) {
-      try {
-        if (id == null) {
-          localStorage.removeItem(CURRENT_CLIENT_KEY);
-        } else {
-          localStorage.setItem(CURRENT_CLIENT_KEY, String(id));
-        }
-      } catch (e) {
-        console.warn("Could not save current client id", e);
-      }
-    }
-
-    function loadLastEstimate() {
-      try {
-        const raw = localStorage.getItem(ESTIMATE_KEY);
-        if (!raw) return null;
-        return JSON.parse(raw);
-      } catch (e) {
-        console.warn("Could not load last estimate", e);
-        return null;
-      }
-    }
-
-    function saveLastEstimate(data) {
-      try {
-        localStorage.setItem(ESTIMATE_KEY, JSON.stringify(data));
-      } catch (e) {
-        console.warn("Could not save last estimate", e);
-      }
-    }
-
-    // -----------------------------
-    // Clients UI
-    // -----------------------------
-    const clientNameInput = document.getElementById("client-name");
-    const clientPhoneInput = document.getElementById("client-phone");
-    const clientEmailInput = document.getElementById("client-email");
-    const clientAddressInput = document.getElementById("client-address");
-    const clientPreferredInput = document.getElementById("client-preferred");
-    const clientNotesInput = document.getElementById("client-notes");
-    const saveClientButton = document.getElementById("save-client");
-    const clientsList = document.getElementById("clients-list");
-    const currentClientSummaryDiv = document.getElementById("current-client-summary");
-    const clientRateInput = document.getElementById("client-rate");
-    const clientTakedownRateInput = document.getElementById("client-takedown-rate");
-    const clientLightsOwnedSelect = document.getElementById("client-lights-owned");
-
-    let clients = loadClients();
-    let currentClientId = loadCurrentClientId();
-
-    function getCurrentClient() {
-      if (currentClientId == null) return null;
-      return clients.find((c) => c.id === currentClientId) || null;
-    }
-
-    function updateCurrentClientSummary() {
-      if (!currentClientSummaryDiv) return;
-      const c = getCurrentClient();
-      if (!c) {
-        currentClientSummaryDiv.innerHTML =
-          '<em>No client selected. Go to the Clients tab and click "Use for estimate".</em>';
+    screens.forEach((s) => {
+      if (s.id === "screen-" + target) {
+        s.classList.add("active");
       } else {
-        currentClientSummaryDiv.innerHTML = `
-          <strong>Current client:</strong> ${c.name}<br />
-          ${c.address ? c.address + "<br />" : ""}
-          ${c.phone ? "Phone: " + c.phone + "<br />" : ""}
-          ${c.preferred ? "Preferred install: " + c.preferred : ""}
-        `;
+        s.classList.remove("active");
       }
+    });
+  });
+});
+
+// -----------------------------
+// Storage helpers
+// -----------------------------
+const CLIENTS_KEY = "wgc-clients-v1";
+const CURRENT_CLIENT_KEY = "wgc-current-client-id";
+const ESTIMATE_KEY = "wgc-last-estimate-v1";
+
+function loadClients() {
+  try {
+    const raw = localStorage.getItem(CLIENTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.warn("Could not load clients", e);
+    return [];
+  }
+}
+
+function saveClients(clients) {
+  try {
+    localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
+  } catch (e) {
+    console.warn("Could not save clients", e);
+  }
+}
+
+function loadCurrentClientId() {
+  try {
+    const raw = localStorage.getItem(CURRENT_CLIENT_KEY);
+    if (!raw) return null;
+    const id = parseInt(raw, 10);
+    return Number.isNaN(id) ? null : id;
+  } catch {
+    return null;
+  }
+}
+
+function saveCurrentClientId(id) {
+  try {
+    if (id == null) {
+      localStorage.removeItem(CURRENT_CLIENT_KEY);
+    } else {
+      localStorage.setItem(CURRENT_CLIENT_KEY, String(id));
+    }
+  } catch (e) {
+    console.warn("Could not save current client id", e);
+  }
+}
+
+function loadLastEstimate() {
+  try {
+    const raw = localStorage.getItem(ESTIMATE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    console.warn("Could not load last estimate", e);
+    return null;
+  }
+}
+
+function saveLastEstimate(data) {
+  try {
+    localStorage.setItem(ESTIMATE_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.warn("Could not save last estimate", e);
+  }
+}
+
+// -----------------------------
+// Clients
+// -----------------------------
+const clientNameInput = document.getElementById("client-name");
+const clientPhoneInput = document.getElementById("client-phone");
+const clientEmailInput = document.getElementById("client-email");
+const clientAddressInput = document.getElementById("client-address");
+const clientPreferredInput = document.getElementById("client-preferred");
+const clientNotesInput = document.getElementById("client-notes");
+const clientRateInput = document.getElementById("client-rate");
+const clientTakedownRateInput = document.getElementById("client-takedown-rate");
+const clientLightsOwnedSelect = document.getElementById("client-lights-owned");
+const saveClientButton = document.getElementById("save-client");
+const clientsList = document.getElementById("clients-list");
+const currentClientSummaryDiv = document.getElementById("current-client-summary");
+
+let clients = loadClients();
+let currentClientId = loadCurrentClientId();
+
+function getCurrentClient() {
+  if (currentClientId == null) return null;
+  return clients.find((c) => c.id === currentClientId) || null;
+}
+
+function updateCurrentClientSummary() {
+  if (!currentClientSummaryDiv) return;
+  const c = getCurrentClient();
+  if (!c) {
+    currentClientSummaryDiv.innerHTML =
+      '<em>No client selected. Go to the Clients tab and click "Use for estimate".</em>';
+  } else {
+    currentClientSummaryDiv.innerHTML = `
+      <strong>Current client:</strong> ${c.name}<br />
+      ${c.address ? c.address + "<br />" : ""}
+      ${c.phone ? "Phone: " + c.phone + "<br />" : ""}
+      ${c.preferred ? "Preferred install: " + c.preferred : ""}
+    `;
+  }
+}
+
+function renderClientsList() {
+  if (!clientsList) return;
+
+  if (!clients.length) {
+    clientsList.innerHTML = "<li>No clients saved yet.</li>";
+    return;
+  }
+
+  clientsList.innerHTML = clients
+    .map((c) => {
+      const safeName = c.name || "(No name)";
+      const safeAddress = c.address || "";
+      const safePhone = c.phone || "-";
+      const safeEmail = c.email || "-";
+      const safePreferred = c.preferred || "-";
+      const isCurrent = c.id === currentClientId;
+
+      const rateInfo =
+        c.defaultRate != null
+          ? `Install: $${c.defaultRate.toFixed(2)}/ft; `
+          : "";
+      const tdInfo =
+        c.defaultTakedown != null
+          ? `Takedown: $${c.defaultTakedown.toFixed(2)}/ft; `
+          : "";
+      const lightsInfo =
+        c.lightsOwned === "company"
+          ? "Lights: company-owned"
+          : c.lightsOwned === "customer"
+          ? "Lights: customer-owned & stored"
+          : "";
+
+      const extraLine =
+        rateInfo || tdInfo || lightsInfo
+          ? `<small>${rateInfo}${tdInfo}${lightsInfo}</small><br />`
+          : "";
+
+      return `
+        <li data-client-id="${c.id}">
+          <strong>${safeName}</strong>${isCurrent ? " (current)" : ""}<br />
+          ${safeAddress ? safeAddress + "<br />" : ""}
+          Phone: ${safePhone} | Email: ${safeEmail}<br />
+          Preferred install: ${safePreferred}<br />
+          ${extraLine}
+          <button class="use-client-button" data-client-id="${c.id}">
+            Use for estimate
+          </button>
+        </li>
+      `;
+    })
+    .join("");
+}
+
+if (saveClientButton) {
+  saveClientButton.addEventListener("click", () => {
+    if (!clientNameInput) {
+      alert("Client form is not loaded correctly.");
+      return;
     }
 
-    function renderClientsList() {
-      if (!clientsList) return;
-
-      if (!clients.length) {
-        clientsList.innerHTML = "<li>No clients saved yet.</li>";
-        return;
-      }
-
-      clientsList.innerHTML = clients
-        .map((c) => {
-          const safeName = c.name || "(No name)";
-          const safeAddress = c.address || "";
-          const safePhone = c.phone || "-";
-          const safeEmail = c.email || "-";
-          const safePreferred = c.preferred || "-";
-          const isCurrent = c.id === currentClientId;
-
-          const rateInfo =
-            c.defaultRate != null
-              ? `Install: $${c.defaultRate.toFixed(2)}/ft; `
-              : "";
-          const tdInfo =
-            c.defaultTakedown != null
-              ? `Takedown: $${c.defaultTakedown.toFixed(2)}/ft; `
-              : "";
-          const lightsInfo =
-            c.lightsOwned === "company"
-              ? "Lights: company-owned"
-              : c.lightsOwned === "customer"
-              ? "Lights: customer-owned & stored"
-              : "";
-
-          const extraLine =
-            rateInfo || tdInfo || lightsInfo
-              ? `<small>${rateInfo}${tdInfo}${lightsInfo}</small><br />`
-              : "";
-
-          return `
-            <li data-client-id="${c.id}">
-              <strong>${safeName}</strong>${isCurrent ? " (current)" : ""}<br />
-              ${safeAddress ? safeAddress + "<br />" : ""}
-              Phone: ${safePhone} | Email: ${safeEmail}<br />
-              Preferred install: ${safePreferred}<br />
-              ${extraLine}
-              <button class="use-client-button" data-client-id="${c.id}">
-                Use for estimate
-              </button>
-            </li>
-          `;
-        })
-        .join("");
+    const name = (clientNameInput.value || "").trim();
+    if (!name) {
+      alert("Client name is required.");
+      return;
     }
 
-    if (saveClientButton) {
-      saveClientButton.addEventListener("click", () => {
-        if (!clientNameInput) {
-          alert("Client form is not loaded correctly.");
-          return;
-        }
+    const phone = clientPhoneInput ? clientPhoneInput.value.trim() : "";
+    const email = clientEmailInput ? clientEmailInput.value.trim() : "";
+    const address = clientAddressInput ? clientAddressInput.value.trim() : "";
+    const preferred = clientPreferredInput ? clientPreferredInput.value.trim() : "";
+    const notes = clientNotesInput ? clientNotesInput.value.trim() : "";
 
-        const name = (clientNameInput.value || "").trim();
-        if (!name) {
-          alert("Client name is required.");
-          return;
-        }
+    const defaultRate =
+      clientRateInput && clientRateInput.value !== ""
+        ? parseFloat(clientRateInput.value)
+        : null;
 
-        const phone = clientPhoneInput ? clientPhoneInput.value.trim() : "";
-        const email = clientEmailInput ? clientEmailInput.value.trim() : "";
-        const address = clientAddressInput ? clientAddressInput.value.trim() : "";
-        const preferred = clientPreferredInput ? clientPreferredInput.value.trim() : "";
-        const notes = clientNotesInput ? clientNotesInput.value.trim() : "";
+    const defaultTakedown =
+      clientTakedownRateInput && clientTakedownRateInput.value !== ""
+        ? parseFloat(clientTakedownRateInput.value)
+        : null;
 
-        const defaultRate =
-          clientRateInput && clientRateInput.value !== ""
-            ? parseFloat(clientRateInput.value)
-            : null;
+    const lightsOwned = clientLightsOwnedSelect
+      ? clientLightsOwnedSelect.value || "unknown"
+      : "unknown";
 
-        const defaultTakedown =
-          clientTakedownRateInput && clientTakedownRateInput.value !== ""
-            ? parseFloat(clientTakedownRateInput.value)
-            : null;
+    let client =
+      typeof currentClientId === "number"
+        ? clients.find((c) => c.id === currentClientId)
+        : null;
 
-        const lightsOwned = clientLightsOwnedSelect
-          ? clientLightsOwnedSelect.value || "unknown"
-          : "unknown";
-
-        let client =
-          typeof currentClientId === "number"
-            ? clients.find((c) => c.id === currentClientId)
-            : null;
-
-        if (client) {
-          // update existing
-          client.name = name;
-          client.phone = phone;
-          client.email = email;
-          client.address = address;
-          client.preferred = preferred;
-          client.notes = notes;
-          client.defaultRate = defaultRate;
-          client.defaultTakedown = defaultTakedown;
-          client.lightsOwned = lightsOwned;
-        } else {
-          // create new
-          client = {
-            id: Date.now(),
-            name,
-            phone,
-            email,
-            address,
-            preferred,
-            notes,
-            defaultRate,
-            defaultTakedown,
-            lightsOwned,
-          };
-          clients.push(client);
-          currentClientId = client.id;
-        }
-
-        saveClients(clients);
-        saveCurrentClientId(currentClientId);
-        renderClientsList();
-        updateCurrentClientSummary();
-      });
+    if (client) {
+      client.name = name;
+      client.phone = phone;
+      client.email = email;
+      client.address = address;
+      client.preferred = preferred;
+      client.notes = notes;
+      client.defaultRate = defaultRate;
+      client.defaultTakedown = defaultTakedown;
+      client.lightsOwned = lightsOwned;
+    } else {
+      client = {
+        id: Date.now(),
+        name,
+        phone,
+        email,
+        address,
+        preferred,
+        notes,
+        defaultRate,
+        defaultTakedown,
+        lightsOwned,
+      };
+      clients.push(client);
+      currentClientId = client.id;
     }
 
-    if (clientsList) {
-      clientsList.addEventListener("click", (event) => {
-        const btn = event.target.closest(".use-client-button");
-        if (!btn) return;
+    saveClients(clients);
+    saveCurrentClientId(currentClientId);
+    renderClientsList();
+    updateCurrentClientSummary();
+  });
+}
 
-        const id = parseInt(btn.dataset.clientId, 10);
-        if (Number.isNaN(id)) return;
+if (clientsList) {
+  clientsList.addEventListener("click", (event) => {
+    const btn = event.target.closest(".use-client-button");
+    if (!btn) return;
 
-        currentClientId = id;
-        saveCurrentClientId(currentClientId);
-        renderClientsList();
-        updateCurrentClientSummary();
+    const id = parseInt(btn.dataset.clientId, 10);
+    if (Number.isNaN(id)) return;
 
-        const picked = clients.find((c) => c.id === currentClientId);
-        if (picked) {
-          // apply default install/takedown to Estimate tab if available
-          if (typeof rateInput !== "undefined" && rateInput && picked.defaultRate != null) {
-            rateInput.value = picked.defaultRate.toFixed(2);
-          }
-          if (
-            typeof takedownRateInput !== "undefined" &&
-            takedownRateInput &&
-            picked.defaultTakedown != null
-          ) {
-            takedownRateInput.value = picked.defaultTakedown.toFixed(2);
-          }
-        }
-      });
-    }
-
-    // Initial client render
+    currentClientId = id;
+    saveCurrentClientId(currentClientId);
     renderClientsList();
     updateCurrentClientSummary();
 
-
-    // -----------------------------
-    // Estimator logic: ridge + hip + eaves + takedown + tax
-    // -----------------------------
-    const ridgeInput = document.getElementById("ridge-feet");
-    const hipInput = document.getElementById("hip-feet");
-    const eavesInput = document.getElementById("eaves-feet");
-    const rateInput = document.getElementById("rate-per-foot");
-    const takedownRateInput = document.getElementById("takedown-rate");
-    const taxRateInput = document.getElementById("tax-rate");
-    const containerInput = document.getElementById("container-cost");
-    const calcButton = document.getElementById("calc-estimate");
-    const resultBox = document.getElementById("estimate-result");
-    const equipRateInput = document.getElementById("equip-rate");
-    const equipModeSelect = document.getElementById("equip-mode");
-
-
-    if (calcButton) {
-      calcButton.addEventListener("click", () => {
-                const ridge = parseFloat(ridgeInput.value) || 0;
-        const hip = parseFloat(hipInput.value) || 0;
-        const eaves = parseFloat(eavesInput.value) || 0;
-        const rate = parseFloat(rateInput.value) || 0;
-        const equipRate = parseFloat(equipRateInput.value) || 0;
-        const takedownRate = parseFloat(takedownRateInput.value) || 0;
-        const taxRatePercent = parseFloat(taxRateInput.value) || 0;
-        const container = parseFloat(containerInput.value) || 0;
-
-        const totalFeet = ridge + hip + eaves;
-
-        // Labor – install
-        const ridgePrice = ridge * rate;
-        const hipPrice = hip * rate;
-        const eavesPrice = eaves * rate;
-        const installSubtotal = ridgePrice + hipPrice + eavesPrice;
-
-        // Labor – takedown
-        const takedownSubtotal = totalFeet * takedownRate;
-
-        // Equipment (taxable)
-        const equipSubtotal = totalFeet * equipRate;
-
-        // Labor subtotal (not taxed)
-        const laborSubtotal = installSubtotal + takedownSubtotal;
-
-        // Customer subtotal before tax
-        const customerSubtotal = laborSubtotal + equipSubtotal;
-
-        // Tax on equipment only
-        const taxRate = taxRatePercent / 100;
-        const taxableBase = equipSubtotal; // equipment/supplies only
-        const taxAmount = taxableBase * taxRate;
-
-        const customerTotalWithTax = customerSubtotal + taxAmount;
-
-        // Internal total (pre-tax) including container, for your eyes only
-        const internalTotal = customerSubtotal + container;
-
-        // Save last estimate snapshot (for proposal)
-        const currentClient = getCurrentClient();
-        const estimateSnapshot = {
-          timestamp: new Date().toISOString(),
-          totalFeet,
-          ridge,
-          hip,
-          eaves,
-          rate,
-          equipRate,
-          takedownRate,
-          taxRatePercent,
-          installSubtotal,
-          takedownSubtotal,
-          equipSubtotal,
-          laborSubtotal,
-          customerSubtotal,
-          taxableBase,
-          taxAmount,
-          customerTotalWithTax,
-          equipMode: equipModeSelect ? equipModeSelect.value : "equip-only",
-          client: currentClient
-            ? {
-                name: currentClient.name,
-                address: currentClient.address,
-                phone: currentClient.phone,
-                email: currentClient.email,
-                preferred: currentClient.preferred,
-              }
-            : null,
-        };
-
-        saveLastEstimate(estimateSnapshot);
-
-          resultBox.innerHTML = `
-          <p><strong>Total feet:</strong> ${totalFeet.toFixed(0)} ft</p>
-          <p><strong>Main ridge:</strong> ${ridge.toFixed(0)} ft → $${ridgePrice.toFixed(2)}</p>
-          <p><strong>Hip ridge:</strong> ${hip.toFixed(0)} ft → $${hipPrice.toFixed(2)}</p>
-          <p><strong>Eaves / gutters:</strong> ${eaves.toFixed(0)} ft → $${eavesPrice.toFixed(2)}</p>
-          <hr />
-          <p><strong>Install labor subtotal:</strong> $${installSubtotal.toFixed(2)}</p>
-          <p><strong>Takedown labor subtotal:</strong> $${takedownSubtotal.toFixed(2)}</p>
-          <p><strong>Labor subtotal (install + takedown, not taxed):</strong> $${laborSubtotal.toFixed(2)}</p>
-          <p><strong>Equipment subtotal (taxable):</strong> $${equipSubtotal.toFixed(2)}</p>
-          <p><strong>Subtotal before tax:</strong> $${customerSubtotal.toFixed(2)}</p>
-          <p><strong>Sales tax on equipment only (${taxRatePercent.toFixed(
-            2
-          )}%):</strong> $${taxAmount.toFixed(2)}</p>
-          <p><strong>Customer total (with tax):</strong> $${customerTotalWithTax.toFixed(2)}</p>
-          <br />
-          <p><strong>Internal container cost (not shown on proposal):</strong> $${container.toFixed(2)}</p>
-          <p><strong>Internal total (labor + equipment + container, pre-tax):</strong> $${internalTotal.toFixed(2)}</p>
-        `;
-
-      });
-    }
-
-    // -----------------------------
-    // Proposal rendering
-    // -----------------------------
-    const proposalContent = document.getElementById("proposal-content");
-    const refreshProposalButton = document.getElementById("refresh-proposal");
-
-    function renderProposal() {
-      if (!proposalContent) return;
-      const est = loadLastEstimate();
-
-      if (!est) {
-        proposalContent.innerHTML =
-          '<em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate Estimate" first.</em>';
-        return;
+    const picked = clients.find((c) => c.id === currentClientId);
+    if (picked) {
+      const rateInput = document.getElementById("rate-per-foot");
+      const takedownRateInput = document.getElementById("takedown-rate");
+      if (rateInput && picked.defaultRate != null) {
+        rateInput.value = picked.defaultRate.toFixed(2);
       }
-    function updateProposalMockupSnapshot() {
-      const imgEl = document.getElementById("proposal-mockup-image");
-      const wrapper = document.getElementById("proposal-mockup-wrapper");
-      if (!imgEl || !wrapper || !mockupCanvas || !mockupImage) return;
-
-      try {
-        const dataUrl = mockupCanvas.toDataURL("image/png");
-        imgEl.src = dataUrl;
-        wrapper.style.display = "block";
-      } catch (e) {
-        console.warn("Could not capture mockup canvas:", e);
+      if (takedownRateInput && picked.defaultTakedown != null) {
+        takedownRateInput.value = picked.defaultTakedown.toFixed(2);
       }
     }
+  });
+}
 
-      const client = est.client || getCurrentClient();
-      const dateStr = est.timestamp
-        ? new Date(est.timestamp).toLocaleDateString()
-        : "";
+renderClientsList();
+updateCurrentClientSummary();
 
-      let clientHtml = "";
-      if (client) {
-        clientHtml = `
-          <div class="proposal-header">
-            <strong>${client.name || ""}</strong><br />
-            ${client.address ? client.address + "<br />" : ""}
-            ${client.phone ? "Phone: " + client.phone + "<br />" : ""}
-            ${client.email ? "Email: " + client.email + "<br />" : ""}
-            ${client.preferred ? "Preferred install: " + client.preferred + "<br />" : ""}
-          </div>
-        `;
-      } else {
-        clientHtml = "<p><em>No client selected.</em></p>";
-      }
+// -----------------------------
+// Estimator
+// -----------------------------
+const ridgeInput = document.getElementById("ridge-feet");
+const hipInput = document.getElementById("hip-feet");
+const eavesInput = document.getElementById("eaves-feet");
+const rateInput = document.getElementById("rate-per-foot");
+const takedownRateInput = document.getElementById("takedown-rate");
+const taxRateInput = document.getElementById("tax-rate");
+const containerInput = document.getElementById("container-cost");
+const calcButton = document.getElementById("calc-estimate");
+const resultBox = document.getElementById("estimate-result");
 
-      proposalContent.innerHTML = `
-        <div class="proposal-card-inner">
-          <p><strong>Proposal date:</strong> ${dateStr}</p>
-          ${clientHtml}
-          <h3>Christmas Light Installation & Takedown</h3>
-                    <p><strong>Total feet:</strong> ${est.totalFeet.toFixed(0)} ft (ridge, hip, eaves)</p>
-          <ul>
-            <li>Install labor: $${est.installSubtotal.toFixed(2)} (@ $${est.rate.toFixed(2)}/ft)</li>
-            <li>Takedown labor: $${est.takedownSubtotal.toFixed(2)} (@ $${est.takedownRate.toFixed(2)}/ft)</li>
-            <li>Equipment (wire / sockets / clips / supplies): $${est.equipSubtotal.toFixed(
-              2
-            )} (@ $${est.equipRate.toFixed(2)}/ft)</li>
-          </ul>
-          <div class="proposal-totals">
-            <p>Labor subtotal (install + takedown, not taxed): $${est.laborSubtotal.toFixed(2)}</p>
-            <p>Equipment subtotal (taxable): $${est.equipSubtotal.toFixed(2)}</p>
-            <p>Subtotal before tax: $${est.customerSubtotal.toFixed(2)}</p>
-            <p>Sales tax on equipment only (${est.taxRatePercent.toFixed(
-              2
-            )}%): $${est.taxAmount.toFixed(2)}</p>
-            <p><strong>Total investment: $${est.customerTotalWithTax.toFixed(2)}</strong></p>
-          </div>
+if (calcButton) {
+  calcButton.addEventListener("click", () => {
+    const ridge = parseFloat(ridgeInput.value) || 0;
+    const hip = parseFloat(hipInput.value) || 0;
+    const eaves = parseFloat(eavesInput.value) || 0;
+    const rate = parseFloat(rateInput.value) || 0;
+    const takedownRate = parseFloat(takedownRateInput.value) || 0;
+    const taxRatePercent = parseFloat(taxRateInput.value) || 0;
+    const container = parseFloat(containerInput.value) || 0;
 
-          <p style="font-size:0.85rem;margin-top:1rem;">
-            This proposal includes professional installation, season-long use, and scheduled takedown of lights.
-          </p>
-        </div>
-      `;
-    }
+    const totalFeet = ridge + hip + eaves;
 
-    if (refreshProposalButton) {
-      refreshProposalButton.addEventListener("click", renderProposal);
-    }
+    const ridgePrice = ridge * rate;
+    const hipPrice = hip * rate;
+    const eavesPrice = eaves * rate;
+    const installSubtotal = ridgePrice + hipPrice + eavesPrice;
 
-    // Initial proposal render on page load
-    renderProposal();
-    // -----------------------------
-    // Roof Measure (top-down) screen
-    // -----------------------------
-    const roofImageInput = document.getElementById("roof-image-input");
-    const roofSetScaleBtn = document.getElementById("roof-set-scale");
-    const roofMeasureBtn = document.getElementById("roof-measure-mode");
-    const roofUndoBtn = document.getElementById("roof-undo");
-    const roofClearBtn = document.getElementById("roof-clear");
-    const roofZoomInBtn = document.getElementById("roof-zoom-in");
-    const roofZoomOutBtn = document.getElementById("roof-zoom-out");
-    const roofSendToEstimateBtn = document.getElementById("roof-send-to-estimate");
-    const roofScaleFeetInput = document.getElementById("roof-scale-feet");
-    const roofRunTypeSelect = document.getElementById("roof-run-type");
-    const roofCanvas = document.getElementById("roof-canvas");
-    const roofInfo = document.getElementById("roof-info");
-    const roofTotals = document.getElementById("roof-totals");
-    const roofCtx = roofCanvas ? roofCanvas.getContext("2d") : null;
+    const takedownSubtotal = totalFeet * takedownRate;
 
-    let roofImage = null;
-    let roofMode = "none"; // "scale" or "measure"
-    let roofScalePoints = [];
-    let roofSegments = []; // {from, to, feet, type}
-    let roofFeetPerPixel = null;
-    let roofDrawParams = null;
-    let roofZoom = 1;
+    const customerSubtotal = installSubtotal + takedownSubtotal;
 
-    function roofSetInfo(text) {
-      if (roofInfo) roofInfo.textContent = text;
-    }
+    const taxRate = taxRatePercent / 100;
+    const taxAmount = customerSubtotal * taxRate;
+    const customerTotalWithTax = customerSubtotal + taxAmount;
 
-    function roofApplyZoom() {
-      if (!roofCanvas) return;
-      roofCanvas.style.transform = `scale(${roofZoom})`;
-    }
+    const internalTotal = customerSubtotal + container;
 
-    function roofDrawBase() {
-      if (!roofCtx || !roofCanvas) return;
-      roofCtx.clearRect(0, 0, roofCanvas.width, roofCanvas.height);
-      if (roofImage && roofDrawParams) {
-        roofCtx.drawImage(
-          roofImage,
-          roofDrawParams.x,
-          roofDrawParams.y,
-          roofDrawParams.w,
-          roofDrawParams.h
-        );
-      }
-    }
+    const currentClient = getCurrentClient();
+    const estimateSnapshot = {
+      timestamp: new Date().toISOString(),
+      totalFeet,
+      ridge,
+      hip,
+      eaves,
+      rate,
+      takedownRate,
+      taxRatePercent,
+      installSubtotal,
+      takedownSubtotal,
+      customerSubtotal,
+      taxAmount,
+      customerTotalWithTax,
+      client: currentClient
+        ? {
+            name: currentClient.name,
+            address: currentClient.address,
+            phone: currentClient.phone,
+            email: currentClient.email,
+            preferred: currentClient.preferred,
+          }
+        : null,
+    };
+    saveLastEstimate(estimateSnapshot);
 
-    function roofPixelDist(a, b) {
-      const dx = a.x - b.x;
-      const dy = a.y - b.y;
-      return Math.sqrt(dx * dx + dy * dy);
-    }
+    resultBox.innerHTML = `
+      <p><strong>Total feet:</strong> ${totalFeet.toFixed(0)} ft</p>
+      <p><strong>Main ridge:</strong> ${ridge.toFixed(0)} ft → $${ridgePrice.toFixed(2)}</p>
+      <p><strong>Hip ridge:</strong> ${hip.toFixed(0)} ft → $${hipPrice.toFixed(2)}</p>
+      <p><strong>Eaves / gutters:</strong> ${eaves.toFixed(0)} ft → $${eavesPrice.toFixed(2)}</p>
+      <hr />
+      <p><strong>Install subtotal:</strong> $${installSubtotal.toFixed(2)}</p>
+      <p><strong>Takedown subtotal:</strong> $${takedownSubtotal.toFixed(2)}</p>
+      <p><strong>Customer subtotal (install + takedown, before tax):</strong> $${customerSubtotal.toFixed(2)}</p>
+      <p><strong>Sales tax (${taxRatePercent.toFixed(2)}%):</strong> $${taxAmount.toFixed(2)}</p>
+      <p><strong>Customer total (with tax):</strong> $${customerTotalWithTax.toFixed(2)}</p>
+      <br />
+      <p><strong>Internal container cost (not shown on proposal):</strong> $${container.toFixed(2)}</p>
+      <p><strong>Internal total (install + takedown + container, pre-tax):</strong> $${internalTotal.toFixed(2)}</p>
+    `;
+  });
+}
 
-    function roofRedraw() {
-      if (!roofCtx || !roofCanvas) return;
-      roofDrawBase();
+// -----------------------------
+// Roof Measure (top-down)
+// -----------------------------
+const roofImageInput = document.getElementById("roof-image-input");
+const roofSetScaleBtn = document.getElementById("roof-set-scale");
+const roofMeasureBtn = document.getElementById("roof-measure-mode");
+const roofUndoBtn = document.getElementById("roof-undo");
+const roofClearBtn = document.getElementById("roof-clear");
+const roofZoomInBtn = document.getElementById("roof-zoom-in");
+const roofZoomOutBtn = document.getElementById("roof-zoom-out");
+const roofSendToEstimateBtn = document.getElementById("roof-send-to-estimate");
+const roofScaleFeetInput = document.getElementById("roof-scale-feet");
+const roofRunTypeSelect = document.getElementById("roof-run-type");
+const roofCanvas = document.getElementById("roof-canvas");
+const roofInfo = document.getElementById("roof-info");
+const roofTotals = document.getElementById("roof-totals");
+const roofCtx = roofCanvas ? roofCanvas.getContext("2d") : null;
 
-      // scale line
-      if (roofScalePoints.length === 2) {
-        roofCtx.strokeStyle = "#ffa500";
-        roofCtx.lineWidth = 2;
-        roofCtx.beginPath();
-        roofCtx.moveTo(roofScalePoints[0].x, roofScalePoints[0].y);
-        roofCtx.lineTo(roofScalePoints[1].x, roofScalePoints[1].y);
-        roofCtx.stroke();
-      }
+let roofImage = null;
+let roofMode = "none";
+let roofScalePoints = [];
+let roofSegments = [];
+let roofFeetPerPixel = null;
+let roofDrawParams = null;
+let roofZoom = 1;
 
-      // segments by type
-      roofSegments.forEach((seg) => {
-        let color = "#ff0000";
-        if (seg.type === "eaves") color = "#0000ff";
-        else if (seg.type === "gable") color = "#008000";
+function roofSetInfo(text) {
+  if (roofInfo) roofInfo.textContent = text;
+}
 
-        roofCtx.beginPath();
-        roofCtx.strokeStyle = color;
-        roofCtx.lineWidth = 3;
-        roofCtx.moveTo(seg.from.x, seg.from.y);
-        roofCtx.lineTo(seg.to.x, seg.to.y);
-        roofCtx.stroke();
-      });
-    }
+function roofApplyZoom() {
+  if (!roofCanvas) return;
+  roofCanvas.style.transform = `scale(${roofZoom})`;
+}
 
-    function roofUpdateTotals() {
-      if (!roofTotals) return;
-      if (!roofImage) {
-        roofTotals.innerHTML = "";
-        return;
-      }
+function roofDrawBase() {
+  if (!roofCtx || !roofCanvas) return;
+  roofCtx.clearRect(0, 0, roofCanvas.width, roofCanvas.height);
+  if (roofImage && roofDrawParams) {
+    roofCtx.drawImage(
+      roofImage,
+      roofDrawParams.x,
+      roofDrawParams.y,
+      roofDrawParams.w,
+      roofDrawParams.h
+    );
+  }
+}
 
-      const totals = { ridge: 0, eaves: 0, gable: 0 };
-      roofSegments.forEach((seg) => {
-        if (totals[seg.type] != null) totals[seg.type] += seg.feet || 0;
-      });
+function roofPixelDist(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
 
-      const all = totals.ridge + totals.eaves + totals.gable;
+function roofRedraw() {
+  if (!roofCtx || !roofCanvas) return;
+  roofDrawBase();
 
-      let html = "";
-      if (roofFeetPerPixel) {
-        html += `<p>Scale: 1 pixel ≈ ${roofFeetPerPixel.toFixed(4)} ft</p>`;
-      } else {
-        html += "<p>No scale set yet.</p>";
-      }
-      html += "<ul>";
-      html += `<li><strong>Ridge / hip / shingle:</strong> ${totals.ridge.toFixed(1)} ft</li>`;
-      html += `<li><strong>Eaves / gutters:</strong> ${totals.eaves.toFixed(1)} ft</li>`;
-      html += `<li><strong>Gable returns / other:</strong> ${totals.gable.toFixed(1)} ft</li>`;
-      html += "</ul>";
-      html += `<p><strong>Total measured length (all types):</strong> ${all.toFixed(
-        1
-      )} ft</p>`;
+  if (roofScalePoints.length === 2) {
+    roofCtx.strokeStyle = "#ffa500";
+    roofCtx.lineWidth = 2;
+    roofCtx.beginPath();
+    roofCtx.moveTo(roofScalePoints[0].x, roofScalePoints[0].y);
+    roofCtx.lineTo(roofScalePoints[1].x, roofScalePoints[1].y);
+    roofCtx.stroke();
+  }
 
-      roofTotals.innerHTML = html;
-    }
+  roofSegments.forEach((seg) => {
+    let color = "#ff0000";
+    if (seg.type === "eaves") color = "#0000ff";
+    else if (seg.type === "gable") color = "#008000";
 
-    function roofCanvasPoint(evt) {
-      const rect = roofCanvas.getBoundingClientRect();
-      return {
-        x: (evt.clientX - rect.left) / roofZoom,
-        y: (evt.clientY - rect.top) / roofZoom,
-      };
-    }
+    roofCtx.beginPath();
+    roofCtx.strokeStyle = color;
+    roofCtx.lineWidth = 3;
+    roofCtx.moveTo(seg.from.x, seg.from.y);
+    roofCtx.lineTo(seg.to.x, seg.to.y);
+    roofCtx.stroke();
+  });
+}
 
-    // Image upload
-    if (roofImageInput && roofCtx && roofCanvas) {
-      roofImageInput.addEventListener("change", (e) => {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const img = new Image();
-          img.onload = () => {
-            roofImage = img;
-            const cw = roofCanvas.width;
-            const ch = roofCanvas.height;
-            const imgAspect = img.width / img.height;
-            const canvasAspect = cw / ch;
-            let w, h, ox, oy;
-            if (imgAspect > canvasAspect) {
-              w = cw;
-              h = cw / imgAspect;
-              ox = 0;
-              oy = (ch - h) / 2;
-            } else {
-              h = ch;
-              w = ch * imgAspect;
-              ox = (cw - w) / 2;
-              oy = 0;
-            }
-            roofDrawParams = { x: ox, y: oy, w, h };
-            roofScalePoints = [];
-            roofSegments = [];
-            roofFeetPerPixel = null;
-            roofMode = "none";
-            roofZoom = 1;
-            roofApplyZoom();
-            roofDrawBase();
-            roofSetInfo("Image loaded. Step 1: set scale.");
-            roofUpdateTotals();
-          };
-          img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
-    }
+function roofUpdateTotals() {
+  if (!roofTotals) return;
+  if (!roofImage) {
+    roofTotals.innerHTML = "";
+    return;
+  }
 
-    // Set scale
-    if (roofSetScaleBtn) {
-      roofSetScaleBtn.addEventListener("click", () => {
-        if (!roofImage) {
-          roofSetInfo("Upload an image first.");
-          return;
+  const totals = { ridge: 0, eaves: 0, gable: 0 };
+  roofSegments.forEach((seg) => {
+    if (totals[seg.type] != null) totals[seg.type] += seg.feet || 0;
+  });
+
+  const all = totals.ridge + totals.eaves + totals.gable;
+
+  let html = "";
+  if (roofFeetPerPixel) {
+    html += `<p>Scale: 1 pixel ≈ ${roofFeetPerPixel.toFixed(4)} ft</p>`;
+  } else {
+    html += "<p>No scale set yet.</p>";
+  }
+  html += "<ul>";
+  html += `<li><strong>Ridge / hip / shingle:</strong> ${totals.ridge.toFixed(1)} ft</li>`;
+  html += `<li><strong>Eaves / gutters:</strong> ${totals.eaves.toFixed(1)} ft</li>`;
+  html += `<li><strong>Gable returns / other:</strong> ${totals.gable.toFixed(1)} ft</li>`;
+  html += "</ul>";
+  html += `<p><strong>Total measured length (all types):</strong> ${all.toFixed(
+    1
+  )} ft</p>`;
+
+  roofTotals.innerHTML = html;
+}
+
+function roofCanvasPoint(evt) {
+  const rect = roofCanvas.getBoundingClientRect();
+  return {
+    x: (evt.clientX - rect.left) / roofZoom,
+    y: (evt.clientY - rect.top) / roofZoom,
+  };
+}
+
+if (roofImageInput && roofCtx && roofCanvas) {
+  roofImageInput.addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        roofImage = img;
+        const cw = roofCanvas.width;
+        const ch = roofCanvas.height;
+        const imgAspect = img.width / img.height;
+        const canvasAspect = cw / ch;
+        let w, h, ox, oy;
+        if (imgAspect > canvasAspect) {
+          w = cw;
+          h = cw / imgAspect;
+          ox = 0;
+          oy = (ch - h) / 2;
+        } else {
+          h = ch;
+          w = ch * imgAspect;
+          ox = (cw - w) / 2;
+          oy = 0;
         }
-        roofMode = "scale";
-        roofScalePoints = [];
-        roofSegments = [];
-        roofFeetPerPixel = null;
-        roofRedraw();
-        roofSetInfo("Scale mode: click two points on a known distance.");
-        roofUpdateTotals();
-      });
-    }
-
-    // Measure mode
-    if (roofMeasureBtn) {
-      roofMeasureBtn.addEventListener("click", () => {
-        if (!roofImage) {
-          roofSetInfo("Upload an image first.");
-          return;
-        }
-        if (!roofFeetPerPixel) {
-          roofSetInfo("Set scale first, then measure.");
-          return;
-        }
-        roofMode = "measure";
-        roofRedraw();
-        roofSetInfo("Measure mode: pick run type and click along each run.");
-      });
-    }
-
-    // Zoom buttons
-    if (roofZoomInBtn) {
-      roofZoomInBtn.addEventListener("click", () => {
-        roofZoom = Math.min(roofZoom + 0.25, 4);
-        roofApplyZoom();
-      });
-    }
-    if (roofZoomOutBtn) {
-      roofZoomOutBtn.addEventListener("click", () => {
-        roofZoom = Math.max(roofZoom - 0.25, 0.5);
-        roofApplyZoom();
-      });
-    }
-
-    // Clear & undo
-    if (roofClearBtn) {
-      roofClearBtn.addEventListener("click", () => {
+        roofDrawParams = { x: ox, y: oy, w, h };
         roofScalePoints = [];
         roofSegments = [];
         roofFeetPerPixel = null;
         roofMode = "none";
-        roofRedraw();
-        roofSetInfo("Cleared. Set scale again if needed.");
+        roofZoom = 1;
+        roofApplyZoom();
+        roofDrawBase();
+        roofSetInfo("Image loaded. Step 1: set scale.");
         roofUpdateTotals();
-      });
-    }
-    if (roofUndoBtn) {
-      roofUndoBtn.addEventListener("click", () => {
-        if (roofSegments.length > 0) {
-          roofSegments.pop();
-          roofRedraw();
-          roofUpdateTotals();
-        }
-      });
-    }
-
-    // Send to Estimate
-    if (roofSendToEstimateBtn) {
-      roofSendToEstimateBtn.addEventListener("click", () => {
-        if (!roofFeetPerPixel || roofSegments.length === 0) {
-          alert("Measure roof runs first.");
-          return;
-        }
-        const totals = { ridge: 0, eaves: 0, gable: 0 };
-        roofSegments.forEach((seg) => {
-          if (totals[seg.type] != null) totals[seg.type] += seg.feet || 0;
-        });
-        if (ridgeInput) ridgeInput.value = totals.ridge.toFixed(1);
-        if (eavesInput) eavesInput.value = totals.eaves.toFixed(1);
-        roofSetInfo(
-          `Sent to Estimate: ridge ${totals.ridge.toFixed(
-            1
-          )} ft, eaves ${totals.eaves.toFixed(1)} ft.`
-        );
-      });
-    }
-
-    // Canvas clicks
-    if (roofCanvas && roofCtx) {
-      let lastPoint = null;
-      roofCanvas.addEventListener("click", (evt) => {
-        if (!roofImage) return;
-        const pt = roofCanvasPoint(evt);
-
-        if (roofMode === "scale") {
-          roofScalePoints.push(pt);
-          if (roofScalePoints.length > 2) roofScalePoints = [pt];
-          if (roofScalePoints.length === 2) {
-            const pixels = roofPixelDist(roofScalePoints[0], roofScalePoints[1]);
-            const feet = parseFloat(roofScaleFeetInput.value) || 0;
-            if (feet > 0 && pixels > 0) {
-              roofFeetPerPixel = feet / pixels;
-              roofSetInfo(
-                `Scale set: ${feet.toFixed(1)} ft = ${pixels.toFixed(
-                  1
-                )} px.`
-              );
-            } else {
-              roofFeetPerPixel = null;
-              roofSetInfo("Enter a positive known distance and click again.");
-            }
-          }
-          roofRedraw();
-          roofUpdateTotals();
-        } else if (roofMode === "measure") {
-          if (!roofFeetPerPixel) {
-            roofSetInfo("Set scale first.");
-            return;
-          }
-          const type = roofRunTypeSelect ? roofRunTypeSelect.value : "ridge";
-          if (!lastPoint) {
-            lastPoint = pt;
-          } else {
-            const pixels = roofPixelDist(lastPoint, pt);
-            const feet = pixels * roofFeetPerPixel;
-            roofSegments.push({
-              from: lastPoint,
-              to: pt,
-              feet,
-              type,
-            });
-            lastPoint = pt;
-          }
-          roofRedraw();
-          roofUpdateTotals();
-        }
-      });
-      roofApplyZoom();
-    }
-
-     // -----------------------------
-    // Photo / Satellite mockup measurement
-    // -----------------------------
-    const mockupImageInput = document.getElementById("mockup-image-input");
-    const mockupSetScaleBtn = document.getElementById("mockup-set-scale");
-    const mockupMeasureBtn = document.getElementById("mockup-measure-mode");
-    const mockupUndoBtn = document.getElementById("mockup-undo");
-    const mockupClearBtn = document.getElementById("mockup-clear");
-    const mockupZoomInBtn = document.getElementById("mockup-zoom-in");
-    const mockupZoomOutBtn = document.getElementById("mockup-zoom-out");
-    const mockupColorModeSelect = document.getElementById("mockup-color-mode");
-    const mockupColor1Input = document.getElementById("mockup-color1");
-    const mockupColor2Input = document.getElementById("mockup-color2");
-    const mockupColor3Input = document.getElementById("mockup-color3");
-    const mockupBulbSpacingSelect = document.getElementById("mockup-bulb-spacing");
-    const mockupBulbSizeSelect = document.getElementById("mockup-bulb-size");
-    const mockupShowWireCheckbox = document.getElementById("mockup-show-wire");
-    const mockupCanvas = document.getElementById("mockup-canvas");
-    const mockupInfo = document.getElementById("mockup-info");
-    const mockupTotals = document.getElementById("mockup-totals");
-    const mockupCtx = mockupCanvas ? mockupCanvas.getContext("2d") : null;
-
-    let mockupImage = null;
-    let mockupMode = "none"; // "scale" or "measure"
-    let scalePoints = [];
-    let runSegments = []; // {from, to, feet, type}
-    let feetPerPixel = null;
-    let drawImageParams = null;
-    let mockupZoom = 1;
-    const MOCKUP_MIN_ZOOM = 0.5;
-    const MOCKUP_MAX_ZOOM = 4;
-
-    const typeColors = {
-      ridge: "red",
-      eaves: "blue",
-      gable: "green",
+      };
+      img.src = ev.target.result;
     };
+    reader.readAsDataURL(file);
+  });
+}
 
-    function mockupSetInfo(text) {
-      if (mockupInfo) {
-        mockupInfo.textContent = text;
-      }
+if (roofSetScaleBtn) {
+  roofSetScaleBtn.addEventListener("click", () => {
+    if (!roofImage) {
+      roofSetInfo("Upload an image first.");
+      return;
     }
+    roofMode = "scale";
+    roofScalePoints = [];
+    roofSegments = [];
+    roofFeetPerPixel = null;
+    roofRedraw();
+    roofSetInfo("Scale mode: click two points on a known distance.");
+    roofUpdateTotals();
+  });
+}
 
-    function applyMockupZoom() {
-      if (!mockupCanvas) return;
-      mockupCanvas.style.transform = `scale(${mockupZoom})`;
+if (roofMeasureBtn) {
+  roofMeasureBtn.addEventListener("click", () => {
+    if (!roofImage) {
+      roofSetInfo("Upload an image first.");
+      return;
     }
-
-    function drawMockupBase() {
-      if (!mockupCtx || !mockupCanvas) return;
-      mockupCtx.clearRect(0, 0, mockupCanvas.width, mockupCanvas.height);
-      if (mockupImage && drawImageParams) {
-        mockupCtx.drawImage(
-          mockupImage,
-          drawImageParams.x,
-          drawImageParams.y,
-          drawImageParams.w,
-          drawImageParams.h
-        );
-      }
+    if (!roofFeetPerPixel) {
+      roofSetInfo("Set scale first, then measure.");
+      return;
     }
+    roofMode = "measure";
+    roofRedraw();
+    roofSetInfo("Measure mode: pick run type and click along each run.");
+  });
+}
 
-    function pixelDistance(p1, p2) {
-      const dx = p1.x - p2.x;
-      const dy = p1.y - p2.y;
-      return Math.sqrt(dx * dx + dy * dy);
+if (roofZoomInBtn) {
+  roofZoomInBtn.addEventListener("click", () => {
+    roofZoom = Math.min(roofZoom + 0.25, 4);
+    roofApplyZoom();
+  });
+}
+if (roofZoomOutBtn) {
+  roofZoomOutBtn.addEventListener("click", () => {
+    roofZoom = Math.max(roofZoom - 0.25, 0.5);
+    roofApplyZoom();
+  });
+}
+
+if (roofClearBtn) {
+  roofClearBtn.addEventListener("click", () => {
+    roofScalePoints = [];
+    roofSegments = [];
+    roofFeetPerPixel = null;
+    roofMode = "none";
+    roofRedraw();
+    roofSetInfo("Cleared. Set scale again if needed.");
+    roofUpdateTotals();
+  });
+}
+if (roofUndoBtn) {
+  roofUndoBtn.addEventListener("click", () => {
+    if (roofSegments.length > 0) {
+      roofSegments.pop();
+      roofRedraw();
+      roofUpdateTotals();
     }
+  });
+}
 
-    function redrawMockup() {
-      if (!mockupCtx || !mockupCanvas) return;
-      drawMockupBase();
+if (roofSendToEstimateBtn) {
+  roofSendToEstimateBtn.addEventListener("click", () => {
+    if (!roofFeetPerPixel || roofSegments.length === 0) {
+      alert("Measure roof runs first.");
+      return;
+    }
+    const totals = { ridge: 0, eaves: 0, gable: 0 };
+    roofSegments.forEach((seg) => {
+      if (totals[seg.type] != null) totals[seg.type] += seg.feet || 0;
+    });
+    if (ridgeInput) ridgeInput.value = totals.ridge.toFixed(1);
+    if (eavesInput) eavesInput.value = totals.eaves.toFixed(1);
+    roofSetInfo(
+      `Sent to Estimate: ridge ${totals.ridge.toFixed(
+        1
+      )} ft, eaves ${totals.eaves.toFixed(1)} ft.`
+    );
+  });
+}
 
-      // draw scale line
-      if (scalePoints.length === 2) {
-        mockupCtx.strokeStyle = "#ffa500"; // orange
-        mockupCtx.lineWidth = 2;
-        mockupCtx.beginPath();
-        mockupCtx.moveTo(scalePoints[0].x, scalePoints[0].y);
-        mockupCtx.lineTo(scalePoints[1].x, scalePoints[1].y);
-        mockupCtx.stroke();
-      }
+if (roofCanvas && roofCtx) {
+  let lastPoint = null;
+  roofCanvas.addEventListener("click", (evt) => {
+    if (!roofImage) return;
+    const pt = roofCanvasPoint(evt);
 
-      // draw measured runs – teardrop bulbs with color patterns
-      runSegments.forEach((seg) => {
-        const dx = seg.to.x - seg.from.x;
-        const dy = seg.to.y - seg.from.y;
-        const lengthPx = Math.sqrt(dx * dx + dy * dy);
-        const angle = Math.atan2(dy, dx);
-      // keep Proposal tab's mockup snapshot in sync
-      updateProposalMockupSnapshot();
-
-
-        // Show or hide the wire under bulbs
-        if (!mockupShowWireCheckbox || mockupShowWireCheckbox.checked) {
-          mockupCtx.beginPath();
-          mockupCtx.strokeStyle = "#555";
-          mockupCtx.lineWidth = 1;
-          mockupCtx.moveTo(seg.from.x, seg.from.y);
-          mockupCtx.lineTo(seg.to.x, seg.to.y);
-          mockupCtx.stroke();
-        }
-
-        // Spacing: 12" / 15"
-        let spacingInches = 12;
-        if (mockupBulbSpacingSelect) {
-          const val = parseFloat(mockupBulbSpacingSelect.value);
-          if (!Number.isNaN(val) && val > 0) spacingInches = val;
-        }
-        let spacingPx;
-        if (feetPerPixel) {
-          const spacingFt = spacingInches / 12;
-          spacingPx = spacingFt / feetPerPixel;
+    if (roofMode === "scale") {
+      roofScalePoints.push(pt);
+      if (roofScalePoints.length > 2) roofScalePoints = [pt];
+      if (roofScalePoints.length === 2) {
+        const pixels = roofPixelDist(roofScalePoints[0], roofScalePoints[1]);
+        const feet = parseFloat(roofScaleFeetInput.value) || 0;
+        if (feet > 0 && pixels > 0) {
+          roofFeetPerPixel = feet / pixels;
+          roofSetInfo(
+            `Scale set: ${feet.toFixed(1)} ft = ${pixels.toFixed(1)} px.`
+          );
         } else {
-          spacingPx = 22; // visual default
+          roofFeetPerPixel = null;
+          roofSetInfo("Enter a positive known distance and click again.");
         }
-        spacingPx = Math.min(Math.max(spacingPx, 8), 50);
-
-        // Bulb size small/medium/large
-        let baseSize = 3.0;
-        if (mockupBulbSizeSelect) {
-          const sizeVal = mockupBulbSizeSelect.value;
-          if (sizeVal === "small") baseSize = 2.2;
-          else if (sizeVal === "large") baseSize = 4.0;
-        }
-        const bulbHeight = baseSize * 2.4;
-        const glowRadius = bulbHeight * 0.9;
-
-        // Color pattern: single / two / three
-        const mode = mockupColorModeSelect
-          ? mockupColorModeSelect.value
-          : "single";
-        const c1 =
-          (mockupColor1Input && mockupColor1Input.value) || "#ffffff";
-        const c2 =
-          (mockupColor2Input && mockupColor2Input.value) || "#ff0000";
-        const c3 =
-          (mockupColor3Input && mockupColor3Input.value) || "#00ff00";
-
-        const count = Math.max(1, Math.round(lengthPx / spacingPx));
-        for (let i = 0; i <= count; i++) {
-          const t = count === 0 ? 0 : i / count;
-          const x = seg.from.x + dx * t;
-          const y = seg.from.y + dy * t;
-
-          let color = c1;
-          if (mode === "two") {
-            color = i % 2 === 0 ? c1 : c2;
-          } else if (mode === "three") {
-            const idx = i % 3;
-            color = idx === 0 ? c1 : idx === 1 ? c2 : c3;
-          }
-
-          mockupCtx.save();
-          mockupCtx.translate(x, y);
-          mockupCtx.rotate(angle);
-
-          // soft glow
-          mockupCtx.beginPath();
-          mockupCtx.globalAlpha = 0.22;
-          mockupCtx.fillStyle = color;
-          mockupCtx.arc(0, 0, glowRadius, 0, Math.PI * 2);
-          mockupCtx.fill();
-          mockupCtx.globalAlpha = 1;
-
-          // teardrop bulb
-          mockupCtx.beginPath();
-          mockupCtx.moveTo(0, -bulbHeight / 2); // tip
-          mockupCtx.quadraticCurveTo(
-            baseSize,
-            0,
-            0,
-            bulbHeight / 2
-          );
-          mockupCtx.quadraticCurveTo(
-            -baseSize,
-            0,
-            0,
-            -bulbHeight / 2
-          );
-          mockupCtx.closePath();
-          mockupCtx.fillStyle = color;
-          mockupCtx.strokeStyle = "#f5f5f5";
-          mockupCtx.lineWidth = 0.8;
-          mockupCtx.fill();
-          mockupCtx.stroke();
-
-          // small socket
-          mockupCtx.fillStyle = "#444";
-          mockupCtx.fillRect(
-            -baseSize * 0.6,
-            bulbHeight / 2,
-            baseSize * 1.2,
-            baseSize * 0.6
-          );
-
-          mockupCtx.restore();
-        }
-      });
-
-
-
-    }
-
-         function updateMockupTotals() {
-   if (!mockupTotals) return;
-   if (!mockupImage) {
-     mockupTotals.innerHTML = "";
-     return;
-   }
-
-   mockupTotals.innerHTML = `
-     <p>
-       This mockup is for <strong>customer visualization only</strong>.
-       Lengths here are <strong>not</strong> used for pricing.  
-       Use the <strong>Roof Measure</strong> tab for accurate ridge / eave footage.
-     </p>
-   `;
- }
-
-    
-
-      let html = "";
-      if (feetPerPixel) {
-        html += `<p>Scale: 1 pixel ≈ ${feetPerPixel.toFixed(4)} ft</p>`;
-      } else {
-        html += "<p>No scale set yet.</p>";
       }
-
-      if (runSegments.length === 0) {
-        html += "<p>No measured runs yet.</p>";
-        mockupTotals.innerHTML = html;
+      roofRedraw();
+      roofUpdateTotals();
+    } else if (roofMode === "measure") {
+      if (!roofFeetPerPixel) {
+        roofSetInfo("Set scale first.");
         return;
       }
-
-      const totalsByType = {
-        ridge: 0,
-        eaves: 0,
-        gable: 0,
-      };
-
-      runSegments.forEach((seg) => {
-        if (totalsByType[seg.type] != null) {
-          totalsByType[seg.type] += seg.feet;
-        }
-      });
-
-      let grandTotal = 0;
-      grandTotal += totalsByType.ridge;
-      grandTotal += totalsByType.eaves;
-      grandTotal += totalsByType.gable;
-
-      html += "<ul>";
-      if (totalsByType.ridge > 0) {
-        html += `<li><strong>Ridge / hip / shingle:</strong> ${totalsByType.ridge.toFixed(
-          1
-        )} ft</li>`;
+      const type = roofRunTypeSelect ? roofRunTypeSelect.value : "ridge";
+      if (!lastPoint) {
+        lastPoint = pt;
+      } else {
+        const pixels = roofPixelDist(lastPoint, pt);
+        const feet = pixels * roofFeetPerPixel;
+        roofSegments.push({
+          from: lastPoint,
+          to: pt,
+          feet,
+          type,
+        });
+        lastPoint = pt;
       }
-      if (totalsByType.eaves > 0) {
-        html += `<li><strong>Eaves / gutters:</strong> ${totalsByType.eaves.toFixed(
-          1
-        )} ft</li>`;
-      }
-      if (totalsByType.gable > 0) {
-        html += `<li><strong>Gable returns / other:</strong> ${totalsByType.gable.toFixed(
-          1
-        )} ft</li>`;
-      }
-      html += "</ul>";
-      html += `<p><strong>Total measured length (all types):</strong> ${grandTotal.toFixed(
-        1
-      )} ft</p>`;
+      roofRedraw();
+      roofUpdateTotals();
+    }
+  });
+  roofApplyZoom();
+}
 
-      mockupTotals.innerHTML = html;
+// -----------------------------
+// Photo Mockup (visual only)
+// -----------------------------
+const mockupImageInput = document.getElementById("mockup-image-input");
+const mockupSetScaleBtn = document.getElementById("mockup-set-scale");
+const mockupMeasureBtn = document.getElementById("mockup-measure-mode");
+const mockupUndoBtn = document.getElementById("mockup-undo");
+const mockupClearBtn = document.getElementById("mockup-clear");
+const mockupZoomInBtn = document.getElementById("mockup-zoom-in");
+const mockupZoomOutBtn = document.getElementById("mockup-zoom-out");
+const mockupRunTypeSelect = document.getElementById("mockup-run-type");
+const mockupColorModeSelect = document.getElementById("mockup-color-mode");
+const mockupColor1Input = document.getElementById("mockup-color1");
+const mockupColor2Input = document.getElementById("mockup-color2");
+const mockupColor3Input = document.getElementById("mockup-color3");
+const mockupBulbSpacingSelect = document.getElementById("mockup-bulb-spacing");
+const mockupBulbSizeSelect = document.getElementById("mockup-bulb-size");
+const mockupShowWireCheckbox = document.getElementById("mockup-show-wire");
+const mockupCanvas = document.getElementById("mockup-canvas");
+const mockupInfo = document.getElementById("mockup-info");
+const mockupTotals = document.getElementById("mockup-totals");
+const mockupCtx = mockupCanvas ? mockupCanvas.getContext("2d") : null;
+
+let mockupImage = null;
+let mockupMode = "measure";
+let mockupSegments = [];
+let mockupDrawParams = null;
+let mockupZoom = 1;
+const MOCKUP_MIN_ZOOM = 0.5;
+const MOCKUP_MAX_ZOOM = 4;
+
+function mockupSetInfo(text) {
+  if (mockupInfo) {
+    mockupInfo.textContent = text;
+  }
+}
+
+function applyMockupZoom() {
+  if (!mockupCanvas) return;
+  mockupCanvas.style.transform = `scale(${mockupZoom})`;
+}
+
+function drawMockupBase() {
+  if (!mockupCtx || !mockupCanvas) return;
+  mockupCtx.clearRect(0, 0, mockupCanvas.width, mockupCanvas.height);
+  if (mockupImage && mockupDrawParams) {
+    mockupCtx.drawImage(
+      mockupImage,
+      mockupDrawParams.x,
+      mockupDrawParams.y,
+      mockupDrawParams.w,
+      mockupDrawParams.h
+    );
+  }
+}
+
+function redrawMockup() {
+  if (!mockupCtx || !mockupCanvas) return;
+  drawMockupBase();
+
+  mockupSegments.forEach((seg) => {
+    const dx = seg.to.x - seg.from.x;
+    const dy = seg.to.y - seg.from.y;
+    const lengthPx = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx);
+
+    if (!mockupShowWireCheckbox || mockupShowWireCheckbox.checked) {
+      mockupCtx.beginPath();
+      mockupCtx.strokeStyle = "#555";
+      mockupCtx.lineWidth = 1;
+      mockupCtx.moveTo(seg.from.x, seg.from.y);
+      mockupCtx.lineTo(seg.to.x, seg.to.y);
+      mockupCtx.stroke();
     }
 
-    function getCanvasPointFromEvent(event) {
-      const rect = mockupCanvas.getBoundingClientRect();
-      const xScreen = event.clientX - rect.left;
-      const yScreen = event.clientY - rect.top;
-      const x = xScreen / mockupZoom;
-      const y = yScreen / mockupZoom;
-      return { x, y };
-    }
-
-    // Image loading
-    if (mockupImageInput && mockupCtx && mockupCanvas) {
-      mockupImageInput.addEventListener("change", (event) => {
-        const file = event.target.files && event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            mockupImage = img;
-            const canvasWidth = mockupCanvas.width;
-            const canvasHeight = mockupCanvas.height;
-            const imgAspect = img.width / img.height;
-            const canvasAspect = canvasWidth / canvasHeight;
-            let drawWidth, drawHeight, offsetX, offsetY;
-            if (imgAspect > canvasAspect) {
-              drawWidth = canvasWidth;
-              drawHeight = canvasWidth / imgAspect;
-              offsetX = 0;
-              offsetY = (canvasHeight - drawHeight) / 2;
-            } else {
-              drawHeight = canvasHeight;
-              drawWidth = canvasHeight * imgAspect;
-              offsetX = (canvasWidth - drawWidth) / 2;
-              offsetY = 0;
-            }
-            drawImageParams = {
-              x: offsetX,
-              y: offsetY,
-              w: drawWidth,
-              h: drawHeight,
-            };
-
-                        scalePoints = [];
-            runSegments = [];
-            feetPerPixel = null;   // not used for pricing anymore
-            mockupMode = "measure";
-            mockupZoom = 1;
-            applyMockupZoom();
-
-            redrawMockup();        // draw image + any runs
-
-            mockupSetInfo(
-              "Image loaded. Step 1: click 'Set scale' and draw a line of known length."
-            );
-            updateMockupTotals();
-          };
-          img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-
-    // Set scale mode
-        if (mockupSetScaleBtn) {
-      mockupSetScaleBtn.addEventListener("click", () => {
-        if (!mockupImage) {
-          mockupSetInfo("Upload an image first.");
-          return;
-        }
-        // Clear runs and stay in drawing mode
-        mockupMode = "measure";
-        scalePoints = [];
-        runSegments = [];
-        feetPerPixel = null;
-        redrawMockup();
-        mockupSetInfo(
-          "Cleared lines. Click along roof/eave lines to draw lights. Visual only – not to scale."
-        );
-        updateMockupTotals();
-      });
-    }
-
-
-    // Measure mode
-        if (mockupMeasureBtn) {
-      mockupMeasureBtn.addEventListener("click", () => {
-        if (!mockupImage) {
-          mockupSetInfo("Upload an image first.");
-          return;
-        }
-        mockupMode = "measure";
-        redrawMockup();
-        mockupSetInfo(
-          "Drawing mode: choose run type, then click along each run to place bulbs. For customer view only."
-        );
-        updateMockupTotals();
-      });
-    }
-
-
-    // Zoom buttons
-    if (mockupZoomInBtn) {
-      mockupZoomInBtn.addEventListener("click", () => {
-        mockupZoom = Math.min(mockupZoom + 0.25, MOCKUP_MAX_ZOOM);
-        applyMockupZoom();
-      });
-    }
-    if (mockupZoomOutBtn) {
-      mockupZoomOutBtn.addEventListener("click", () => {
-        mockupZoom = Math.max(mockupZoom - 0.25, MOCKUP_MIN_ZOOM);
-        applyMockupZoom();
-      });
-    }
-
-    // Clear all lines
-    if (mockupClearBtn) {
-      mockupClearBtn.addEventListener("click", () => {
-        if (!mockupImage) {
-          scalePoints = [];
-          runSegments = [];
-          feetPerPixel = null;
-          drawMockupBase();
-          mockupSetInfo("No image loaded.");
-          updateMockupTotals();
-          return;
-        }
-        scalePoints = [];
-        runSegments = [];
-        feetPerPixel = null;
-        mockupMode = "none";
-        redrawMockup();
-        mockupSetInfo("Cleared lines. Set scale again if needed.");
-        updateMockupTotals();
-      });
-    }
-
-    // Undo last segment
-    if (mockupUndoBtn) {
-      mockupUndoBtn.addEventListener("click", () => {
-        if (runSegments.length > 0) {
-          runSegments.pop();
-          redrawMockup();
-          updateMockupTotals();
-        }
-      });
-    }
-    
-
-     // Re-draw when colors / pattern / spacing / size change
-    if (mockupColorModeSelect) {
-      mockupColorModeSelect.addEventListener("change", redrawMockup);
-    }
-    if (mockupColor1Input) {
-      mockupColor1Input.addEventListener("change", redrawMockup);
-    }
-    if (mockupColor2Input) {
-      mockupColor2Input.addEventListener("change", redrawMockup);
-    }
-    if (mockupColor3Input) {
-      mockupColor3Input.addEventListener("change", redrawMockup);
-    }
+    let spacingPx = 22;
     if (mockupBulbSpacingSelect) {
-      mockupBulbSpacingSelect.addEventListener("change", redrawMockup);
+      const val = mockupBulbSpacingSelect.value;
+      spacingPx = val === "15" ? 26 : 22;
     }
+
+    let baseSize = 3.0;
     if (mockupBulbSizeSelect) {
-      mockupBulbSizeSelect.addEventListener("change", redrawMockup);
+      const sizeVal = mockupBulbSizeSelect.value;
+      if (sizeVal === "small") baseSize = 2.2;
+      else if (sizeVal === "large") baseSize = 4.0;
     }
-    if (mockupShowWireCheckbox) {
-      mockupShowWireCheckbox.addEventListener("change", redrawMockup);
+    const bulbHeight = baseSize * 2.4;
+    const glowRadius = bulbHeight * 0.9;
+
+    const mode = mockupColorModeSelect
+      ? mockupColorModeSelect.value
+      : "single";
+    const c1 =
+      (mockupColor1Input && mockupColor1Input.value) || "#ffffff";
+    const c2 =
+      (mockupColor2Input && mockupColor2Input.value) || "#ff0000";
+    const c3 =
+      (mockupColor3Input && mockupColor3Input.value) || "#00ff00";
+
+    const count = Math.max(1, Math.round(lengthPx / spacingPx));
+    for (let i = 0; i <= count; i++) {
+      const t = count === 0 ? 0 : i / count;
+      const x = seg.from.x + dx * t;
+      const y = seg.from.y + dy * t;
+
+      let color = c1;
+      if (mode === "two") {
+        color = i % 2 === 0 ? c1 : c2;
+      } else if (mode === "three") {
+        const idx = i % 3;
+        color = idx === 0 ? c1 : idx === 1 ? c2 : c3;
+      }
+
+      mockupCtx.save();
+      mockupCtx.translate(x, y);
+      mockupCtx.rotate(angle);
+
+      mockupCtx.beginPath();
+      mockupCtx.globalAlpha = 0.22;
+      mockupCtx.fillStyle = color;
+      mockupCtx.arc(0, 0, glowRadius, 0, Math.PI * 2);
+      mockupCtx.fill();
+      mockupCtx.globalAlpha = 1;
+
+      mockupCtx.beginPath();
+      mockupCtx.moveTo(0, -bulbHeight / 2);
+      mockupCtx.quadraticCurveTo(
+        baseSize,
+        0,
+        0,
+        bulbHeight / 2
+      );
+      mockupCtx.quadraticCurveTo(
+        -baseSize,
+        0,
+        0,
+        -bulbHeight / 2
+      );
+      mockupCtx.closePath();
+      mockupCtx.fillStyle = color;
+      mockupCtx.strokeStyle = "#f5f5f5";
+      mockupCtx.lineWidth = 0.8;
+      mockupCtx.fill();
+      mockupCtx.stroke();
+
+      mockupCtx.fillStyle = "#444";
+      mockupCtx.fillRect(
+        -baseSize * 0.6,
+        bulbHeight / 2,
+        baseSize * 1.2,
+        baseSize * 0.6
+      );
+
+      mockupCtx.restore();
     }
+  });
 
+  updateMockupTotals();
+}
 
-    
-    // Canvas click handling (scale + measure)
-       if (mockupCanvas && mockupCtx) {
-      let lastMeasurePoint = null;
+function updateMockupTotals() {
+  if (!mockupTotals) return;
+  if (!mockupImage) {
+    mockupTotals.innerHTML = "";
+    return;
+  }
 
-      mockupCanvas.addEventListener("click", (event) => {
-        if (!mockupImage) return;
+  mockupTotals.innerHTML = `
+    <p>
+      This mockup is for <strong>customer visualization only</strong>.
+      Lengths here are <strong>not</strong> used for pricing.  
+      Use the <strong>Roof Measure</strong> tab for accurate ridge / eave footage.
+    </p>
+  `;
+}
 
-        const point = getCanvasPointFromEvent(event);
+if (mockupImageInput && mockupCtx && mockupCanvas) {
+  mockupImageInput.addEventListener("change", (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
 
-        if (mockupMode === "measure") {
-          const runType = mockupRunTypeSelect
-            ? mockupRunTypeSelect.value
-            : "ridge";
-
-          if (!lastMeasurePoint) {
-            lastMeasurePoint = point;
-          } else {
-            const pixels = pixelDistance(lastMeasurePoint, point);
-            const feet = feetPerPixel ? pixels * feetPerPixel : 0; // not used for pricing
-
-            runSegments.push({
-              from: lastMeasurePoint,
-              to: point,
-              feet,
-              type: runType,
-            });
-
-            lastMeasurePoint = point;
-          }
-
-          redrawMockup();
-          updateMockupTotals();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        mockupImage = img;
+        const canvasWidth = mockupCanvas.width;
+        const canvasHeight = mockupCanvas.height;
+        const imgAspect = img.width / img.height;
+        const canvasAspect = canvasWidth / canvasHeight;
+        let drawWidth, drawHeight, offsetX, offsetY;
+        if (imgAspect > canvasAspect) {
+          drawWidth = canvasWidth;
+          drawHeight = canvasWidth / imgAspect;
+          offsetX = 0;
+          offsetY = (canvasHeight - drawHeight) / 2;
+        } else {
+          drawHeight = canvasHeight;
+          drawWidth = canvasHeight * imgAspect;
+          offsetX = (canvasWidth - drawWidth) / 2;
+          offsetY = 0;
         }
-      });
+        mockupDrawParams = {
+          x: offsetX,
+          y: offsetY,
+          w: drawWidth,
+          h: drawHeight,
+        };
+
+        mockupSegments = [];
+        mockupMode = "measure";
+        mockupZoom = 1;
+        applyMockupZoom();
+
+        redrawMockup();
+        mockupSetInfo(
+          "Image loaded. Click along roof/eave lines to place bulbs. Visual only – not to scale."
+        );
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+if (mockupSetScaleBtn) {
+  mockupSetScaleBtn.addEventListener("click", () => {
+    if (!mockupImage) {
+      mockupSetInfo("Upload an image first.");
+      return;
     }
+    mockupMode = "measure";
+    mockupSegments = [];
+    redrawMockup();
+    mockupSetInfo(
+      "Cleared lines. Click along roof/eave lines to draw bulbs. Visual only – not to scale."
+    );
+  });
+}
 
+if (mockupMeasureBtn) {
+  mockupMeasureBtn.addEventListener("click", () => {
+    if (!mockupImage) {
+      mockupSetInfo("Upload an image first.");
+      return;
+    }
+    mockupMode = "measure";
+    redrawMockup();
+    mockupSetInfo(
+      "Drawing mode: choose run type, then click along each run to place bulbs. For customer view only."
+    );
+  });
+}
 
-    // Apply initial zoom
+if (mockupZoomInBtn) {
+  mockupZoomInBtn.addEventListener("click", () => {
+    mockupZoom = Math.min(mockupZoom + 0.25, MOCKUP_MAX_ZOOM);
     applyMockupZoom();
+  });
+}
+if (mockupZoomOutBtn) {
+  mockupZoomOutBtn.addEventListener("click", () => {
+    mockupZoom = Math.max(mockupZoom - 0.25, MOCKUP_MIN_ZOOM);
+    applyMockupZoom();
+  });
+}
 
-  </script>
+if (mockupClearBtn) {
+  mockupClearBtn.addEventListener("click", () => {
+    if (!mockupImage) {
+      mockupSegments = [];
+      drawMockupBase();
+      mockupSetInfo("No image loaded.");
+      mockupTotals.innerHTML = "";
+      return;
+    }
+    mockupSegments = [];
+    mockupMode = "measure";
+    redrawMockup();
+    mockupSetInfo("Cleared lines. Set colors and draw again.");
+  });
+}
 
+if (mockupUndoBtn) {
+  mockupUndoBtn.addEventListener("click", () => {
+    if (mockupSegments.length > 0) {
+      mockupSegments.pop();
+      redrawMockup();
+    }
+  });
+}
 
-  
+if (mockupColorModeSelect) {
+  mockupColorModeSelect.addEventListener("change", redrawMockup);
+}
+if (mockupColor1Input) {
+  mockupColor1Input.addEventListener("change", redrawMockup);
+}
+if (mockupColor2Input) {
+  mockupColor2Input.addEventListener("change", redrawMockup);
+}
+if (mockupColor3Input) {
+  mockupColor3Input.addEventListener("change", redrawMockup);
+}
+if (mockupBulbSpacingSelect) {
+  mockupBulbSpacingSelect.addEventListener("change", redrawMockup);
+}
+if (mockupBulbSizeSelect) {
+  mockupBulbSizeSelect.addEventListener("change", redrawMockup);
+}
+if (mockupShowWireCheckbox) {
+  mockupShowWireCheckbox.addEventListener("change", redrawMockup);
+}
+
+if (mockupCanvas && mockupCtx) {
+  let lastPoint = null;
+
+  mockupCanvas.addEventListener("click", (event) => {
+    if (!mockupImage) return;
+
+    const rect = mockupCanvas.getBoundingClientRect();
+    const pt = {
+      x: (event.clientX - rect.left) / mockupZoom,
+      y: (event.clientY - rect.top) / mockupZoom,
+    };
+
+    if (mockupMode === "measure") {
+      const runType = mockupRunTypeSelect
+        ? mockupRunTypeSelect.value
+        : "ridge";
+
+      if (!lastPoint) {
+        lastPoint = pt;
+      } else {
+        mockupSegments.push({
+          from: lastPoint,
+          to: pt,
+          type: runType,
+        });
+        lastPoint = pt;
+      }
+
+      redrawMockup();
+    }
+  });
+
+  applyMockupZoom();
+}
+
+// -----------------------------
+// Proposal (simple, no mockup image yet)
+// -----------------------------
+const proposalContent = document.getElementById("proposal-content");
+const refreshProposalButton = document.getElementById("refresh-proposal");
+
+function renderProposal() {
+  if (!proposalContent) return;
+  const est = loadLastEstimate();
+
+  if (!est) {
+    proposalContent.innerHTML =
+      '<em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate Estimate" first.</em>';
+    return;
+  }
+
+  const client = est.client || getCurrentClient();
+  const dateStr = est.timestamp
+    ? new Date(est.timestamp).toLocaleDateString()
+    : "";
+
+  let clientHtml = "";
+  if (client) {
+    clientHtml = `
+      <div class="proposal-header">
+        <strong>${client.name || ""}</strong><br />
+        ${client.address ? client.address + "<br />" : ""}
+        ${client.phone ? "Phone: " + client.phone + "<br />" : ""}
+        ${client.email ? "Email: " + client.email + "<br />" : ""}
+        ${client.preferred ? "Preferred install: " + client.preferred + "<br />" : ""}
+      </div>
+    `;
+  } else {
+    clientHtml = "<p><em>No client selected.</em></p>";
+  }
+
+  proposalContent.innerHTML = `
+    <div class="proposal-card-inner">
+      <p><strong>Proposal date:</strong> ${dateStr}</p>
+      ${clientHtml}
+      <h3>Christmas Light Installation & Takedown</h3>
+      <p><strong>Total feet:</strong> ${est.totalFeet.toFixed(0)} ft (ridge, hip, eaves)</p>
+      <ul>
+        <li>Install: $${est.installSubtotal.toFixed(2)} (@ $${est.rate.toFixed(2)}/ft)</li>
+        <li>Takedown: $${est.takedownSubtotal.toFixed(2)} (@ $${est.takedownRate.toFixed(2)}/ft)</li>
+      </ul>
+      <div class="proposal-totals">
+        <p>Subtotal (install + takedown): $${est.customerSubtotal.toFixed(2)}</p>
+        <p>Sales tax (${est.taxRatePercent.toFixed(2)}%): $${est.taxAmount.toFixed(2)}</p>
+        <p><strong>Total investment: $${est.customerTotalWithTax.toFixed(2)}</strong></p>
+      </div>
+      <p style="font-size:0.85rem;margin-top:1rem;">
+        This proposal includes professional installation, season-long use, and scheduled takedown of lights.
+      </p>
+    </div>
+  `;
+}
+
+if (refreshProposalButton) {
+  refreshProposalButton.addEventListener("click", renderProposal);
+}
+
+renderProposal();
+</script>
+
 
 
 </body>
