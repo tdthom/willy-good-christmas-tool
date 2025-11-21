@@ -1410,21 +1410,21 @@
 
     }
 
-        function updateMockupTotals() {
-      if (!mockupTotals) return;
-      if (!mockupImage) {
-        mockupTotals.innerHTML = "";
-        return;
-      }
+         function updateMockupTotals() {
+   if (!mockupTotals) return;
+   if (!mockupImage) {
+     mockupTotals.innerHTML = "";
+     return;
+   }
 
-      mockupTotals.innerHTML = `
-        <p>
-          This mockup is for <strong>customer visualization only</strong>.
-          Lengths here are not used for pricing.  
-          Use the <strong>Roof Measure</strong> tab for accurate ridge / eave footage.
-        </p>
-      `;
-    }
+   mockupTotals.innerHTML = `
+     <p>
+       This mockup is for <strong>customer visualization only</strong>.
+       Lengths here are <strong>not</strong> used for pricing.  
+       Use the <strong>Roof Measure</strong> tab for accurate ridge / eave footage.
+     </p>
+   `;
+ }
 
     
 
