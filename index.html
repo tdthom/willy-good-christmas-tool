@@ -65,8 +65,6 @@
 
   </style>
      
-
-
 </head>
 <body>
    <header>
@@ -81,16 +79,16 @@
 
 
   <nav>
-    <button data-screen="clients" class="active">Clients</button>
-    <button data-screen="estimate">Estimate</button>
-    <button data-screen="roof">Roof Measure</button>
-    <button data-screen="mockup">Photo Mockup</button>
-    <button data-screen="proposal">Proposal</button>
-    <button id="print-current" style="margin-left:auto;">
-     Print / Save this screen
-    </button>
+  <button data-screen="clients" class="active">Clients</button>
+  <button data-screen="estimate">Estimate</button>
+  <button data-screen="roof">Roof Measure</button>
+  <button data-screen="mockup">Photo Mockup</button>
+  <button data-screen="proposal">Proposal</button>
 
-  </nav>
+  <button id="print-current" style="margin-left:auto;">
+    Print / Save this screen
+  </button>
+</nav>
 
     <!-- Screen 1: Clients -->
   <section id="screen-clients" class="screen active">
@@ -373,6 +371,20 @@
           <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
             <img src="logo.png" alt="Company logo" class="company-logo" />
             <div>
+              
+      <div id="proposal-mockup-wrapper" style="margin-top:16px; display:none;">
+      <h3>Visual mockup</h3>
+      <img
+        id="proposal-mockup-image"
+        src=""
+        alt="Christmas lights mockup"
+        style="max-width:100%; border:1px solid #ccc;"
+      />
+      <p style="font-size:0.8rem; margin-top:4px;">
+        Mockup is for visual reference only; final installation may vary slightly based on field conditions.
+      </p>
+    </div>
+
               <h3 style="margin:0;">Willy Good Christmas Lights</h3>
               <p style="margin:0; font-size:0.8rem;">Phone: 806.215.7047 • william@willygoodcleaning.com</p>
             </div>
@@ -399,6 +411,12 @@
 // Navigation: tabs
 const navButtons = document.querySelectorAll("nav button[data-screen]");
 const screens = document.querySelectorAll(".screen");
+const printButton = document.getElementById("print-current");
+if (printButton) {
+  printButton.addEventListener("click", () => {
+    window.print(); // In the dialog, choose "Save as PDF"
+  });
+}
 
 navButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -693,32 +711,51 @@ const taxRateInput = document.getElementById("tax-rate");
 const containerInput = document.getElementById("container-cost");
 const calcButton = document.getElementById("calc-estimate");
 const resultBox = document.getElementById("estimate-result");
+const equipRateInput = document.getElementById("equip-rate");
+const equipModeSelect = document.getElementById("equip-mode");
+
 
 if (calcButton) {
   calcButton.addEventListener("click", () => {
     const ridge = parseFloat(ridgeInput.value) || 0;
     const hip = parseFloat(hipInput.value) || 0;
     const eaves = parseFloat(eavesInput.value) || 0;
-    const rate = parseFloat(rateInput.value) || 0;
-    const takedownRate = parseFloat(takedownRateInput.value) || 0;
+    const totalFeet = ridge + hip + eaves;
+
+    const rate = parseFloat(rateInput.value) || 0;           // labor install
+    const takedownRate = parseFloat(takedownRateInput.value) || 0; // labor takedown
     const taxRatePercent = parseFloat(taxRateInput.value) || 0;
     const container = parseFloat(containerInput.value) || 0;
 
-    const totalFeet = ridge + hip + eaves;
+    const equipRate = equipRateInput ? parseFloat(equipRateInput.value) || 0 : 0;
+    const equipMode = equipModeSelect ? equipModeSelect.value : "equip-only";
 
-    const ridgePrice = ridge * rate;
-    const hipPrice = hip * rate;
-    const eavesPrice = eaves * rate;
-    const installSubtotal = ridgePrice + hipPrice + eavesPrice;
+    // Labor – install
+    const ridgeInstall = ridge * rate;
+    const hipInstall = hip * rate;
+    const eavesInstall = eaves * rate;
+    const installSubtotal = ridgeInstall + hipInstall + eavesInstall;
 
+    // Labor – takedown
     const takedownSubtotal = totalFeet * takedownRate;
 
-    const customerSubtotal = installSubtotal + takedownSubtotal;
+    // Equipment (taxable)
+    const equipSubtotal = totalFeet * equipRate;
 
+    // Labor subtotal (not taxed)
+    const laborSubtotal = installSubtotal + takedownSubtotal;
+
+    // Customer subtotal before tax
+    const customerSubtotal = laborSubtotal + equipSubtotal;
+
+    // Tax on equipment only
     const taxRate = taxRatePercent / 100;
-    const taxAmount = customerSubtotal * taxRate;
+    const taxableBase = equipSubtotal;
+    const taxAmount = taxableBase * taxRate;
+
     const customerTotalWithTax = customerSubtotal + taxAmount;
 
+    // Internal total including container, for your eyes only
     const internalTotal = customerSubtotal + container;
 
     const currentClient = getCurrentClient();
@@ -730,12 +767,19 @@ if (calcButton) {
       eaves,
       rate,
       takedownRate,
+      equipRate,
+      equipMode,
       taxRatePercent,
       installSubtotal,
       takedownSubtotal,
+      equipSubtotal,
+      laborSubtotal,
       customerSubtotal,
+      taxableBase,
       taxAmount,
       customerTotalWithTax,
+      container,
+      internalTotal,
       client: currentClient
         ? {
             name: currentClient.name,
@@ -750,21 +794,26 @@ if (calcButton) {
 
     resultBox.innerHTML = `
       <p><strong>Total feet:</strong> ${totalFeet.toFixed(0)} ft</p>
-      <p><strong>Main ridge:</strong> ${ridge.toFixed(0)} ft → $${ridgePrice.toFixed(2)}</p>
-      <p><strong>Hip ridge:</strong> ${hip.toFixed(0)} ft → $${hipPrice.toFixed(2)}</p>
-      <p><strong>Eaves / gutters:</strong> ${eaves.toFixed(0)} ft → $${eavesPrice.toFixed(2)}</p>
+      <p><strong>Main ridge:</strong> ${ridge.toFixed(0)} ft → $${ridgeInstall.toFixed(2)}</p>
+      <p><strong>Hip ridge:</strong> ${hip.toFixed(0)} ft → $${hipInstall.toFixed(2)}</p>
+      <p><strong>Eaves / gutters:</strong> ${eaves.toFixed(0)} ft → $${eavesInstall.toFixed(2)}</p>
       <hr />
-      <p><strong>Install subtotal:</strong> $${installSubtotal.toFixed(2)}</p>
-      <p><strong>Takedown subtotal:</strong> $${takedownSubtotal.toFixed(2)}</p>
-      <p><strong>Customer subtotal (install + takedown, before tax):</strong> $${customerSubtotal.toFixed(2)}</p>
-      <p><strong>Sales tax (${taxRatePercent.toFixed(2)}%):</strong> $${taxAmount.toFixed(2)}</p>
+      <p><strong>Install labor subtotal:</strong> $${installSubtotal.toFixed(2)}</p>
+      <p><strong>Takedown labor subtotal:</strong> $${takedownSubtotal.toFixed(2)}</p>
+      <p><strong>Labor subtotal (install + takedown, not taxed):</strong> $${laborSubtotal.toFixed(2)}</p>
+      <p><strong>Equipment subtotal (taxable):</strong> $${equipSubtotal.toFixed(2)}</p>
+      <p><strong>Subtotal before tax:</strong> $${customerSubtotal.toFixed(2)}</p>
+      <p><strong>Sales tax on equipment only (${taxRatePercent.toFixed(
+        2
+      )}%):</strong> $${taxAmount.toFixed(2)}</p>
       <p><strong>Customer total (with tax):</strong> $${customerTotalWithTax.toFixed(2)}</p>
       <br />
       <p><strong>Internal container cost (not shown on proposal):</strong> $${container.toFixed(2)}</p>
-      <p><strong>Internal total (install + takedown + container, pre-tax):</strong> $${internalTotal.toFixed(2)}</p>
+      <p><strong>Internal total (labor + equipment + container, pre-tax):</strong> $${internalTotal.toFixed(2)}</p>
     `;
   });
 }
+
 
 // -----------------------------
 // Roof Measure (top-down)
@@ -1225,6 +1274,7 @@ function redrawMockup() {
   });
 
   updateMockupTotals();
+  updateProposalMockupSnapshot();
 }
 
 function updateMockupTotals() {
@@ -1456,27 +1506,44 @@ function renderProposal() {
     <div class="proposal-card-inner">
       <p><strong>Proposal date:</strong> ${dateStr}</p>
       ${clientHtml}
-      <h3>Christmas Light Installation & Takedown</h3>
+            <h3>Christmas Light Installation & Takedown</h3>
       <p><strong>Total feet:</strong> ${est.totalFeet.toFixed(0)} ft (ridge, hip, eaves)</p>
       <ul>
-        <li>Install: $${est.installSubtotal.toFixed(2)} (@ $${est.rate.toFixed(2)}/ft)</li>
-        <li>Takedown: $${est.takedownSubtotal.toFixed(2)} (@ $${est.takedownRate.toFixed(2)}/ft)</li>
+        <li>Install labor: $${est.installSubtotal.toFixed(2)} (@ $${est.rate.toFixed(2)}/ft)</li>
+        <li>Takedown labor: $${est.takedownSubtotal.toFixed(2)} (@ $${est.takedownRate.toFixed(2)}/ft)</li>
+        <li>${
+          est.equipMode === "equip-plus-install"
+            ? "Equipment (includes installation)"
+            : "Equipment (wire / sockets / clips / supplies)"
+        }: $${est.equipSubtotal.toFixed(2)} (@ $${est.equipRate.toFixed(2)}/ft)</li>
       </ul>
       <div class="proposal-totals">
-        <p>Subtotal (install + takedown): $${est.customerSubtotal.toFixed(2)}</p>
-        <p>Sales tax (${est.taxRatePercent.toFixed(2)}%): $${est.taxAmount.toFixed(2)}</p>
+        <p>Labor subtotal (install + takedown, not taxed): $${est.laborSubtotal.toFixed(2)}</p>
+        <p>Equipment subtotal (taxable): $${est.equipSubtotal.toFixed(2)}</p>
+        <p>Subtotal before tax: $${est.customerSubtotal.toFixed(2)}</p>
+        <p>Sales tax on equipment only (${est.taxRatePercent.toFixed(
+          2
+        )}%): $${est.taxAmount.toFixed(2)}</p>
         <p><strong>Total investment: $${est.customerTotalWithTax.toFixed(2)}</strong></p>
       </div>
-      <p style="font-size:0.85rem;margin-top:1rem;">
-        This proposal includes professional installation, season-long use, and scheduled takedown of lights.
-      </p>
-    </div>
-  `;
-}
 
 if (refreshProposalButton) {
   refreshProposalButton.addEventListener("click", renderProposal);
 }
+function updateProposalMockupSnapshot() {
+  const imgEl = document.getElementById("proposal-mockup-image");
+  const wrapper = document.getElementById("proposal-mockup-wrapper");
+  if (!imgEl || !wrapper || !mockupCanvas || !mockupImage) return;
+
+  try {
+    const dataUrl = mockupCanvas.toDataURL("image/png");
+    imgEl.src = dataUrl;
+    wrapper.style.display = "block";
+  } catch (e) {
+    console.warn("Could not capture mockup canvas:", e);
+  }
+}
+
 
 renderProposal();
 </script>
