@@ -756,6 +756,79 @@
 
       console.log('Willy Good Christmas Tool core script loaded.');
     });
+      // -----------------------------
+  // Roof & Photo Mockup: show uploaded images in canvas
+  // -----------------------------
+  (function () {
+    // Roof Measure image
+    var roofInput = document.getElementById('roof-image-input');
+    var roofCanvas = document.getElementById('roof-canvas');
+    var roofCtx = roofCanvas ? roofCanvas.getContext('2d') : null;
+
+    if (roofInput && roofCtx) {
+      roofInput.addEventListener('change', function (e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) { return; }
+
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+          var img = new Image();
+          img.onload = function () {
+            var cw = roofCanvas.width;
+            var ch = roofCanvas.height;
+            roofCtx.clearRect(0, 0, cw, ch);
+
+            var iw = img.width;
+            var ih = img.height;
+            var scale = Math.min(cw / iw, ch / ih);
+            var drawW = iw * scale;
+            var drawH = ih * scale;
+            var offsetX = (cw - drawW) / 2;
+            var offsetY = (ch - drawH) / 2;
+
+            roofCtx.drawImage(img, offsetX, offsetY, drawW, drawH);
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Photo / Satellite Mockup image
+    var mockInput = document.getElementById('mockup-image-input');
+    var mockCanvas = document.getElementById('mockup-canvas');
+    var mockCtx = mockCanvas ? mockCanvas.getContext('2d') : null;
+
+    if (mockInput && mockCtx) {
+      mockInput.addEventListener('change', function (e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) { return; }
+
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+          var img = new Image();
+          img.onload = function () {
+            var cw = mockCanvas.width;
+            var ch = mockCanvas.height;
+            mockCtx.clearRect(0, 0, cw, ch);
+
+            var iw = img.width;
+            var ih = img.height;
+            var scale = Math.min(cw / iw, ch / ih);
+            var drawW = iw * scale;
+            var drawH = ih * scale;
+            var offsetX = (cw - drawW) / 2;
+            var offsetY = (ch - drawH) / 2;
+
+            mockCtx.drawImage(img, offsetX, offsetY, drawW, drawH);
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  })();
+
   </script>
 </body>
 </html>
