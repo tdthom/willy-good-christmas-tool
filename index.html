@@ -791,10 +791,300 @@
         refreshProposalButton.addEventListener('click', renderProposal);
       }
 
-      // Initial proposal render
+           // Initial proposal render
       renderProposal();
 
+           // -----------------------------
+      // Roof Measure: image + simple measurement
+      // -----------------------------
+      var roofImageInput = document.getElementById('roof-image-input');
+      var roofSetScaleBtn = document.getElementById('roof-set-scale');
+      var roofMeasureBtn = document.getElementById('roof-measure-mode');
+      var roofClearBtn = document.getElementById('roof-clear');
+      var roofSendBtn = document.getElementById('roof-send-to-estimate');
+      var roofScaleFeetInput = document.getElementById('roof-scale-feet');
+      var roofRunTypeSelect = document.getElementById('roof-run-type');
+      var roofCanvas = document.getElementById('roof-canvas');
+      var roofInfo = document.getElementById('roof-info');
+      var roofTotals = document.getElementById('roof-totals');
+      var roofCtx = roofCanvas ? roofCanvas.getContext('2d') : null;
+
+      var roofImage = null;
+      var roofMode = 'none'; // 'scale' or 'measure'
+      var roofScalePoints = [];
+      var roofSegments = []; // { from:{x,y}, to:{x,y}, feet:number, type:string }
+      var roofFeetPerPixel = null;
+      var roofDrawParams = null; // {x,y,w,h}
+
+      function roofSetInfo(text) {
+        if (roofInfo) {
+          roofInfo.textContent = text;
+        }
+      }
+
+      function roofDrawBase() {
+        if (!roofCtx || !roofCanvas) { return; }
+        roofCtx.clearRect(0, 0, roofCanvas.width, roofCanvas.height);
+        if (roofImage && roofDrawParams) {
+          roofCtx.drawImage(
+            roofImage,
+            roofDrawParams.x,
+            roofDrawParams.y,
+            roofDrawParams.w,
+            roofDrawParams.h
+          );
+        }
+      }
+
+      function roofPixelDistance(a, b) {
+        var dx = a.x - b.x;
+        var dy = a.y - b.y;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+
+      function roofRedraw() {
+        if (!roofCtx || !roofCanvas) { return; }
+        roofDrawBase();
+
+        if (roofScalePoints.length === 2) {
+          roofCtx.strokeStyle = '#ffa500';
+          roofCtx.lineWidth = 2;
+          roofCtx.beginPath();
+          roofCtx.moveTo(roofScalePoints[0].x, roofScalePoints[0].y);
+          roofCtx.lineTo(roofScalePoints[1].x, roofScalePoints[1].y);
+          roofCtx.stroke();
+        }
+
+        for (var i = 0; i < roofSegments.length; i++) {
+          var seg = roofSegments[i];
+          var color = '#ff0000';
+          if (seg.type === 'eaves') {
+            color = '#0000ff';
+          } else if (seg.type === 'gable') {
+            color = '#008000';
+          }
+
+          roofCtx.beginPath();
+          roofCtx.strokeStyle = color;
+          roofCtx.lineWidth = 3;
+          roofCtx.moveTo(seg.from.x, seg.from.y);
+          roofCtx.lineTo(seg.to.x, seg.to.y);
+          roofCtx.stroke();
+        }
+      }
+
+      function roofUpdateTotals() {
+        if (!roofTotals) { return; }
+        if (!roofImage) {
+          roofTotals.innerHTML = '';
+          return;
+        }
+
+        var totals = { ridge: 0, eaves: 0, gable: 0 };
+        for (var i = 0; i < roofSegments.length; i++) {
+          var seg = roofSegments[i];
+          if (totals.hasOwnProperty(seg.type)) {
+            totals[seg.type] += seg.feet || 0;
+          }
+        }
+        var all = totals.ridge + totals.eaves + totals.gable;
+
+        var html = '';
+        if (roofFeetPerPixel) {
+          html += '<p>Scale: 1 pixel ≈ ' + roofFeetPerPixel.toFixed(4) + ' ft</p>';
+        } else {
+          html += '<p>No scale set yet.</p>';
+        }
+        html += '<ul>';
+        html += '<li><strong>Ridge / hip / shingle:</strong> ' + totals.ridge.toFixed(1) + ' ft</li>';
+        html += '<li><strong>Eaves / gutters:</strong> ' + totals.eaves.toFixed(1) + ' ft</li>';
+        html += '<li><strong>Gable returns / other:</strong> ' + totals.gable.toFixed(1) + ' ft</li>';
+        html += '</ul>';
+        html += '<p><strong>Total measured length (all types):</strong> ' + all.toFixed(1) + ' ft</p>';
+
+        roofTotals.innerHTML = html;
+      }
+
+      function roofCanvasPoint(evt) {
+        if (!roofCanvas) {
+          return { x: 0, y: 0 };
+        }
+        var rect = roofCanvas.getBoundingClientRect();
+        return {
+          x: evt.clientX - rect.left,
+          y: evt.clientY - rect.top
+        };
+      }
+
+      // Image upload
+      if (roofImageInput && roofCtx && roofCanvas) {
+        roofImageInput.addEventListener('change', function (e) {
+          var file = e.target.files && e.target.files[0];
+          if (!file) { return; }
+
+          var reader = new FileReader();
+          reader.onload = function (ev) {
+            var img = new Image();
+            img.onload = function () {
+              roofImage = img;
+              var cw = roofCanvas.width;
+              var ch = roofCanvas.height;
+              var iw = img.width;
+              var ih = img.height;
+              var scale = Math.min(cw / iw, ch / ih);
+              var drawW = iw * scale;
+              var drawH = ih * scale;
+              var offsetX = (cw - drawW) / 2;
+              var offsetY = (ch - drawH) / 2;
+              roofDrawParams = {
+                x: offsetX,
+                y: offsetY,
+                w: drawW,
+                h: drawH
+              };
+
+              roofScalePoints = [];
+              roofSegments = [];
+              roofFeetPerPixel = null;
+              roofMode = 'none';
+
+              roofDrawBase();
+              roofSetInfo('Image loaded. Step 1: click "Set scale" and draw a known distance.');
+              roofUpdateTotals();
+            };
+            img.src = ev.target.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      // Set scale mode
+      if (roofSetScaleBtn) {
+        roofSetScaleBtn.addEventListener('click', function () {
+          if (!roofImage) {
+            roofSetInfo('Upload an image first.');
+            return;
+          }
+          roofMode = 'scale';
+          roofScalePoints = [];
+          roofSegments = [];
+          roofFeetPerPixel = null;
+          roofRedraw();
+          roofSetInfo('Scale mode: click two points on a known distance (e.g., 40 ft wall).');
+          roofUpdateTotals();
+        });
+      }
+
+      // Measure mode
+      if (roofMeasureBtn) {
+        roofMeasureBtn.addEventListener('click', function () {
+          if (!roofImage) {
+            roofSetInfo('Upload an image first.');
+            return;
+          }
+          if (!roofFeetPerPixel) {
+            roofSetInfo('Set the scale first, then measure runs.');
+            return;
+          }
+          roofMode = 'measure';
+          roofRedraw();
+          roofSetInfo('Measure mode: choose run type, then click along each run.');
+        });
+      }
+
+      // Clear lines
+      if (roofClearBtn) {
+        roofClearBtn.addEventListener('click', function () {
+          roofScalePoints = [];
+          roofSegments = [];
+          roofFeetPerPixel = null;
+          roofMode = 'none';
+          roofDrawBase();
+          roofSetInfo('Cleared lines. Set scale again if needed.');
+          roofUpdateTotals();
+        });
+      }
+
+      // Send to Estimate
+      if (roofSendBtn) {
+        roofSendBtn.addEventListener('click', function () {
+          if (!roofFeetPerPixel || roofSegments.length === 0) {
+            alert('Measure some runs first.');
+            return;
+          }
+          var totals = { ridge: 0, eaves: 0, gable: 0 };
+          for (var i = 0; i < roofSegments.length; i++) {
+            var seg = roofSegments[i];
+            if (totals.hasOwnProperty(seg.type)) {
+              totals[seg.type] += seg.feet || 0;
+            }
+          }
+          if (ridgeInput) {
+            ridgeInput.value = totals.ridge.toFixed(1);
+          }
+          if (eavesInput) {
+            eavesInput.value = totals.eaves.toFixed(1);
+          }
+          roofSetInfo(
+            'Sent to Estimate: ridge ' + totals.ridge.toFixed(1) +
+            ' ft, eaves ' + totals.eaves.toFixed(1) + ' ft.'
+          );
+        });
+      }
+
+      // Canvas click handling
+      if (roofCanvas && roofCtx) {
+        var roofLastPoint = null;
+        roofCanvas.addEventListener('click', function (evt) {
+          if (!roofImage) { return; }
+          var pt = roofCanvasPoint(evt);
+
+          if (roofMode === 'scale') {
+            roofScalePoints.push(pt);
+            if (roofScalePoints.length > 2) {
+              roofScalePoints = [pt];
+            }
+            if (roofScalePoints.length === 2) {
+              var pixels = roofPixelDistance(roofScalePoints[0], roofScalePoints[1]);
+              var feetVal = parseFloat(roofScaleFeetInput && roofScaleFeetInput.value) || 0;
+              if (feetVal > 0 && pixels > 0) {
+                roofFeetPerPixel = feetVal / pixels;
+                roofSetInfo('Scale set: ' + feetVal.toFixed(1) + ' ft = ' + pixels.toFixed(1) + ' px.');
+              } else {
+                roofFeetPerPixel = null;
+                roofSetInfo('Enter a positive known distance in ft and click two points again.');
+              }
+            }
+            roofRedraw();
+            roofUpdateTotals();
+          } else if (roofMode === 'measure') {
+            if (!roofFeetPerPixel) {
+              roofSetInfo('Set the scale first.');
+              return;
+            }
+            var runType = roofRunTypeSelect ? roofRunTypeSelect.value : 'ridge';
+            if (!roofLastPoint) {
+              roofLastPoint = pt;
+            } else {
+              var pixels2 = roofPixelDistance(roofLastPoint, pt);
+              var feet = pixels2 * roofFeetPerPixel;
+              roofSegments.push({
+                from: roofLastPoint,
+                to: pt,
+                feet: feet,
+                type: runType
+              });
+              roofLastPoint = pt;
+            }
+            roofRedraw();
+            roofUpdateTotals();
+          }
+        });
+      }
+
+
       console.log('Willy Good Christmas Tool core script loaded.');
+
     });
       // -----------------------------
   // Roof & Photo Mockup: show uploaded images in canvas
