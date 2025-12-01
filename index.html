@@ -240,10 +240,50 @@
 
   <!-- Screen 3: Roof Measure (temporarily simplified) -->
   <section id="screen-roof" class="screen">
-    <h2>Roof Measure (Top View)</h2>
-    <p>This screen will let you use satellite or drone screenshots to measure ridge, hips, and eaves. We will wire this back up after the core estimator is stable.</p>
-    <p class="small-note">For now, you can still do your measuring in another tool and type the total feet into the Estimate tab.</p>
-  </section>
+  <h2>Roof Measure (Top View)</h2>
+  <p>Use a satellite or drone screenshot to measure ridge, hips, and eaves from above.</p>
+
+  <ol>
+    <li>Upload a top-down screenshot of the roof.</li>
+    <li>Click <strong>Set scale</strong> and draw a line of known length (for example, a 40 ft front wall).</li>
+    <li>Select run type and click <strong>Measure runs</strong>, then click along the roof lines.</li>
+  </ol>
+
+  <input type="file" id="roof-image-input" accept="image/*"><br><br>
+
+  <button id="roof-set-scale">1) Set scale</button>
+  <label for="roof-scale-feet"><small>Known distance (ft):</small></label>
+  <input id="roof-scale-feet" type="number" min="0" step="0.1" value="40" style="width:80px;"><br><br>
+
+  <button id="roof-measure-mode">2) Measure runs</button>
+  <button id="roof-clear">Clear lines</button><br><br>
+
+  <label for="roof-run-type"><strong>Run type:</strong></label>
+  <select id="roof-run-type">
+    <option value="ridge">Ridge / hip / shingle</option>
+    <option value="eaves">Eaves / gutters</option>
+    <option value="gable">Gable returns / other</option>
+  </select><br><br>
+
+  <button id="roof-send-to-estimate">Send ridge / eaves totals to Estimate</button>
+
+  <div style="margin-top:1rem;">
+    <canvas
+      id="roof-canvas"
+      width="800"
+      height="500"
+      style="border:1px solid #ccc; max-width:100%;"
+    ></canvas>
+  </div>
+
+  <div id="roof-info" class="small-note" style="margin-top:0.5rem;">
+    No image loaded.
+  </div>
+
+  <div id="roof-totals" style="margin-top:0.5rem; font-size:0.9rem;">
+    <!-- totals appear here -->
+  </div>
+</section>
 
   <!-- Screen 4: Photo Mockup (visual only) -->
   <section id="screen-mockup" class="screen">
