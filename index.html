@@ -1,116 +1,129 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Willy Good – Christmas Lights Tool</title>
+  <meta charset="UTF-8">
+  <title>Willy Good – Christmas Lights</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
-      background: #f5f5f5;
+      background: #f7f7f7;
     }
-
     header {
       background: #004b80;
-      color: white;
+      color: #ffffff;
       padding: 10px 16px;
     }
-
     .header-left {
       display: flex;
       align-items: center;
       gap: 12px;
     }
-
     .company-logo {
       width: 72px;
       height: 72px;
       object-fit: contain;
     }
-
+    header h1 {
+      margin: 0;
+      font-size: 1.3rem;
+    }
+    header p {
+      margin: 4px 0 0 0;
+      font-size: 0.85rem;
+    }
     nav {
-      background: #eee;
+      background: #eeeeee;
       padding: 8px 16px;
       display: flex;
       gap: 8px;
-      align-items: center;
-      border-bottom: 1px solid #ccc;
+      border-bottom: 1px solid #cccccc;
     }
-
     nav button {
       padding: 6px 12px;
-      border: 1px solid #ccc;
-      background: #fff;
+      border: 1px solid #cccccc;
+      background: #ffffff;
       cursor: pointer;
       border-radius: 4px;
+      font-size: 0.9rem;
     }
-
     nav button.active {
       border-color: #004b80;
       font-weight: bold;
     }
-
-    #print-current {
-      margin-left: auto;
-      padding: 6px 12px;
-      border-radius: 4px;
-      border: 1px solid #004b80;
-      background: #fff;
-      cursor: pointer;
-    }
-
     .screen {
       display: none;
       padding: 16px;
     }
-
     .screen.active {
       display: block;
     }
-
-    .proposal-card {
-      border: 1px solid #ccc;
-      padding: 16px;
-      margin-top: 16px;
-      max-width: 700px;
-      background: #fff;
+    h2 {
+      margin-top: 0;
     }
-
+    label {
+      font-size: 0.9rem;
+    }
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="number"],
+    textarea,
+    select {
+      font-family: inherit;
+      font-size: 0.9rem;
+      padding: 4px;
+      width: 260px;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+    textarea {
+      resize: vertical;
+    }
+    button {
+      font-family: inherit;
+      font-size: 0.9rem;
+    }
+    #clients-list {
+      list-style: none;
+      padding-left: 0;
+    }
+    #clients-list li {
+      border: 1px solid #dddddd;
+      background: #ffffff;
+      padding: 8px;
+      margin-bottom: 8px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+    #clients-list button {
+      margin-top: 4px;
+    }
+    .proposal-card {
+      border: 1px solid #cccccc;
+      padding: 16px;
+      margin-top: 12px;
+      max-width: 700px;
+      background: #ffffff;
+      border-radius: 4px;
+    }
     .proposal-card-inner h3 {
       margin-top: 0.5rem;
     }
-
     .proposal-totals p {
       margin: 0.2rem 0;
     }
-
-    canvas {
-      background: #ddd;
-    }
-
-    /* Print: only print active screen, hide nav/buttons borders etc. */
-    @media print {
-      body {
-        background: #fff;
-      }
-      nav,
-      #print-current {
-        display: none !important;
-      }
-      .screen {
-        display: none !important;
-      }
-      .screen.active {
-        display: block !important;
-      }
+    .small-note {
+      font-size: 0.8rem;
+      color: #555555;
     }
   </style>
 </head>
 <body>
   <header>
     <div class="header-left">
-      <img src="logo.png" alt="Willy Good Christmas Lights" class="company-logo" />
+      <img src="logo.png" alt="Willy Good Christmas Lights" class="company-logo">
       <div>
         <h1>Willy Good Christmas Lights Tool</h1>
         <p>One app, five screens: Clients • Estimate • Roof Measure • Photo Mockup • Proposal</p>
@@ -124,64 +137,45 @@
     <button data-screen="roof">Roof Measure</button>
     <button data-screen="mockup">Photo Mockup</button>
     <button data-screen="proposal">Proposal</button>
-
-    <button id="print-current">Print / Save PDF</button>
   </nav>
 
   <!-- Screen 1: Clients -->
   <section id="screen-clients" class="screen active">
     <h2>Clients</h2>
-    <p>Save basic client details and their preferred install date/week.</p>
+    <p>Save client details, default rates, and preferred install window.</p>
 
     <h3>Add / update client</h3>
 
-    <label for="client-name"><strong>Client name</strong></label><br />
-    <input id="client-name" type="text" placeholder="e.g. John Smith" />
-    <br /><br />
+    <label for="client-name"><strong>Client name</strong></label><br>
+    <input id="client-name" type="text" placeholder="e.g. John Smith"><br><br>
 
-    <label for="client-phone"><strong>Phone</strong></label><br />
-    <input id="client-phone" type="tel" placeholder="e.g. 555-123-4567" />
-    <br /><br />
+    <label for="client-phone"><strong>Phone</strong></label><br>
+    <input id="client-phone" type="tel" placeholder="e.g. 555-123-4567"><br><br>
 
-    <label for="client-email"><strong>Email</strong></label><br />
-    <input id="client-email" type="email" placeholder="e.g. john@example.com" />
-    <br /><br />
+    <label for="client-email"><strong>Email</strong></label><br>
+    <input id="client-email" type="email" placeholder="e.g. john@example.com"><br><br>
 
-    <label for="client-address"><strong>Service address</strong></label><br />
-    <textarea id="client-address" rows="3" placeholder="Street, city, ZIP"></textarea>
-    <br /><br />
+    <label for="client-address"><strong>Service address</strong></label><br>
+    <textarea id="client-address" rows="3" placeholder="Street, city, ZIP"></textarea><br><br>
 
-    <label for="client-preferred"><strong>Preferred install date/week</strong></label><br />
-    <input
-      id="client-preferred"
-      type="text"
-      placeholder="e.g. Week of Nov 25 or 2025-11-28"
-    />
-    <br /><br />
+    <label for="client-preferred"><strong>Preferred install date/week</strong></label><br>
+    <input id="client-preferred" type="text" placeholder="e.g. Week of Nov 25 or 2025-11-28"><br><br>
 
-    <label for="client-notes"><strong>Notes</strong></label><br />
-    <textarea
-      id="client-notes"
-      rows="3"
-      placeholder="Gate code, roof access, special requests…"
-    ></textarea>
-    <br /><br />
+    <label for="client-notes"><strong>Notes</strong></label><br>
+    <textarea id="client-notes" rows="3" placeholder="Gate code, roof access, special requests"></textarea><br><br>
 
-    <label for="client-rate"><strong>Default install rate ($/ft):</strong></label><br />
-    <input id="client-rate" type="number" step="0.01" style="width:120px;" />
-    <br /><br />
+    <label for="client-rate"><strong>Default install rate ($/ft)</strong></label><br>
+    <input id="client-rate" type="number" step="0.01" style="width:120px;"><br><br>
 
-    <label for="client-takedown-rate"><strong>Default takedown rate ($/ft):</strong></label><br />
-    <input id="client-takedown-rate" type="number" step="0.01" style="width:120px;" />
-    <br /><br />
+    <label for="client-takedown-rate"><strong>Default takedown rate ($/ft)</strong></label><br>
+    <input id="client-takedown-rate" type="number" step="0.01" style="width:120px;"><br><br>
 
-    <label for="client-lights-owned"><strong>Lights:</strong></label><br />
-    <select id="client-lights-owned" style="width: 260px;">
+    <label for="client-lights-owned"><strong>Lights</strong></label><br>
+    <select id="client-lights-owned" style="width:220px;">
       <option value="company">Company-owned lights</option>
       <option value="customer">Customer owns lights & stored</option>
-      <option value="unknown" selected>Not set</option>
-    </select>
-    <br /><br />
+      <option value="unknown">Not set</option>
+    </select><br><br>
 
     <button id="save-client">Save client</button>
 
@@ -194,273 +188,574 @@
   <!-- Screen 2: Estimate -->
   <section id="screen-estimate" class="screen">
     <h2>Estimate</h2>
-    <p>Enter your measurements and pricing. Tax applies to equipment/supplies only.</p>
+    <p>Enter your measured feet and pricing. Tax is applied to equipment and supplies only.</p>
 
-    <div
-      id="current-client-summary"
-      style="margin-bottom: 1rem; font-size: 0.9rem;"
-    >
+    <div id="current-client-summary" style="margin-bottom:1rem; font-size:0.9rem;">
       <em>No client selected. Go to the Clients tab and click "Use for estimate".</em>
     </div>
 
-    <h3>Feet of Lights</h3>
+    <h3>Feet of lights</h3>
 
-    <label for="ridge-feet"><strong>Main ridge</strong> (ft)</label><br />
-    <input id="ridge-feet" type="number" min="0" step="1" placeholder="e.g. 80" /> ft
-    <br /><br />
+    <label for="ridge-feet"><strong>Main ridge</strong> (ft)</label><br>
+    <input id="ridge-feet" type="number" min="0" step="1" placeholder="e.g. 80"> ft<br><br>
 
-    <label for="hip-feet"><strong>Hip ridge</strong> (ft)</label><br />
-    <input id="hip-feet" type="number" min="0" step="1" placeholder="e.g. 50" /> ft
-    <br /><br />
+    <label for="hip-feet"><strong>Hip ridge</strong> (ft)</label><br>
+    <input id="hip-feet" type="number" min="0" step="1" placeholder="e.g. 50"> ft<br><br>
 
-    <label for="eaves-feet"><strong>Eaves / gutters</strong> (ft)</label><br />
-    <input id="eaves-feet" type="number" min="0" step="1" placeholder="e.g. 20" /> ft
-    <br /><br />
+    <label for="eaves-feet"><strong>Eaves / gutters</strong> (ft)</label><br>
+    <input id="eaves-feet" type="number" min="0" step="1" placeholder="e.g. 20"> ft<br><br>
 
-    <h3>Labor Pricing</h3>
+    <h3>Pricing</h3>
 
-    <label for="rate-per-foot"><strong>Install labor price per foot</strong></label><br />
-    <input id="rate-per-foot" type="number" min="0" step="0.01" value="4.00" /> $/ft
-    <br /><br />
+    <label for="rate-per-foot"><strong>Install price per foot</strong> (labor + equipment)</label><br>
+    <input id="rate-per-foot" type="number" min="0" step="0.01" value="4.00"> $/ft<br><br>
 
-    <label for="takedown-rate"><strong>Takedown labor price per foot</strong></label><br />
-    <input id="takedown-rate" type="number" min="0" step="0.01" value="2.00" /> $/ft
-    <br /><br />
+    <label for="takedown-rate"><strong>Takedown price per foot</strong> (labor only)</label><br>
+    <input id="takedown-rate" type="number" min="0" step="0.01" value="2.00"> $/ft<br><br>
 
-    <h3>Equipment / Supplies Pricing</h3>
+    <label for="equipment-rate"><strong>Equipment / wire / sockets / clips per foot</strong></label><br>
+    <input id="equipment-rate" type="number" min="0" step="0.01" value="1.50"> $/ft<br>
+    <span class="small-note">Used for tax and internal margins. Should be less than or equal to install rate.</span><br><br>
 
-    <label for="equip-rate"><strong>Wire / sockets / clips / supplies per foot</strong></label
-    ><br />
-    <input id="equip-rate" type="number" min="0" step="0.01" value="1.50" /> $/ft
-    <br /><br />
+    <label for="equipment-mode"><strong>Equipment mode</strong></label><br>
+    <select id="equipment-mode" style="width:220px;">
+      <option value="included">Included in install rate</option>
+      <option value="separate">Separate internal tracking only</option>
+    </select><br><br>
 
-    <label for="equip-mode"><strong>Equipment mode:</strong></label><br />
-    <select id="equip-mode">
-      <option value="equip-only" selected>Equipment only (labor separate)</option>
-      <option value="equip-plus-install">
-        Equipment includes install (for info only)
-      </option>
-    </select>
-    <br /><br />
+    <label for="tax-rate"><strong>Sales tax rate</strong> (%) on equipment only</label><br>
+    <input id="tax-rate" type="number" min="0" step="0.01" value="8.25"> %<br><br>
 
-    <label for="tax-rate"><strong>Sales tax rate on equipment</strong> (%)</label><br />
-    <input id="tax-rate" type="number" min="0" step="0.01" value="8.25" /> %
-    <br /><br />
+    <label for="container-cost"><strong>Container cost (internal only)</strong></label><br>
+    <input id="container-cost" type="number" min="0" step="0.01" value="0.00"> $<br>
+    <span class="small-note">Included in your internal totals and tax base, not shown as a separate line on the proposal.</span><br><br>
 
-    <label for="container-cost"><strong>Container cost (internal only)</strong></label
-    ><br />
-    <input id="container-cost" type="number" min="0" step="0.01" value="0.00" /> $
-    <br /><br />
-
-    <button id="calc-estimate">Calculate Estimate</button>
+    <button id="calc-estimate">Calculate estimate</button>
 
     <h3>Result</h3>
     <div id="estimate-result">
-      Enter values and click "Calculate Estimate" to see the price.
+      Enter values and click "Calculate estimate" to see the price.
     </div>
   </section>
 
-  <!-- Screen 3: Roof Measure (top-down measurement) -->
+  <!-- Screen 3: Roof Measure (temporarily simplified) -->
   <section id="screen-roof" class="screen">
     <h2>Roof Measure (Top View)</h2>
-    <p>
-      Use a satellite or drone screenshot to measure ridge, hip, and eaves from above.
-      These measurements are what feed the Estimate tab.
-    </p>
-
-    <ol>
-      <li>Upload a top-down screenshot of the roof.</li>
-      <li>Click <strong>Set scale</strong> and draw a line of known length (e.g., 40 ft).</li>
-      <li>Select run type and click along roof lines in <strong>Measure runs</strong> mode.</li>
-    </ol>
-
-    <input type="file" id="roof-image-input" accept="image/*" />
-    <br /><br />
-
-    <button id="roof-set-scale">1) Set scale</button>
-    <label for="roof-scale-feet"><small>Known distance (ft):</small></label>
-    <input
-      id="roof-scale-feet"
-      type="number"
-      min="0"
-      step="0.1"
-      value="40"
-      style="width:80px;"
-    />
-    <br /><br />
-
-    <button id="roof-measure-mode">2) Measure runs</button>
-    <button id="roof-undo">Undo last segment</button>
-    <button id="roof-clear">Clear lines</button>
-    <br /><br />
-
-    <label for="roof-run-type"><strong>Run type:</strong></label>
-    <select id="roof-run-type">
-      <option value="ridge">Ridge / hip / shingle</option>
-      <option value="eaves">Eaves / gutters</option>
-      <option value="gable">Gable returns / other</option>
-    </select>
-    <br /><br />
-
-    <button id="roof-zoom-in">Zoom in</button>
-    <button id="roof-zoom-out">Zoom out</button>
-    <button id="roof-send-to-estimate">Send ridge / eaves totals to Estimate</button>
-
-    <div style="margin-top: 1rem;">
-      <canvas
-        id="roof-canvas"
-        width="800"
-        height="500"
-        style="border:1px solid #ccc; max-width:100%; transform-origin: 0 0;"
-      ></canvas>
-    </div>
-
-    <div id="roof-info" style="margin-top: 0.5rem; font-size: 0.9rem;">
-      No image loaded.
-    </div>
-
-    <div id="roof-totals" style="margin-top: 0.5rem; font-size: 0.9rem;">
-      <!-- totals -->
-    </div>
+    <p>This screen will let you use satellite or drone screenshots to measure ridge, hips, and eaves. We will wire this back up after the core estimator is stable.</p>
+    <p class="small-note">For now, you can still do your measuring in another tool and type the total feet into the Estimate tab.</p>
   </section>
 
   <!-- Screen 4: Photo Mockup (visual only) -->
   <section id="screen-mockup" class="screen">
-    <h2>Photo / Satellite Mockup (Visual Only)</h2>
-    <p>
-      This is for the customer to <strong>see bulb colors</strong>. It does
-      <strong>not</strong> drive pricing. Use Roof Measure for real footage.
-    </p>
-
-    <ol>
-      <li>Upload a front photo or satellite screenshot.</li>
-      <li>Click along roof / eave lines to place bulbs.</li>
-      <li>Change colors, spacing, and bulb size as the customer chooses.</li>
-    </ol>
-
-    <input type="file" id="mockup-image-input" accept="image/*" />
-    <br /><br />
-
-    <button id="mockup-measure-mode">Draw light runs</button>
-    <button id="mockup-undo">Undo last run</button>
-    <button id="mockup-clear">Clear all runs</button>
-    <br /><br />
-
-    <label for="mockup-run-type"><strong>Run type (for notes only):</strong></label>
-    <select id="mockup-run-type">
-      <option value="ridge">Ridge / hip / shingle</option>
-      <option value="eaves">Eaves / gutters</option>
-      <option value="gable">Gable returns / other</option>
-    </select>
-    <br /><br />
-
-    <strong>Color pattern:</strong>
-    <select id="mockup-color-mode">
-      <option value="single">Single color</option>
-      <option value="two">2 colors (alternate)</option>
-      <option value="three">3 colors (1-2-3 pattern)</option>
-    </select>
-    <br /><br />
-
-    <label for="mockup-color1"><strong>Color 1:</strong></label>
-    <input type="color" id="mockup-color1" value="#ffffff" />
-    <label for="mockup-color2" style="margin-left:1rem;"><strong>Color 2:</strong></label>
-    <input type="color" id="mockup-color2" value="#ff0000" />
-    <label for="mockup-color3" style="margin-left:1rem;"><strong>Color 3:</strong></label>
-    <input type="color" id="mockup-color3" value="#00ff00" />
-    <br /><br />
-
-    <label for="mockup-bulb-spacing"><strong>Bulb spacing:</strong></label>
-    <select id="mockup-bulb-spacing">
-      <option value="12">12" spacing</option>
-      <option value="15">15" spacing</option>
-    </select>
-    <br /><br />
-
-    <label for="mockup-bulb-size"><strong>Bulb size:</strong></label>
-    <select id="mockup-bulb-size">
-      <option value="small">Small</option>
-      <option value="medium" selected>Medium</option>
-      <option value="large">Large</option>
-    </select>
-    <br /><br />
-
-    <label>
-      <input type="checkbox" id="mockup-show-wire" checked />
-      Show wire under bulbs (uncheck before printing if you want only bulbs)
-    </label>
-    <br /><br />
-
-    <button id="mockup-zoom-in">Zoom in</button>
-    <button id="mockup-zoom-out">Zoom out</button>
-
-    <div style="margin-top: 1rem;">
-      <canvas
-        id="mockup-canvas"
-        width="800"
-        height="500"
-        style="border:1px solid #ccc; max-width:100%; transform-origin:0 0;"
-      ></canvas>
-    </div>
-
-    <div id="mockup-info" style="margin-top: 0.5rem; font-size: 0.9rem;">
-      No image loaded.
-    </div>
-
-    <div id="mockup-totals" style="margin-top: 0.5rem; font-size: 0.9rem;">
-      <!-- visual-only note -->
-    </div>
+    <h2>Photo Mockup</h2>
+    <p>This screen will be for front-of-house photos so customers can choose bulb colors. The mockup is visual only and will not affect the measurements.</p>
+    <p class="small-note">Once the main estimator is error-free, we will re-attach the mockup canvas with adjustable teardrop bulbs and color patterns.</p>
   </section>
 
   <!-- Screen 5: Proposal -->
   <section id="screen-proposal" class="screen">
     <h2>Proposal</h2>
-    <p>
-      Preview what you can send to the client. Use your browser’s
-      <strong>Print → “Save as PDF”</strong> to export.
-    </p>
+    <p>Preview what you can send to the client. Use your browser's Print feature and choose "Save as PDF" to export.</p>
 
-    <button id="refresh-proposal" style="margin-bottom: 0.5rem;">
-      Refresh proposal
-    </button>
+    <button id="refresh-proposal" style="margin-bottom:0.5rem;">Refresh from last estimate</button>
+    <button onclick="window.print();" style="margin-bottom:0.5rem; margin-left:8px;">Print / Save as PDF</button>
 
     <div id="proposal-content" class="proposal-card">
-      <em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate Estimate" first.</em>
+      <em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate estimate" first.</em>
     </div>
   </section>
-<script>
-  // Simple, known-good script just to test JS parsing
 
-  // Tab navigation
-  (function () {
-    var buttons = document.querySelectorAll('nav button[data-screen]');
-    var screens = document.querySelectorAll('.screen');
+  <script>
+    window.addEventListener('DOMContentLoaded', function () {
+      // -----------------------------
+      // Navigation: switch between screens
+      // -----------------------------
+      var navButtons = document.querySelectorAll('nav button[data-screen]');
+      var screens = document.querySelectorAll('.screen');
 
-    buttons.forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var target = btn.getAttribute('data-screen');
+      navButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var target = btn.getAttribute('data-screen');
 
-        buttons.forEach(function (b) {
-          b.classList.remove('active');
-        });
-        btn.classList.add('active');
+          navButtons.forEach(function (b) {
+            b.classList.remove('active');
+          });
+          btn.classList.add('active');
 
-        screens.forEach(function (s) {
-          if (s.id === 'screen-' + target) {
-            s.classList.add('active');
-          } else {
-            s.classList.remove('active');
-          }
+          screens.forEach(function (s) {
+            if (s.id === 'screen-' + target) {
+              s.classList.add('active');
+            } else {
+              s.classList.remove('active');
+            }
+          });
         });
       });
+
+      // -----------------------------
+      // LocalStorage helpers
+      // -----------------------------
+      var CLIENTS_KEY = 'wgc-clients-v1';
+      var CURRENT_CLIENT_KEY = 'wgc-current-client-id';
+      var ESTIMATE_KEY = 'wgc-last-estimate-v2';
+
+      function loadClients() {
+        try {
+          var raw = localStorage.getItem(CLIENTS_KEY);
+          if (!raw) { return []; }
+          var parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) { return parsed; }
+          return [];
+        } catch (e) {
+          console.warn('Could not load clients', e);
+          return [];
+        }
+      }
+
+      function saveClients(list) {
+        try {
+          localStorage.setItem(CLIENTS_KEY, JSON.stringify(list));
+        } catch (e) {
+          console.warn('Could not save clients', e);
+        }
+      }
+
+      function loadCurrentClientId() {
+        try {
+          var raw = localStorage.getItem(CURRENT_CLIENT_KEY);
+          if (!raw) { return null; }
+          var id = parseInt(raw, 10);
+          if (isNaN(id)) { return null; }
+          return id;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function saveCurrentClientId(id) {
+        try {
+          if (id == null) {
+            localStorage.removeItem(CURRENT_CLIENT_KEY);
+          } else {
+            localStorage.setItem(CURRENT_CLIENT_KEY, String(id));
+          }
+        } catch (e) {
+          console.warn('Could not save current client id', e);
+        }
+      }
+
+      function loadLastEstimate() {
+        try {
+          var raw = localStorage.getItem(ESTIMATE_KEY);
+          if (!raw) { return null; }
+          return JSON.parse(raw);
+        } catch (e) {
+          console.warn('Could not load last estimate', e);
+          return null;
+        }
+      }
+
+      function saveLastEstimate(data) {
+        try {
+          localStorage.setItem(ESTIMATE_KEY, JSON.stringify(data));
+        } catch (e) {
+          console.warn('Could not save last estimate', e);
+        }
+      }
+
+      // -----------------------------
+      // Clients UI
+      // -----------------------------
+      var clientNameInput = document.getElementById('client-name');
+      var clientPhoneInput = document.getElementById('client-phone');
+      var clientEmailInput = document.getElementById('client-email');
+      var clientAddressInput = document.getElementById('client-address');
+      var clientPreferredInput = document.getElementById('client-preferred');
+      var clientNotesInput = document.getElementById('client-notes');
+      var clientRateInput = document.getElementById('client-rate');
+      var clientTakedownRateInput = document.getElementById('client-takedown-rate');
+      var clientLightsOwnedSelect = document.getElementById('client-lights-owned');
+      var saveClientButton = document.getElementById('save-client');
+      var clientsList = document.getElementById('clients-list');
+      var currentClientSummaryDiv = document.getElementById('current-client-summary');
+
+      var clients = loadClients();
+      var currentClientId = loadCurrentClientId();
+
+      function getCurrentClient() {
+        if (currentClientId == null) { return null; }
+        for (var i = 0; i < clients.length; i++) {
+          if (clients[i].id === currentClientId) {
+            return clients[i];
+          }
+        }
+        return null;
+      }
+
+      function updateCurrentClientSummary() {
+        if (!currentClientSummaryDiv) { return; }
+        var c = getCurrentClient();
+        if (!c) {
+          currentClientSummaryDiv.innerHTML = '<em>No client selected. Go to the Clients tab and click "Use for estimate".</em>';
+          return;
+        }
+        var html = '';
+        html += '<strong>Current client:</strong> ' + (c.name || '') + '<br>';
+        if (c.address) {
+          html += c.address + '<br>';
+        }
+        if (c.phone) {
+          html += 'Phone: ' + c.phone + '<br>';
+        }
+        if (c.preferred) {
+          html += 'Preferred install: ' + c.preferred + '<br>';
+        }
+        currentClientSummaryDiv.innerHTML = html;
+      }
+
+      function renderClientsList() {
+        if (!clientsList) { return; }
+        if (!clients.length) {
+          clientsList.innerHTML = '<li>No clients saved yet.</li>';
+          return;
+        }
+        var html = '';
+        for (var i = 0; i < clients.length; i++) {
+          var c = clients[i];
+          var safeName = c.name || '(No name)';
+          var safeAddress = c.address || '';
+          var safePhone = c.phone || '-';
+          var safeEmail = c.email || '-';
+          var safePreferred = c.preferred || '-';
+          var isCurrent = c.id === currentClientId;
+
+          var rateInfo = '';
+          if (typeof c.defaultRate === 'number') {
+            rateInfo += 'Install: $' + c.defaultRate.toFixed(2) + '/ft; ';
+          }
+          if (typeof c.defaultTakedown === 'number') {
+            rateInfo += 'Takedown: $' + c.defaultTakedown.toFixed(2) + '/ft; ';
+          }
+
+          var lightsInfo = '';
+          if (c.lightsOwned === 'company') {
+            lightsInfo = 'Lights: company-owned';
+          } else if (c.lightsOwned === 'customer') {
+            lightsInfo = 'Lights: customer-owned';
+          }
+
+          html += '<li data-client-id="' + c.id + '">';
+          html += '<strong>' + safeName + '</strong>' + (isCurrent ? ' (current)' : '') + '<br>';
+          if (safeAddress) {
+            html += safeAddress + '<br>';
+          }
+          html += 'Phone: ' + safePhone + ' | Email: ' + safeEmail + '<br>';
+          html += 'Preferred install: ' + safePreferred + '<br>';
+          if (rateInfo || lightsInfo) {
+            html += '<small>' + rateInfo + lightsInfo + '</small><br>';
+          }
+          html += '<button class="use-client-button" data-client-id="' + c.id + '">Use for estimate</button>';
+          html += '</li>';
+        }
+        clientsList.innerHTML = html;
+      }
+
+      if (saveClientButton) {
+        saveClientButton.addEventListener('click', function () {
+          if (!clientNameInput) {
+            alert('Client form is not loaded correctly.');
+            return;
+          }
+          var name = (clientNameInput.value || '').trim();
+          if (!name) {
+            alert('Client name is required.');
+            return;
+          }
+
+          var phone = clientPhoneInput ? clientPhoneInput.value.trim() : '';
+          var email = clientEmailInput ? clientEmailInput.value.trim() : '';
+          var address = clientAddressInput ? clientAddressInput.value.trim() : '';
+          var preferred = clientPreferredInput ? clientPreferredInput.value.trim() : '';
+          var notes = clientNotesInput ? clientNotesInput.value.trim() : '';
+
+          var defaultRate = null;
+          if (clientRateInput && clientRateInput.value !== '') {
+            defaultRate = parseFloat(clientRateInput.value);
+            if (isNaN(defaultRate)) { defaultRate = null; }
+          }
+
+          var defaultTakedown = null;
+          if (clientTakedownRateInput && clientTakedownRateInput.value !== '') {
+            defaultTakedown = parseFloat(clientTakedownRateInput.value);
+            if (isNaN(defaultTakedown)) { defaultTakedown = null; }
+          }
+
+          var lightsOwned = clientLightsOwnedSelect ? clientLightsOwnedSelect.value : 'unknown';
+
+          var existing = null;
+          if (currentClientId != null) {
+            for (var i = 0; i < clients.length; i++) {
+              if (clients[i].id === currentClientId) {
+                existing = clients[i];
+                break;
+              }
+            }
+          }
+
+          if (existing) {
+            existing.name = name;
+            existing.phone = phone;
+            existing.email = email;
+            existing.address = address;
+            existing.preferred = preferred;
+            existing.notes = notes;
+            existing.defaultRate = defaultRate;
+            existing.defaultTakedown = defaultTakedown;
+            existing.lightsOwned = lightsOwned;
+          } else {
+            var newClient = {
+              id: Date.now(),
+              name: name,
+              phone: phone,
+              email: email,
+              address: address,
+              preferred: preferred,
+              notes: notes,
+              defaultRate: defaultRate,
+              defaultTakedown: defaultTakedown,
+              lightsOwned: lightsOwned
+            };
+            clients.push(newClient);
+            currentClientId = newClient.id;
+            saveCurrentClientId(currentClientId);
+          }
+
+          saveClients(clients);
+          renderClientsList();
+          updateCurrentClientSummary();
+          alert('Client saved.');
+        });
+      }
+
+      if (clientsList) {
+        clientsList.addEventListener('click', function (evt) {
+          var target = evt.target || evt.srcElement;
+          if (!target || !target.classList.contains('use-client-button')) {
+            return;
+          }
+          var idStr = target.getAttribute('data-client-id');
+          var id = parseInt(idStr, 10);
+          if (isNaN(id)) {
+            return;
+          }
+          currentClientId = id;
+          saveCurrentClientId(id);
+          renderClientsList();
+          updateCurrentClientSummary();
+
+          var c = getCurrentClient();
+          if (c) {
+            if (clientRateInput && typeof c.defaultRate === 'number') {
+              clientRateInput.value = c.defaultRate.toFixed(2);
+            }
+            if (clientTakedownRateInput && typeof c.defaultTakedown === 'number') {
+              clientTakedownRateInput.value = c.defaultTakedown.toFixed(2);
+            }
+          }
+        });
+      }
+
+      renderClientsList();
+      updateCurrentClientSummary();
+
+      // -----------------------------
+      // Estimate logic
+      // -----------------------------
+      var ridgeInput = document.getElementById('ridge-feet');
+      var hipInput = document.getElementById('hip-feet');
+      var eavesInput = document.getElementById('eaves-feet');
+      var rateInput = document.getElementById('rate-per-foot');
+      var takedownRateInput = document.getElementById('takedown-rate');
+      var equipRateInput = document.getElementById('equipment-rate');
+      var equipModeSelect = document.getElementById('equipment-mode');
+      var taxRateInput = document.getElementById('tax-rate');
+      var containerInput = document.getElementById('container-cost');
+      var calcButton = document.getElementById('calc-estimate');
+      var resultBox = document.getElementById('estimate-result');
+
+      if (calcButton) {
+        calcButton.addEventListener('click', function () {
+          var ridge = parseFloat(ridgeInput && ridgeInput.value) || 0;
+          var hip = parseFloat(hipInput && hipInput.value) || 0;
+          var eaves = parseFloat(eavesInput && eavesInput.value) || 0;
+          var rate = parseFloat(rateInput && rateInput.value) || 0;
+          var takedownRate = parseFloat(takedownRateInput && takedownRateInput.value) || 0;
+          var equipRate = parseFloat(equipRateInput && equipRateInput.value) || 0;
+          var taxRatePercent = parseFloat(taxRateInput && taxRateInput.value) || 0;
+          var container = parseFloat(containerInput && containerInput.value) || 0;
+
+          var totalFeet = ridge + hip + eaves;
+
+          var ridgePrice = ridge * rate;
+          var hipPrice = hip * rate;
+          var eavesPrice = eaves * rate;
+          var installSubtotal = ridgePrice + hipPrice + eavesPrice;
+
+          var takedownSubtotal = totalFeet * takedownRate;
+
+          var equipmentSubtotal = totalFeet * equipRate;
+
+          var customerSubtotalBeforeTax = installSubtotal + takedownSubtotal;
+
+          var taxableBase = equipmentSubtotal + container;
+          var taxRate = taxRatePercent / 100;
+          var taxAmount = taxableBase * taxRate;
+          var customerTotalWithTax = customerSubtotalBeforeTax + taxAmount;
+
+          var internalTotalPreTax = customerSubtotalBeforeTax + container;
+
+          var client = getCurrentClient();
+          var estimateSnapshot = {
+            timestamp: new Date().toISOString(),
+            ridge: ridge,
+            hip: hip,
+            eaves: eaves,
+            totalFeet: totalFeet,
+            rate: rate,
+            takedownRate: takedownRate,
+            equipRate: equipRate,
+            taxRatePercent: taxRatePercent,
+            container: container,
+            ridgePrice: ridgePrice,
+            hipPrice: hipPrice,
+            eavesPrice: eavesPrice,
+            installSubtotal: installSubtotal,
+            takedownSubtotal: takedownSubtotal,
+            equipmentSubtotal: equipmentSubtotal,
+            taxableBase: taxableBase,
+            taxAmount: taxAmount,
+            customerSubtotalBeforeTax: customerSubtotalBeforeTax,
+            customerTotalWithTax: customerTotalWithTax,
+            internalTotalPreTax: internalTotalPreTax,
+            client: client ? {
+              name: client.name || '',
+              address: client.address || '',
+              phone: client.phone || '',
+              email: client.email || '',
+              preferred: client.preferred || ''
+            } : null
+          };
+          saveLastEstimate(estimateSnapshot);
+
+          var html = '';
+          html += '<p><strong>Total feet:</strong> ' + totalFeet.toFixed(1) + ' ft</p>';
+          html += '<p><strong>Main ridge:</strong> ' + ridge.toFixed(1) + ' ft → $' + ridgePrice.toFixed(2) + '</p>';
+          html += '<p><strong>Hip ridge:</strong> ' + hip.toFixed(1) + ' ft → $' + hipPrice.toFixed(2) + '</p>';
+          html += '<p><strong>Eaves / gutters:</strong> ' + eaves.toFixed(1) + ' ft → $' + eavesPrice.toFixed(2) + '</p>';
+          html += '<hr>';
+          html += '<p><strong>Install subtotal (labor + equipment):</strong> $' + installSubtotal.toFixed(2) + '</p>';
+          html += '<p><strong>Takedown subtotal (assumed labor only):</strong> $' + takedownSubtotal.toFixed(2) + '</p>';
+          html += '<p><strong>Equipment and supplies (per-foot total):</strong> $' + equipmentSubtotal.toFixed(2) + '</p>';
+          html += '<p><strong>Taxable base (equipment + container):</strong> $' + taxableBase.toFixed(2) + '</p>';
+          html += '<p><strong>Sales tax (' + taxRatePercent.toFixed(2) + '% on taxable base):</strong> $' + taxAmount.toFixed(2) + '</p>';
+          html += '<p><strong>Customer total (install + takedown + tax):</strong> $' + customerTotalWithTax.toFixed(2) + '</p>';
+          html += '<br>';
+          html += '<p><strong>Internal container cost (not shown on proposal):</strong> $' + container.toFixed(2) + '</p>';
+          html += '<p><strong>Internal total (customer pre-tax + container):</strong> $' + internalTotalPreTax.toFixed(2) + '</p>';
+
+          if (resultBox) {
+            resultBox.innerHTML = html;
+          }
+        });
+      }
+
+      // -----------------------------
+      // Proposal rendering
+      // -----------------------------
+      var proposalContent = document.getElementById('proposal-content');
+      var refreshProposalButton = document.getElementById('refresh-proposal');
+
+      function renderProposal() {
+        if (!proposalContent) {
+          return;
+        }
+        var est = loadLastEstimate();
+        if (!est) {
+          proposalContent.innerHTML = '<em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate estimate" first.</em>';
+          return;
+        }
+        var client = est.client || getCurrentClient();
+        var dateStr = '';
+        if (est.timestamp) {
+          try {
+            dateStr = new Date(est.timestamp).toLocaleDateString();
+          } catch (e) {
+            dateStr = '';
+          }
+        }
+
+        var clientHtml = '';
+        if (client) {
+          clientHtml += '<div class="proposal-header">';
+          clientHtml += '<strong>' + (client.name || '') + '</strong><br>';
+          if (client.address) {
+            clientHtml += client.address + '<br>';
+          }
+          if (client.phone) {
+            clientHtml += 'Phone: ' + client.phone + '<br>';
+          }
+          if (client.email) {
+            clientHtml += 'Email: ' + client.email + '<br>';
+          }
+          if (client.preferred) {
+            clientHtml += 'Preferred install: ' + client.preferred + '<br>';
+          }
+          clientHtml += '</div>';
+        } else {
+          clientHtml = '<p><em>No client selected.</em></p>';
+        }
+
+        var html = '';
+        html += '<div class="proposal-card-inner">';
+        html += '<div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">';
+        html += '<img src="logo.png" alt="Company logo" class="company-logo">';
+        html += '<div>';
+        html += '<h3 style="margin:0;">Willy Good Christmas Lights</h3>';
+        html += '<p style="margin:0; font-size:0.85rem;">Phone: 806.215.7047 • william@willygoodcleaning.com</p>';
+        html += '</div>';
+        html += '</div>';
+
+        html += '<p><strong>Proposal date:</strong> ' + dateStr + '</p>';
+        html += clientHtml;
+        html += '<h3>Christmas Light Installation & Takedown</h3>';
+        html += '<p><strong>Total feet:</strong> ' + est.totalFeet.toFixed(1) + ' ft (ridge, hip, eaves)</p>';
+        html += '<ul>';
+        html += '<li>Install: $' + est.installSubtotal.toFixed(2) + ' (@ $' + est.rate.toFixed(2) + '/ft)</li>';
+        html += '<li>Takedown: $' + est.takedownSubtotal.toFixed(2) + ' (@ $' + est.takedownRate.toFixed(2) + '/ft)</li>';
+        html += '</ul>';
+        html += '<div class="proposal-totals">';
+        html += '<p>Equipment and supplies (taxable): $' + est.equipmentSubtotal.toFixed(2) + '</p>';
+        html += '<p>Sales tax (' + est.taxRatePercent.toFixed(2) + '% on taxable base): $' + est.taxAmount.toFixed(2) + '</p>';
+        html += '<p><strong>Total investment:</strong> $' + est.customerTotalWithTax.toFixed(2) + '</p>';
+        html += '</div>';
+        html += '<p class="small-note" style="margin-top:1rem;">';
+        html += 'This proposal includes professional installation, season-long use, and scheduled takedown of lights. ';
+        html += 'Tax is calculated on equipment and materials only, not on labor.';
+        html += '</p>';
+        html += '</div>';
+
+        proposalContent.innerHTML = html;
+      }
+
+      if (refreshProposalButton) {
+        refreshProposalButton.addEventListener('click', renderProposal);
+      }
+
+      // Initial proposal render
+      renderProposal();
+
+      console.log('Willy Good Christmas Tool core script loaded.');
     });
-
-    console.log('Willy Good Christmas Tool – basic JS loaded OK');
-  })();
-</script>
-</body>
-</html>
-
-
+  </script>
 </body>
 </html>
