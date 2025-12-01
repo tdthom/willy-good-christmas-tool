@@ -794,8 +794,8 @@
            // Initial proposal render
       renderProposal();
 
-           // -----------------------------
-      // Roof Measure: image + simple measurement
+          // -----------------------------
+      // Roof Measure: image + simple measurement (with visible click markers)
       // -----------------------------
       var roofImageInput = document.getElementById('roof-image-input');
       var roofSetScaleBtn = document.getElementById('roof-set-scale');
@@ -815,11 +815,13 @@
       var roofSegments = []; // { from:{x,y}, to:{x,y}, feet:number, type:string }
       var roofFeetPerPixel = null;
       var roofDrawParams = null; // {x,y,w,h}
+      var roofLastPoint = null; // for measure mode
 
       function roofSetInfo(text) {
         if (roofInfo) {
           roofInfo.textContent = text;
         }
+        console.log('[RoofMeasure] ' + text);
       }
 
       function roofDrawBase() {
@@ -842,10 +844,27 @@
         return Math.sqrt(dx * dx + dy * dy);
       }
 
+      // Map mouse click -> canvas coordinates, even when CSS scales the canvas
+      function roofCanvasPoint(evt) {
+        if (!roofCanvas) {
+          return { x: 0, y: 0 };
+        }
+        var rect = roofCanvas.getBoundingClientRect();
+
+        var scaleX = roofCanvas.width / rect.width;
+        var scaleY = roofCanvas.height / rect.height;
+
+        return {
+          x: (evt.clientX - rect.left) * scaleX,
+          y: (evt.clientY - rect.top) * scaleY
+        };
+      }
+
       function roofRedraw() {
         if (!roofCtx || !roofCanvas) { return; }
         roofDrawBase();
 
+        // Scale line (orange)
         if (roofScalePoints.length === 2) {
           roofCtx.strokeStyle = '#ffa500';
           roofCtx.lineWidth = 2;
@@ -855,6 +874,7 @@
           roofCtx.stroke();
         }
 
+        // Measured runs by type
         for (var i = 0; i < roofSegments.length; i++) {
           var seg = roofSegments[i];
           var color = '#ff0000';
@@ -905,22 +925,6 @@
         roofTotals.innerHTML = html;
       }
 
-            function roofCanvasPoint(evt) {
-        if (!roofCanvas) {
-          return { x: 0, y: 0 };
-        }
-        var rect = roofCanvas.getBoundingClientRect();
-
-        // Account for CSS scaling vs. internal canvas size
-        var scaleX = roofCanvas.width / rect.width;
-        var scaleY = roofCanvas.height / rect.height;
-
-        return {
-          x: (evt.clientX - rect.left) * scaleX,
-          y: (evt.clientY - rect.top) * scaleY
-        };
-      }
-
       // Image upload
       if (roofImageInput && roofCtx && roofCanvas) {
         roofImageInput.addEventListener('change', function (e) {
@@ -952,6 +956,7 @@
               roofSegments = [];
               roofFeetPerPixel = null;
               roofMode = 'none';
+              roofLastPoint = null;
 
               roofDrawBase();
               roofSetInfo('Image loaded. Step 1: click "Set scale" and draw a known distance.');
@@ -972,6 +977,7 @@
           }
           roofMode = 'scale';
           roofScalePoints = [];
+          roofLastPoint = null;
           roofSegments = [];
           roofFeetPerPixel = null;
           roofRedraw();
@@ -992,6 +998,7 @@
             return;
           }
           roofMode = 'measure';
+          roofLastPoint = null;
           roofRedraw();
           roofSetInfo('Measure mode: choose run type, then click along each run.');
         });
@@ -1004,6 +1011,7 @@
           roofSegments = [];
           roofFeetPerPixel = null;
           roofMode = 'none';
+          roofLastPoint = null;
           roofDrawBase();
           roofSetInfo('Cleared lines. Set scale again if needed.');
           roofUpdateTotals();
@@ -1039,10 +1047,15 @@
 
       // Canvas click handling
       if (roofCanvas && roofCtx) {
-        var roofLastPoint = null;
         roofCanvas.addEventListener('click', function (evt) {
           if (!roofImage) { return; }
           var pt = roofCanvasPoint(evt);
+
+          // Always draw a small dot so you can see the click
+          roofCtx.fillStyle = '#ff8800';
+          roofCtx.beginPath();
+          roofCtx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+          roofCtx.fill();
 
           if (roofMode === 'scale') {
             roofScalePoints.push(pt);
@@ -1083,15 +1096,16 @@
             }
             roofRedraw();
             roofUpdateTotals();
+          } else {
+            roofSetInfo('Click "Set scale" or "Measure runs" before clicking on the roof.');
           }
         });
       }
 
-
-      console.log('Willy Good Christmas Tool core script loaded.');
+    console.log('Willy Good Christmas Tool core script loaded.');
 
     });
-      // -----------------------------
+   // -----------------------------
   // Roof & Photo Mockup: show uploaded images in canvas
   // -----------------------------
   (function () {
