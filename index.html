@@ -905,14 +905,19 @@
         roofTotals.innerHTML = html;
       }
 
-      function roofCanvasPoint(evt) {
+            function roofCanvasPoint(evt) {
         if (!roofCanvas) {
           return { x: 0, y: 0 };
         }
         var rect = roofCanvas.getBoundingClientRect();
+
+        // Account for CSS scaling vs. internal canvas size
+        var scaleX = roofCanvas.width / rect.width;
+        var scaleY = roofCanvas.height / rect.height;
+
         return {
-          x: evt.clientX - rect.left,
-          y: evt.clientY - rect.top
+          x: (evt.clientX - rect.left) * scaleX,
+          y: (evt.clientY - rect.top) * scaleY
         };
       }
 
