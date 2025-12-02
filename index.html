@@ -830,7 +830,11 @@
       var roofFeetPerPixel = null;
       var roofDrawParams = null; // {x,y,w,h}
       var roofLastPoint = null; // for measure mode
+      var roofIsDragging = false;
+      var roofDragSegmentIndex = -1;
+      var roofDragEnd = null; // 'from' or 'to'
 
+      
       function roofSetInfo(text) {
         if (roofInfo) {
           roofInfo.textContent = text;
@@ -1036,6 +1040,63 @@
           roofSetInfo('Lines cleared. Scale is still set. You can measure again.');
         });
       }
+      // Undo last segment
+      if (roofUndoBtn) {
+        roofUndoBtn.addEventListener('click', function () {
+          roofSetInfo(
+            'Undo clicked. Segments before undo: ' + roofSegments.length
+          );
+
+          if (roofSegments.length === 0) {
+            roofSetInfo('No segments to undo.');
+            return;
+          }
+
+          // Remove the last segment
+          roofSegments.pop();
+          roofLastPoint = null;
+          roofIsDragging = false;
+          roofDragSegmentIndex = -1;
+          roofDragEnd = null;
+
+          roofRedraw();
+          roofUpdateTotals();
+
+          roofSetInfo(
+            'Last segment removed. Segments now: ' + roofSegments.length
+          );
+        });
+      }
+      
+      // Enter adjust mode
+      if (roofAdjustBtn) {
+        roofAdjustBtn.addEventListener('click', function () {
+          if (!roofImage) {
+            roofSetInfo('Upload an image first.');
+            return;
+          }
+          if (!roofFeetPerPixel) {
+            roofSetInfo('Set the scale first before adjusting lines.');
+            return;
+          }
+          if (roofSegments.length === 0) {
+            roofSetInfo(
+              'There are no segments to adjust yet. Measure some runs first.'
+            );
+            return;
+          }
+
+          roofMode = 'adjust';
+          roofLastPoint = null;
+          roofIsDragging = false;
+          roofDragSegmentIndex = -1;
+          roofDragEnd = null;
+
+          roofSetInfo(
+            'Adjust mode: click near a segment endpoint and drag to move it.'
+          );
+        });
+      }
 
       // Send to Estimate
       if (roofSendBtn) {
@@ -1139,14 +1200,79 @@
           }
         });
       }
+      // Drag endpoints in adjust mode
+      if (roofCanvas && roofCtx) {
+        // Start drag
+        roofCanvas.addEventListener('mousedown', function (evt) {
+          if (!roofImage) { return; }
+          if (roofMode !== 'adjust') { return; }
+
+          var pt = roofCanvasPoint(evt);
+          var nearestDist = 8; // pixels
+          var hitIndex = -1;
+          var hitEnd = null;
+
+          for (var i = 0; i < roofSegments.length; i++) {
+            var seg = roofSegments[i];
+            var dFrom = roofPixelDistance(pt, seg.from);
+            var dTo = roofPixelDistance(pt, seg.to);
+
+            if (dFrom < nearestDist) {
+              nearestDist = dFrom;
+              hitIndex = i;
+              hitEnd = 'from';
+            }
+            if (dTo < nearestDist) {
+              nearestDist = dTo;
+              hitIndex = i;
+              hitEnd = 'to';
+            }
+          }
+
+          if (hitIndex >= 0) {
+            roofIsDragging = true;
+            roofDragSegmentIndex = hitIndex;
+            roofDragEnd = hitEnd;
+            roofSetInfo(
+              'Dragging endpoint of segment ' + hitIndex + ' (' + hitEnd + ').'
+            );
+          }
+        });
+
+        // Drag move
+        roofCanvas.addEventListener('mousemove', function (evt) {
+          if (!roofIsDragging) { return; }
+          if (roofDragSegmentIndex < 0 || !roofDragEnd) { return; }
+
+          var seg = roofSegments[roofDragSegmentIndex];
+          if (!seg) { return; }
+
+          var pt = roofCanvasPoint(evt);
+          seg[roofDragEnd] = pt;
+
+          if (roofFeetPerPixel) {
+            seg.feet = roofPixelDistance(seg.from, seg.to) * roofFeetPerPixel;
+          }
+
+          roofRedraw();
+          roofUpdateTotals();
+        });
+
+        // End drag
+        window.addEventListener('mouseup', function () {
+          if (roofIsDragging) {
+            roofIsDragging = false;
+            roofDragSegmentIndex = -1;
+            roofDragEnd = null;
+            roofSetInfo('Endpoint adjusted.');
+          }
+        });
+      }
 
     console.log('Willy Good Christmas Tool core script loaded.');
 
     });
-   // -----------------------------
-  // Roof & Photo Mockup: show uploaded images in canvas
-  // -----------------------------
-  (function () {
+   
     // Roof Measure image
     var roofInput = document.getElementById('roof-image-input');
     var roofCanvas = document.getElementById('roof-canvas');
