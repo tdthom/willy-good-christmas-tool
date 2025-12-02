@@ -318,1030 +318,857 @@
   </section>
 
   <script>
-    window.addEventListener('DOMContentLoaded', function () {
-      // -----------------------------
-      // Navigation: switch between screens
-      // -----------------------------
-      var navButtons = document.querySelectorAll('nav button[data-screen]');
-      var screens = document.querySelectorAll('.screen');
+window.addEventListener('DOMContentLoaded', function () {
+  // -----------------------------
+  // Navigation
+  // -----------------------------
+  var navButtons = document.querySelectorAll('nav button[data-screen]');
+  var screens = document.querySelectorAll('.screen');
 
-      navButtons.forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var target = btn.getAttribute('data-screen');
-
-          navButtons.forEach(function (b) {
-            b.classList.remove('active');
-          });
-          btn.classList.add('active');
-
-          screens.forEach(function (s) {
-            if (s.id === 'screen-' + target) {
-              s.classList.add('active');
-            } else {
-              s.classList.remove('active');
-            }
-          });
-        });
+  navButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var target = btn.getAttribute('data-screen');
+      navButtons.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      screens.forEach(function (s) {
+        if (s.id === 'screen-' + target) s.classList.add('active');
+        else s.classList.remove('active');
       });
+    });
+  });
 
-      // -----------------------------
-      // LocalStorage helpers
-      // -----------------------------
-      var CLIENTS_KEY = 'wgc-clients-v1';
-      var CURRENT_CLIENT_KEY = 'wgc-current-client-id';
-      var ESTIMATE_KEY = 'wgc-last-estimate-v2';
+  // -----------------------------
+  // LocalStorage helpers
+  // -----------------------------
+  var CLIENTS_KEY = 'wgc-clients-v1';
+  var CURRENT_CLIENT_KEY = 'wgc-current-client-id';
+  var ESTIMATE_KEY = 'wgc-last-estimate-v2';
 
-      function loadClients() {
-        try {
-          var raw = localStorage.getItem(CLIENTS_KEY);
-          if (!raw) { return []; }
-          var parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) { return parsed; }
-          return [];
-        } catch (e) {
-          console.warn('Could not load clients', e);
-          return [];
-        }
+  function loadClients() {
+    try {
+      var raw = localStorage.getItem(CLIENTS_KEY);
+      if (!raw) return [];
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.warn('Could not load clients', e);
+      return [];
+    }
+  }
+
+  function saveClients(list) {
+    try {
+      localStorage.setItem(CLIENTS_KEY, JSON.stringify(list));
+    } catch (e) {
+      console.warn('Could not save clients', e);
+    }
+  }
+
+  function loadCurrentClientId() {
+    try {
+      var raw = localStorage.getItem(CURRENT_CLIENT_KEY);
+      if (!raw) return null;
+      var id = parseInt(raw, 10);
+      return isNaN(id) ? null : id;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveCurrentClientId(id) {
+    try {
+      if (id == null) localStorage.removeItem(CURRENT_CLIENT_KEY);
+      else localStorage.setItem(CURRENT_CLIENT_KEY, String(id));
+    } catch (e) {
+      console.warn('Could not save current client id', e);
+    }
+  }
+
+  function loadLastEstimate() {
+    try {
+      var raw = localStorage.getItem(ESTIMATE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      console.warn('Could not load last estimate', e);
+      return null;
+    }
+  }
+
+  function saveLastEstimate(data) {
+    try {
+      localStorage.setItem(ESTIMATE_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.warn('Could not save last estimate', e);
+    }
+  }
+
+  // -----------------------------
+  // Clients UI
+  // -----------------------------
+  var clientNameInput = document.getElementById('client-name');
+  var clientPhoneInput = document.getElementById('client-phone');
+  var clientEmailInput = document.getElementById('client-email');
+  var clientAddressInput = document.getElementById('client-address');
+  var clientPreferredInput = document.getElementById('client-preferred');
+  var clientNotesInput = document.getElementById('client-notes');
+  var clientRateInput = document.getElementById('client-rate');
+  var clientTakedownRateInput = document.getElementById('client-takedown-rate');
+  var clientLightsOwnedSelect = document.getElementById('client-lights-owned');
+  var saveClientButton = document.getElementById('save-client');
+  var clientsList = document.getElementById('clients-list');
+  var currentClientSummaryDiv = document.getElementById('current-client-summary');
+
+  var clients = loadClients();
+  var currentClientId = loadCurrentClientId();
+
+  function getCurrentClient() {
+    if (currentClientId == null) return null;
+    for (var i = 0; i < clients.length; i++) {
+      if (clients[i].id === currentClientId) return clients[i];
+    }
+    return null;
+  }
+
+  function updateCurrentClientSummary() {
+    if (!currentClientSummaryDiv) return;
+    var c = getCurrentClient();
+    if (!c) {
+      currentClientSummaryDiv.innerHTML =
+        '<em>No client selected. Go to the Clients tab and click "Use for estimate".</em>';
+      return;
+    }
+    var html = '';
+    html += '<strong>Current client:</strong> ' + (c.name || '') + '<br>';
+    if (c.address) html += c.address + '<br>';
+    if (c.phone) html += 'Phone: ' + c.phone + '<br>';
+    if (c.preferred) html += 'Preferred install: ' + c.preferred + '<br>';
+    currentClientSummaryDiv.innerHTML = html;
+  }
+
+  function renderClientsList() {
+    if (!clientsList) return;
+    if (!clients.length) {
+      clientsList.innerHTML = '<li>No clients saved yet.</li>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < clients.length; i++) {
+      var c = clients[i];
+      var safeName = c.name || '(No name)';
+      var safeAddress = c.address || '';
+      var safePhone = c.phone || '-';
+      var safeEmail = c.email || '-';
+      var safePreferred = c.preferred || '-';
+      var isCurrent = c.id === currentClientId;
+
+      var rateInfo = '';
+      if (typeof c.defaultRate === 'number') {
+        rateInfo += 'Install: $' + c.defaultRate.toFixed(2) + '/ft; ';
+      }
+      if (typeof c.defaultTakedown === 'number') {
+        rateInfo += 'Takedown: $' + c.defaultTakedown.toFixed(2) + '/ft; ';
       }
 
-      function saveClients(list) {
-        try {
-          localStorage.setItem(CLIENTS_KEY, JSON.stringify(list));
-        } catch (e) {
-          console.warn('Could not save clients', e);
-        }
+      var lightsInfo = '';
+      if (c.lightsOwned === 'company') lightsInfo = 'Lights: company-owned';
+      else if (c.lightsOwned === 'customer') lightsInfo = 'Lights: customer-owned';
+
+      html += '<li data-client-id="' + c.id + '">';
+      html += '<strong>' + safeName + '</strong>' + (isCurrent ? ' (current)' : '') + '<br>';
+      if (safeAddress) html += safeAddress + '<br>';
+      html += 'Phone: ' + safePhone + ' | Email: ' + safeEmail + '<br>';
+      html += 'Preferred install: ' + safePreferred + '<br>';
+      if (rateInfo || lightsInfo) {
+        html += '<small>' + rateInfo + lightsInfo + '</small><br>';
+      }
+      html += '<button class="use-client-button" data-client-id="' + c.id + '">Use for estimate</button>';
+      html += '</li>';
+    }
+    clientsList.innerHTML = html;
+  }
+
+  if (saveClientButton) {
+    saveClientButton.addEventListener('click', function () {
+      if (!clientNameInput) {
+        alert('Client form is not loaded correctly.');
+        return;
+      }
+      var name = (clientNameInput.value || '').trim();
+      if (!name) {
+        alert('Client name is required.');
+        return;
       }
 
-      function loadCurrentClientId() {
-        try {
-          var raw = localStorage.getItem(CURRENT_CLIENT_KEY);
-          if (!raw) { return null; }
-          var id = parseInt(raw, 10);
-          if (isNaN(id)) { return null; }
-          return id;
-        } catch (e) {
-          return null;
-        }
+      var phone = clientPhoneInput ? clientPhoneInput.value.trim() : '';
+      var email = clientEmailInput ? clientEmailInput.value.trim() : '';
+      var address = clientAddressInput ? clientAddressInput.value.trim() : '';
+      var preferred = clientPreferredInput ? clientPreferredInput.value.trim() : '';
+      var notes = clientNotesInput ? clientNotesInput.value.trim() : '';
+
+      var defaultRate = null;
+      if (clientRateInput && clientRateInput.value !== '') {
+        defaultRate = parseFloat(clientRateInput.value);
+        if (isNaN(defaultRate)) defaultRate = null;
       }
 
-      function saveCurrentClientId(id) {
-        try {
-          if (id == null) {
-            localStorage.removeItem(CURRENT_CLIENT_KEY);
-          } else {
-            localStorage.setItem(CURRENT_CLIENT_KEY, String(id));
-          }
-        } catch (e) {
-          console.warn('Could not save current client id', e);
-        }
+      var defaultTakedown = null;
+      if (clientTakedownRateInput && clientTakedownRateInput.value !== '') {
+        defaultTakedown = parseFloat(clientTakedownRateInput.value);
+        if (isNaN(defaultTakedown)) defaultTakedown = null;
       }
 
-      function loadLastEstimate() {
-        try {
-          var raw = localStorage.getItem(ESTIMATE_KEY);
-          if (!raw) { return null; }
-          return JSON.parse(raw);
-        } catch (e) {
-          console.warn('Could not load last estimate', e);
-          return null;
-        }
-      }
+      var lightsOwned = clientLightsOwnedSelect ? clientLightsOwnedSelect.value : 'unknown';
 
-      function saveLastEstimate(data) {
-        try {
-          localStorage.setItem(ESTIMATE_KEY, JSON.stringify(data));
-        } catch (e) {
-          console.warn('Could not save last estimate', e);
-        }
-      }
-
-      // -----------------------------
-      // Clients UI
-      // -----------------------------
-      var clientNameInput = document.getElementById('client-name');
-      var clientPhoneInput = document.getElementById('client-phone');
-      var clientEmailInput = document.getElementById('client-email');
-      var clientAddressInput = document.getElementById('client-address');
-      var clientPreferredInput = document.getElementById('client-preferred');
-      var clientNotesInput = document.getElementById('client-notes');
-      var clientRateInput = document.getElementById('client-rate');
-      var clientTakedownRateInput = document.getElementById('client-takedown-rate');
-      var clientLightsOwnedSelect = document.getElementById('client-lights-owned');
-      var saveClientButton = document.getElementById('save-client');
-      var clientsList = document.getElementById('clients-list');
-      var currentClientSummaryDiv = document.getElementById('current-client-summary');
-
-      var clients = loadClients();
-      var currentClientId = loadCurrentClientId();
-
-      function getCurrentClient() {
-        if (currentClientId == null) { return null; }
+      var existing = null;
+      if (currentClientId != null) {
         for (var i = 0; i < clients.length; i++) {
           if (clients[i].id === currentClientId) {
-            return clients[i];
+            existing = clients[i];
+            break;
           }
         }
-        return null;
       }
 
-      function updateCurrentClientSummary() {
-        if (!currentClientSummaryDiv) { return; }
-        var c = getCurrentClient();
-        if (!c) {
-          currentClientSummaryDiv.innerHTML = '<em>No client selected. Go to the Clients tab and click "Use for estimate".</em>';
-          return;
-        }
-        var html = '';
-        html += '<strong>Current client:</strong> ' + (c.name || '') + '<br>';
-        if (c.address) {
-          html += c.address + '<br>';
-        }
-        if (c.phone) {
-          html += 'Phone: ' + c.phone + '<br>';
-        }
-        if (c.preferred) {
-          html += 'Preferred install: ' + c.preferred + '<br>';
-        }
-        currentClientSummaryDiv.innerHTML = html;
+      if (existing) {
+        existing.name = name;
+        existing.phone = phone;
+        existing.email = email;
+        existing.address = address;
+        existing.preferred = preferred;
+        existing.notes = notes;
+        existing.defaultRate = defaultRate;
+        existing.defaultTakedown = defaultTakedown;
+        existing.lightsOwned = lightsOwned;
+      } else {
+        var newClient = {
+          id: Date.now(),
+          name: name,
+          phone: phone,
+          email: email,
+          address: address,
+          preferred: preferred,
+          notes: notes,
+          defaultRate: defaultRate,
+          defaultTakedown: defaultTakedown,
+          lightsOwned: lightsOwned
+        };
+        clients.push(newClient);
+        currentClientId = newClient.id;
+        saveCurrentClientId(currentClientId);
       }
 
-      function renderClientsList() {
-        if (!clientsList) { return; }
-        if (!clients.length) {
-          clientsList.innerHTML = '<li>No clients saved yet.</li>';
-          return;
-        }
-        var html = '';
-        for (var i = 0; i < clients.length; i++) {
-          var c = clients[i];
-          var safeName = c.name || '(No name)';
-          var safeAddress = c.address || '';
-          var safePhone = c.phone || '-';
-          var safeEmail = c.email || '-';
-          var safePreferred = c.preferred || '-';
-          var isCurrent = c.id === currentClientId;
+      saveClients(clients);
+      renderClientsList();
+      updateCurrentClientSummary();
+      alert('Client saved.');
+    });
+  }
 
-          var rateInfo = '';
-          if (typeof c.defaultRate === 'number') {
-            rateInfo += 'Install: $' + c.defaultRate.toFixed(2) + '/ft; ';
-          }
-          if (typeof c.defaultTakedown === 'number') {
-            rateInfo += 'Takedown: $' + c.defaultTakedown.toFixed(2) + '/ft; ';
-          }
+  if (clientsList) {
+    clientsList.addEventListener('click', function (evt) {
+      var target = evt.target || evt.srcElement;
+      if (!target || !target.classList.contains('use-client-button')) return;
 
-          var lightsInfo = '';
-          if (c.lightsOwned === 'company') {
-            lightsInfo = 'Lights: company-owned';
-          } else if (c.lightsOwned === 'customer') {
-            lightsInfo = 'Lights: customer-owned';
-          }
+      var idStr = target.getAttribute('data-client-id');
+      var id = parseInt(idStr, 10);
+      if (isNaN(id)) return;
 
-          html += '<li data-client-id="' + c.id + '">';
-          html += '<strong>' + safeName + '</strong>' + (isCurrent ? ' (current)' : '') + '<br>';
-          if (safeAddress) {
-            html += safeAddress + '<br>';
-          }
-          html += 'Phone: ' + safePhone + ' | Email: ' + safeEmail + '<br>';
-          html += 'Preferred install: ' + safePreferred + '<br>';
-          if (rateInfo || lightsInfo) {
-            html += '<small>' + rateInfo + lightsInfo + '</small><br>';
-          }
-          html += '<button class="use-client-button" data-client-id="' + c.id + '">Use for estimate</button>';
-          html += '</li>';
-        }
-        clientsList.innerHTML = html;
-      }
-
-      if (saveClientButton) {
-        saveClientButton.addEventListener('click', function () {
-          if (!clientNameInput) {
-            alert('Client form is not loaded correctly.');
-            return;
-          }
-          var name = (clientNameInput.value || '').trim();
-          if (!name) {
-            alert('Client name is required.');
-            return;
-          }
-
-          var phone = clientPhoneInput ? clientPhoneInput.value.trim() : '';
-          var email = clientEmailInput ? clientEmailInput.value.trim() : '';
-          var address = clientAddressInput ? clientAddressInput.value.trim() : '';
-          var preferred = clientPreferredInput ? clientPreferredInput.value.trim() : '';
-          var notes = clientNotesInput ? clientNotesInput.value.trim() : '';
-
-          var defaultRate = null;
-          if (clientRateInput && clientRateInput.value !== '') {
-            defaultRate = parseFloat(clientRateInput.value);
-            if (isNaN(defaultRate)) { defaultRate = null; }
-          }
-
-          var defaultTakedown = null;
-          if (clientTakedownRateInput && clientTakedownRateInput.value !== '') {
-            defaultTakedown = parseFloat(clientTakedownRateInput.value);
-            if (isNaN(defaultTakedown)) { defaultTakedown = null; }
-          }
-
-          var lightsOwned = clientLightsOwnedSelect ? clientLightsOwnedSelect.value : 'unknown';
-
-          var existing = null;
-          if (currentClientId != null) {
-            for (var i = 0; i < clients.length; i++) {
-              if (clients[i].id === currentClientId) {
-                existing = clients[i];
-                break;
-              }
-            }
-          }
-
-          if (existing) {
-            existing.name = name;
-            existing.phone = phone;
-            existing.email = email;
-            existing.address = address;
-            existing.preferred = preferred;
-            existing.notes = notes;
-            existing.defaultRate = defaultRate;
-            existing.defaultTakedown = defaultTakedown;
-            existing.lightsOwned = lightsOwned;
-          } else {
-            var newClient = {
-              id: Date.now(),
-              name: name,
-              phone: phone,
-              email: email,
-              address: address,
-              preferred: preferred,
-              notes: notes,
-              defaultRate: defaultRate,
-              defaultTakedown: defaultTakedown,
-              lightsOwned: lightsOwned
-            };
-            clients.push(newClient);
-            currentClientId = newClient.id;
-            saveCurrentClientId(currentClientId);
-          }
-
-          saveClients(clients);
-          renderClientsList();
-          updateCurrentClientSummary();
-          alert('Client saved.');
-        });
-      }
-
-      if (clientsList) {
-        clientsList.addEventListener('click', function (evt) {
-          var target = evt.target || evt.srcElement;
-          if (!target || !target.classList.contains('use-client-button')) {
-            return;
-          }
-          var idStr = target.getAttribute('data-client-id');
-          var id = parseInt(idStr, 10);
-          if (isNaN(id)) {
-            return;
-          }
-          currentClientId = id;
-          saveCurrentClientId(id);
-          renderClientsList();
-          updateCurrentClientSummary();
-
-          var c = getCurrentClient();
-          if (c) {
-            if (clientRateInput && typeof c.defaultRate === 'number') {
-              clientRateInput.value = c.defaultRate.toFixed(2);
-            }
-            if (clientTakedownRateInput && typeof c.defaultTakedown === 'number') {
-              clientTakedownRateInput.value = c.defaultTakedown.toFixed(2);
-            }
-          }
-        });
-      }
-
+      currentClientId = id;
+      saveCurrentClientId(id);
       renderClientsList();
       updateCurrentClientSummary();
 
-      // -----------------------------
-      // Estimate logic
-      // -----------------------------
-      var ridgeInput = document.getElementById('ridge-feet');
-      var hipInput = document.getElementById('hip-feet');
-      var eavesInput = document.getElementById('eaves-feet');
-      var rateInput = document.getElementById('rate-per-foot');
-      var takedownRateInput = document.getElementById('takedown-rate');
-      var equipRateInput = document.getElementById('equipment-rate');
-      var equipModeSelect = document.getElementById('equipment-mode');
-      var taxRateInput = document.getElementById('tax-rate');
-      var containerInput = document.getElementById('container-cost');
-      var calcButton = document.getElementById('calc-estimate');
-      var resultBox = document.getElementById('estimate-result');
-
-      if (calcButton) {
-        calcButton.addEventListener('click', function () {
-          var ridge = parseFloat(ridgeInput && ridgeInput.value) || 0;
-          var hip = parseFloat(hipInput && hipInput.value) || 0;
-          var eaves = parseFloat(eavesInput && eavesInput.value) || 0;
-          var rate = parseFloat(rateInput && rateInput.value) || 0;
-          var takedownRate = parseFloat(takedownRateInput && takedownRateInput.value) || 0;
-          var equipRate = parseFloat(equipRateInput && equipRateInput.value) || 0;
-          var taxRatePercent = parseFloat(taxRateInput && taxRateInput.value) || 0;
-          var container = parseFloat(containerInput && containerInput.value) || 0;
-
-          var totalFeet = ridge + hip + eaves;
-
-          var ridgePrice = ridge * rate;
-          var hipPrice = hip * rate;
-          var eavesPrice = eaves * rate;
-          var installSubtotal = ridgePrice + hipPrice + eavesPrice;
-
-          var takedownSubtotal = totalFeet * takedownRate;
-
-          var equipmentSubtotal = totalFeet * equipRate;
-
-          var customerSubtotalBeforeTax = installSubtotal + takedownSubtotal;
-
-          var taxableBase = equipmentSubtotal + container;
-          var taxRate = taxRatePercent / 100;
-          var taxAmount = taxableBase * taxRate;
-          var customerTotalWithTax = customerSubtotalBeforeTax + taxAmount;
-
-          var internalTotalPreTax = customerSubtotalBeforeTax + container;
-
-          var client = getCurrentClient();
-          var estimateSnapshot = {
-            timestamp: new Date().toISOString(),
-            ridge: ridge,
-            hip: hip,
-            eaves: eaves,
-            totalFeet: totalFeet,
-            rate: rate,
-            takedownRate: takedownRate,
-            equipRate: equipRate,
-            taxRatePercent: taxRatePercent,
-            container: container,
-            ridgePrice: ridgePrice,
-            hipPrice: hipPrice,
-            eavesPrice: eavesPrice,
-            installSubtotal: installSubtotal,
-            takedownSubtotal: takedownSubtotal,
-            equipmentSubtotal: equipmentSubtotal,
-            taxableBase: taxableBase,
-            taxAmount: taxAmount,
-            customerSubtotalBeforeTax: customerSubtotalBeforeTax,
-            customerTotalWithTax: customerTotalWithTax,
-            internalTotalPreTax: internalTotalPreTax,
-            client: client ? {
-              name: client.name || '',
-              address: client.address || '',
-              phone: client.phone || '',
-              email: client.email || '',
-              preferred: client.preferred || ''
-            } : null
-          };
-          saveLastEstimate(estimateSnapshot);
-
-          var html = '';
-          html += '<p><strong>Total feet:</strong> ' + totalFeet.toFixed(1) + ' ft</p>';
-          html += '<p><strong>Main ridge:</strong> ' + ridge.toFixed(1) + ' ft → $' + ridgePrice.toFixed(2) + '</p>';
-          html += '<p><strong>Hip ridge:</strong> ' + hip.toFixed(1) + ' ft → $' + hipPrice.toFixed(2) + '</p>';
-          html += '<p><strong>Eaves / gutters:</strong> ' + eaves.toFixed(1) + ' ft → $' + eavesPrice.toFixed(2) + '</p>';
-          html += '<hr>';
-          html += '<p><strong>Install subtotal (labor + equipment):</strong> $' + installSubtotal.toFixed(2) + '</p>';
-          html += '<p><strong>Takedown subtotal (assumed labor only):</strong> $' + takedownSubtotal.toFixed(2) + '</p>';
-          html += '<p><strong>Equipment and supplies (per-foot total):</strong> $' + equipmentSubtotal.toFixed(2) + '</p>';
-          html += '<p><strong>Taxable base (equipment + container):</strong> $' + taxableBase.toFixed(2) + '</p>';
-          html += '<p><strong>Sales tax (' + taxRatePercent.toFixed(2) + '% on taxable base):</strong> $' + taxAmount.toFixed(2) + '</p>';
-          html += '<p><strong>Customer total (install + takedown + tax):</strong> $' + customerTotalWithTax.toFixed(2) + '</p>';
-          html += '<br>';
-          html += '<p><strong>Internal container cost (not shown on proposal):</strong> $' + container.toFixed(2) + '</p>';
-          html += '<p><strong>Internal total (customer pre-tax + container):</strong> $' + internalTotalPreTax.toFixed(2) + '</p>';
-
-          if (resultBox) {
-            resultBox.innerHTML = html;
-          }
-        });
-      }
-
-      // -----------------------------
-      // Proposal rendering
-      // -----------------------------
-      var proposalContent = document.getElementById('proposal-content');
-      var refreshProposalButton = document.getElementById('refresh-proposal');
-
-      function renderProposal() {
-        if (!proposalContent) {
-          return;
+      var c = getCurrentClient();
+      if (c) {
+        if (clientRateInput && typeof c.defaultRate === 'number') {
+          clientRateInput.value = c.defaultRate.toFixed(2);
         }
-        var est = loadLastEstimate();
-        if (!est) {
-          proposalContent.innerHTML = '<em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate estimate" first.</em>';
-          return;
-        }
-        var client = est.client || getCurrentClient();
-        var dateStr = '';
-        if (est.timestamp) {
-          try {
-            dateStr = new Date(est.timestamp).toLocaleDateString();
-          } catch (e) {
-            dateStr = '';
-          }
-        }
-
-        var clientHtml = '';
-        if (client) {
-          clientHtml += '<div class="proposal-header">';
-          clientHtml += '<strong>' + (client.name || '') + '</strong><br>';
-          if (client.address) {
-            clientHtml += client.address + '<br>';
-          }
-          if (client.phone) {
-            clientHtml += 'Phone: ' + client.phone + '<br>';
-          }
-          if (client.email) {
-            clientHtml += 'Email: ' + client.email + '<br>';
-          }
-          if (client.preferred) {
-            clientHtml += 'Preferred install: ' + client.preferred + '<br>';
-          }
-          clientHtml += '</div>';
-        } else {
-          clientHtml = '<p><em>No client selected.</em></p>';
-        }
-
-        var html = '';
-        html += '<div class="proposal-card-inner">';
-        html += '<div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">';
-        html += '<img src="logo.png" alt="Company logo" class="company-logo">';
-        html += '<div>';
-        html += '<h3 style="margin:0;">Willy Good Christmas Lights</h3>';
-        html += '<p style="margin:0; font-size:0.85rem;">Phone: 806.215.7047 • william@willygoodcleaning.com</p>';
-        html += '</div>';
-        html += '</div>';
-
-        html += '<p><strong>Proposal date:</strong> ' + dateStr + '</p>';
-        html += clientHtml;
-        html += '<h3>Christmas Light Installation & Takedown</h3>';
-        html += '<p><strong>Total feet:</strong> ' + est.totalFeet.toFixed(1) + ' ft (ridge, hip, eaves)</p>';
-        html += '<ul>';
-        html += '<li>Install: $' + est.installSubtotal.toFixed(2) + ' (@ $' + est.rate.toFixed(2) + '/ft)</li>';
-        html += '<li>Takedown: $' + est.takedownSubtotal.toFixed(2) + ' (@ $' + est.takedownRate.toFixed(2) + '/ft)</li>';
-        html += '</ul>';
-        html += '<div class="proposal-totals">';
-        html += '<p>Equipment and supplies (taxable): $' + est.equipmentSubtotal.toFixed(2) + '</p>';
-        html += '<p>Sales tax (' + est.taxRatePercent.toFixed(2) + '% on taxable base): $' + est.taxAmount.toFixed(2) + '</p>';
-        html += '<p><strong>Total investment:</strong> $' + est.customerTotalWithTax.toFixed(2) + '</p>';
-        html += '</div>';
-        html += '<p class="small-note" style="margin-top:1rem;">';
-        html += 'This proposal includes professional installation, season-long use, and scheduled takedown of lights. ';
-        html += 'Tax is calculated on equipment and materials only, not on labor.';
-        html += '</p>';
-        html += '</div>';
-
-        proposalContent.innerHTML = html;
-      }
-
-      if (refreshProposalButton) {
-        refreshProposalButton.addEventListener('click', renderProposal);
-      }
-
-       // Initial proposal render
-      renderProposal();
-
-      // -----------------------------
-      // Roof Measure: image + simple measurement (with visible click markers)
-      // -----------------------------
-      var roofImageInput = document.getElementById('roof-image-input');
-      var roofSetScaleBtn = document.getElementById('roof-set-scale');
-      var roofMeasureBtn = document.getElementById('roof-measure-mode');
-      var roofClearBtn = document.getElementById('roof-clear');
-      var roofSendBtn = document.getElementById('roof-send-to-estimate');
-      var roofScaleFeetInput = document.getElementById('roof-scale-feet');
-      var roofRunTypeSelect = document.getElementById('roof-run-type');
-      var roofUndoBtn = document.getElementById('roof-undo');
-      var roofAdjustBtn = document.getElementById('roof-adjust-mode');
-      var roofCanvas = document.getElementById('roof-canvas');
-      var roofInfo = document.getElementById('roof-info');
-      var roofTotals = document.getElementById('roof-totals');
-      var roofCtx = roofCanvas ? roofCanvas.getContext('2d') : null;
-
-      var roofImage = null;
-      var roofMode = 'none'; // 'scale' or 'measure'
-      var roofScalePoints = [];
-      var roofSegments = []; // { from:{x,y}, to:{x,y}, feet:number, type:string }
-      var roofFeetPerPixel = null;
-      var roofDrawParams = null; // {x,y,w,h}
-      var roofLastPoint = null; // for measure mode
-      var roofIsDragging = false;
-      var roofDragSegmentIndex = -1;
-      var roofDragEnd = null; // 'from' or 'to'
-
-      
-      function roofSetInfo(text) {
-        if (roofInfo) {
-          roofInfo.textContent = text;
-        }
-        console.log('[RoofMeasure] ' + text);
-      }
-
-      function roofDrawBase() {
-        if (!roofCtx || !roofCanvas) { return; }
-        roofCtx.clearRect(0, 0, roofCanvas.width, roofCanvas.height);
-        if (roofImage && roofDrawParams) {
-          roofCtx.drawImage(
-            roofImage,
-            roofDrawParams.x,
-            roofDrawParams.y,
-            roofDrawParams.w,
-            roofDrawParams.h
-          );
+        if (clientTakedownRateInput && typeof c.defaultTakedown === 'number') {
+          clientTakedownRateInput.value = c.defaultTakedown.toFixed(2);
         }
       }
+    });
+  }
 
-      function roofPixelDistance(a, b) {
-        var dx = a.x - b.x;
-        var dy = a.y - b.y;
-        return Math.sqrt(dx * dx + dy * dy);
+  renderClientsList();
+  updateCurrentClientSummary();
+
+  // -----------------------------
+  // Estimate logic
+  // -----------------------------
+  var ridgeInput = document.getElementById('ridge-feet');
+  var hipInput = document.getElementById('hip-feet');
+  var eavesInput = document.getElementById('eaves-feet');
+  var rateInput = document.getElementById('rate-per-foot');
+  var takedownRateInput = document.getElementById('takedown-rate');
+  var equipRateInput = document.getElementById('equipment-rate');
+  var equipModeSelect = document.getElementById('equipment-mode');
+  var taxRateInput = document.getElementById('tax-rate');
+  var containerInput = document.getElementById('container-cost');
+  var calcButton = document.getElementById('calc-estimate');
+  var resultBox = document.getElementById('estimate-result');
+
+  if (calcButton) {
+    calcButton.addEventListener('click', function () {
+      var ridge = parseFloat(ridgeInput && ridgeInput.value) || 0;
+      var hip = parseFloat(hipInput && hipInput.value) || 0;
+      var eaves = parseFloat(eavesInput && eavesInput.value) || 0;
+      var rate = parseFloat(rateInput && rateInput.value) || 0;
+      var takedownRate = parseFloat(takedownRateInput && takedownRateInput.value) || 0;
+      var equipRate = parseFloat(equipRateInput && equipRateInput.value) || 0;
+      var taxRatePercent = parseFloat(taxRateInput && taxRateInput.value) || 0;
+      var container = parseFloat(containerInput && containerInput.value) || 0;
+
+      var totalFeet = ridge + hip + eaves;
+
+      var ridgePrice = ridge * rate;
+      var hipPrice = hip * rate;
+      var eavesPrice = eaves * rate;
+      var installSubtotal = ridgePrice + hipPrice + eavesPrice;
+
+      var takedownSubtotal = totalFeet * takedownRate;
+      var equipmentSubtotal = totalFeet * equipRate;
+
+      var customerSubtotalBeforeTax = installSubtotal + takedownSubtotal;
+      var taxableBase = equipmentSubtotal + container;
+      var taxRate = taxRatePercent / 100;
+      var taxAmount = taxableBase * taxRate;
+      var customerTotalWithTax = customerSubtotalBeforeTax + taxAmount;
+      var internalTotalPreTax = customerSubtotalBeforeTax + container;
+
+      var client = getCurrentClient();
+      var estimateSnapshot = {
+        timestamp: new Date().toISOString(),
+        ridge: ridge,
+        hip: hip,
+        eaves: eaves,
+        totalFeet: totalFeet,
+        rate: rate,
+        takedownRate: takedownRate,
+        equipRate: equipRate,
+        taxRatePercent: taxRatePercent,
+        container: container,
+        ridgePrice: ridgePrice,
+        hipPrice: hipPrice,
+        eavesPrice: eavesPrice,
+        installSubtotal: installSubtotal,
+        takedownSubtotal: takedownSubtotal,
+        equipmentSubtotal: equipmentSubtotal,
+        taxableBase: taxableBase,
+        taxAmount: taxAmount,
+        customerSubtotalBeforeTax: customerSubtotalBeforeTax,
+        customerTotalWithTax: customerTotalWithTax,
+        internalTotalPreTax: internalTotalPreTax,
+        client: client ? {
+          name: client.name || '',
+          address: client.address || '',
+          phone: client.phone || '',
+          email: client.email || '',
+          preferred: client.preferred || ''
+        } : null
+      };
+      saveLastEstimate(estimateSnapshot);
+
+      var html = '';
+      html += '<p><strong>Total feet:</strong> ' + totalFeet.toFixed(1) + ' ft</p>';
+      html += '<p><strong>Main ridge:</strong> ' + ridge.toFixed(1) + ' ft → $' + ridgePrice.toFixed(2) + '</p>';
+      html += '<p><strong>Hip ridge:</strong> ' + hip.toFixed(1) + ' ft → $' + hipPrice.toFixed(2) + '</p>';
+      html += '<p><strong>Eaves / gutters:</strong> ' + eaves.toFixed(1) + ' ft → $' + eavesPrice.toFixed(2) + '</p>';
+      html += '<hr>';
+      html += '<p><strong>Install subtotal (labor + equipment):</strong> $' + installSubtotal.toFixed(2) + '</p>';
+      html += '<p><strong>Takedown subtotal (assumed labor only):</strong> $' + takedownSubtotal.toFixed(2) + '</p>';
+      html += '<p><strong>Equipment and supplies (per-foot total):</strong> $' + equipmentSubtotal.toFixed(2) + '</p>';
+      html += '<p><strong>Taxable base (equipment + container):</strong> $' + taxableBase.toFixed(2) + '</p>';
+      html += '<p><strong>Sales tax (' + taxRatePercent.toFixed(2) + '% on taxable base):</strong> $' + taxAmount.toFixed(2) + '</p>';
+      html += '<p><strong>Customer total (install + takedown + tax):</strong> $' + customerTotalWithTax.toFixed(2) + '</p>';
+      html += '<br>';
+      html += '<p><strong>Internal container cost (not shown on proposal):</strong> $' + container.toFixed(2) + '</p>';
+      html += '<p><strong>Internal total (customer pre-tax + container):</strong> $' + internalTotalPreTax.toFixed(2) + '</p>';
+
+      if (resultBox) resultBox.innerHTML = html;
+    });
+  }
+
+  // -----------------------------
+  // Proposal rendering
+  // -----------------------------
+  var proposalContent = document.getElementById('proposal-content');
+  var refreshProposalButton = document.getElementById('refresh-proposal');
+
+  function renderProposal() {
+    if (!proposalContent) return;
+    var est = loadLastEstimate();
+    if (!est) {
+      proposalContent.innerHTML =
+        '<em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate estimate" first.</em>';
+      return;
+    }
+    var client = est.client || getCurrentClient();
+    var dateStr = '';
+    if (est.timestamp) {
+      try { dateStr = new Date(est.timestamp).toLocaleDateString(); }
+      catch (e) { dateStr = ''; }
+    }
+
+    var clientHtml = '';
+    if (client) {
+      clientHtml += '<div class="proposal-header">';
+      clientHtml += '<strong>' + (client.name || '') + '</strong><br>';
+      if (client.address) clientHtml += client.address + '<br>';
+      if (client.phone) clientHtml += 'Phone: ' + client.phone + '<br>';
+      if (client.email) clientHtml += 'Email: ' + client.email + '<br>';
+      if (client.preferred) clientHtml += 'Preferred install: ' + client.preferred + '<br>';
+      clientHtml += '</div>';
+    } else {
+      clientHtml = '<p><em>No client selected.</em></p>';
+    }
+
+    var html = '';
+    html += '<div class="proposal-card-inner">';
+    html += '<div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">';
+    html += '<img src="logo.png" alt="Company logo" class="company-logo">';
+    html += '<div>';
+    html += '<h3 style="margin:0;">Willy Good Christmas Lights</h3>';
+    html += '<p style="margin:0; font-size:0.85rem;">Phone: 806.215.7047 • william@willygoodcleaning.com</p>';
+    html += '</div>';
+    html += '</div>';
+
+    html += '<p><strong>Proposal date:</strong> ' + dateStr + '</p>';
+    html += clientHtml;
+    html += '<h3>Christmas Light Installation & Takedown</h3>';
+    html += '<p><strong>Total feet:</strong> ' + est.totalFeet.toFixed(1) +
+            ' ft (ridge, hip, eaves)</p>';
+    html += '<ul>';
+    html += '<li>Install: $' + est.installSubtotal.toFixed(2) +
+            ' (@ $' + est.rate.toFixed(2) + '/ft)</li>';
+    html += '<li>Takedown: $' + est.takedownSubtotal.toFixed(2) +
+            ' (@ $' + est.takedownRate.toFixed(2) + '/ft)</li>';
+    html += '</ul>';
+    html += '<div class="proposal-totals">';
+    html += '<p>Equipment and supplies (taxable): $' + est.equipmentSubtotal.toFixed(2) + '</p>';
+    html += '<p>Sales tax (' + est.taxRatePercent.toFixed(2) +
+            '% on taxable base): $' + est.taxAmount.toFixed(2) + '</p>';
+    html += '<p><strong>Total investment:</strong> $' + est.customerTotalWithTax.toFixed(2) + '</p>';
+    html += '</div>';
+    html += '<p class="small-note" style="margin-top:1rem;">';
+    html += 'This proposal includes professional installation, season-long use, and scheduled takedown of lights. ';
+    html += 'Tax is calculated on equipment and materials only, not on labor.';
+    html += '</p>';
+    html += '</div>';
+
+    proposalContent.innerHTML = html;
+  }
+
+  if (refreshProposalButton) {
+    refreshProposalButton.addEventListener('click', renderProposal);
+  }
+  renderProposal();
+
+  // -----------------------------
+  // Roof Measure with Undo + Adjust
+  // -----------------------------
+  var roofImageInput = document.getElementById('roof-image-input');
+  var roofSetScaleBtn = document.getElementById('roof-set-scale');
+  var roofMeasureBtn = document.getElementById('roof-measure-mode');
+  var roofClearBtn = document.getElementById('roof-clear');
+  var roofSendBtn = document.getElementById('roof-send-to-estimate');
+  var roofScaleFeetInput = document.getElementById('roof-scale-feet');
+  var roofRunTypeSelect = document.getElementById('roof-run-type');
+  var roofUndoBtn = document.getElementById('roof-undo');
+  var roofAdjustBtn = document.getElementById('roof-adjust-mode');
+  var roofCanvas = document.getElementById('roof-canvas');
+  var roofInfo = document.getElementById('roof-info');
+  var roofTotals = document.getElementById('roof-totals');
+  var roofCtx = roofCanvas ? roofCanvas.getContext('2d') : null;
+
+  var roofImage = null;
+  var roofMode = 'none'; // 'scale', 'measure', 'adjust'
+  var roofScalePoints = [];
+  var roofSegments = []; // {from:{x,y}, to:{x,y}, feet, type}
+  var roofFeetPerPixel = null;
+  var roofDrawParams = null;
+  var roofLastPoint = null;
+
+  var roofIsDragging = false;
+  var roofDragSegmentIndex = -1;
+  var roofDragEnd = null; // 'from' or 'to'
+
+  function roofSetInfo(text) {
+    if (roofInfo) roofInfo.textContent = text;
+    console.log('[RoofMeasure] ' + text);
+  }
+
+  function roofDrawBase() {
+    if (!roofCtx || !roofCanvas) return;
+    roofCtx.clearRect(0, 0, roofCanvas.width, roofCanvas.height);
+    if (roofImage && roofDrawParams) {
+      roofCtx.drawImage(
+        roofImage,
+        roofDrawParams.x,
+        roofDrawParams.y,
+        roofDrawParams.w,
+        roofDrawParams.h
+      );
+    }
+  }
+
+  function roofPixelDistance(a, b) {
+    var dx = a.x - b.x;
+    var dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function roofCanvasPoint(evt) {
+    if (!roofCanvas) return { x: 0, y: 0 };
+    var rect = roofCanvas.getBoundingClientRect();
+    var scaleX = roofCanvas.width / rect.width;
+    var scaleY = roofCanvas.height / rect.height;
+    return {
+      x: (evt.clientX - rect.left) * scaleX,
+      y: (evt.clientY - rect.top) * scaleY
+    };
+  }
+
+  function roofRedraw() {
+    if (!roofCtx || !roofCanvas) return;
+    roofDrawBase();
+
+    // scale line
+    if (roofScalePoints.length === 2) {
+      roofCtx.strokeStyle = '#ffa500';
+      roofCtx.lineWidth = 2;
+      roofCtx.beginPath();
+      roofCtx.moveTo(roofScalePoints[0].x, roofScalePoints[0].y);
+      roofCtx.lineTo(roofScalePoints[1].x, roofScalePoints[1].y);
+      roofCtx.stroke();
+    }
+
+    // segments
+    for (var i = 0; i < roofSegments.length; i++) {
+      var seg = roofSegments[i];
+      var color = '#ff0000';
+      if (seg.type === 'eaves') color = '#0000ff';
+      else if (seg.type === 'gable') color = '#008000';
+
+      roofCtx.beginPath();
+      roofCtx.strokeStyle = color;
+      roofCtx.lineWidth = 3;
+      roofCtx.moveTo(seg.from.x, seg.from.y);
+      roofCtx.lineTo(seg.to.x, seg.to.y);
+      roofCtx.stroke();
+    }
+  }
+
+  function roofUpdateTotals() {
+    if (!roofTotals) return;
+    if (!roofImage) {
+      roofTotals.innerHTML = '';
+      return;
+    }
+
+    var totals = { ridge: 0, eaves: 0, gable: 0 };
+    for (var i = 0; i < roofSegments.length; i++) {
+      var seg = roofSegments[i];
+      if (totals.hasOwnProperty(seg.type)) {
+        totals[seg.type] += seg.feet || 0;
       }
+    }
+    var all = totals.ridge + totals.eaves + totals.gable;
 
-      // Map mouse click -> canvas coordinates, even when CSS scales the canvas
-      function roofCanvasPoint(evt) {
-        if (!roofCanvas) {
-          return { x: 0, y: 0 };
-        }
-        var rect = roofCanvas.getBoundingClientRect();
+    var html = '';
+    if (roofFeetPerPixel) {
+      html += '<p>Scale: 1 pixel ≈ ' + roofFeetPerPixel.toFixed(4) + ' ft</p>';
+    } else {
+      html += '<p>No scale set yet.</p>';
+    }
+    html += '<ul>';
+    html += '<li><strong>Ridge / hip / shingle:</strong> ' + totals.ridge.toFixed(1) + ' ft</li>';
+    html += '<li><strong>Eaves / gutters:</strong> ' + totals.eaves.toFixed(1) + ' ft</li>';
+    html += '<li><strong>Gable returns / other:</strong> ' + totals.gable.toFixed(1) + ' ft</li>';
+    html += '</ul>';
+    html += '<p><strong>Total measured length (all types):</strong> ' + all.toFixed(1) + ' ft</p>';
 
-        var scaleX = roofCanvas.width / rect.width;
-        var scaleY = roofCanvas.height / rect.height;
+    roofTotals.innerHTML = html;
+  }
 
-        return {
-          x: (evt.clientX - rect.left) * scaleX,
-          y: (evt.clientY - rect.top) * scaleY
-        };
-      }
+  // Image upload
+  if (roofImageInput && roofCtx && roofCanvas) {
+    roofImageInput.addEventListener('change', function (e) {
+      var file = e.target.files && e.target.files[0];
+      if (!file) return;
 
-      function roofRedraw() {
-        if (!roofCtx || !roofCanvas) { return; }
-        roofDrawBase();
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        var img = new Image();
+        img.onload = function () {
+          roofImage = img;
+          var cw = roofCanvas.width;
+          var ch = roofCanvas.height;
+          var iw = img.width;
+          var ih = img.height;
+          var scale = Math.min(cw / iw, ch / ih);
+          var drawW = iw * scale;
+          var drawH = ih * scale;
+          var offsetX = (cw - drawW) / 2;
+          var offsetY = (ch - drawH) / 2;
+          roofDrawParams = { x: offsetX, y: offsetY, w: drawW, h: drawH };
 
-        // Scale line (orange)
-        if (roofScalePoints.length === 2) {
-          roofCtx.strokeStyle = '#ffa500';
-          roofCtx.lineWidth = 2;
-          roofCtx.beginPath();
-          roofCtx.moveTo(roofScalePoints[0].x, roofScalePoints[0].y);
-          roofCtx.lineTo(roofScalePoints[1].x, roofScalePoints[1].y);
-          roofCtx.stroke();
-        }
-
-        // Measured runs by type
-        for (var i = 0; i < roofSegments.length; i++) {
-          var seg = roofSegments[i];
-          var color = '#ff0000';
-          if (seg.type === 'eaves') {
-            color = '#0000ff';
-          } else if (seg.type === 'gable') {
-            color = '#008000';
-          }
-
-          roofCtx.beginPath();
-          roofCtx.strokeStyle = color;
-          roofCtx.lineWidth = 3;
-          roofCtx.moveTo(seg.from.x, seg.from.y);
-          roofCtx.lineTo(seg.to.x, seg.to.y);
-          roofCtx.stroke();
-        }
-      }
-
-      function roofUpdateTotals() {
-        if (!roofTotals) { return; }
-        if (!roofImage) {
-          roofTotals.innerHTML = '';
-          return;
-        }
-
-        var totals = { ridge: 0, eaves: 0, gable: 0 };
-        for (var i = 0; i < roofSegments.length; i++) {
-          var seg = roofSegments[i];
-          if (totals.hasOwnProperty(seg.type)) {
-            totals[seg.type] += seg.feet || 0;
-          }
-        }
-        var all = totals.ridge + totals.eaves + totals.gable;
-
-        var html = '';
-        if (roofFeetPerPixel) {
-          html += '<p>Scale: 1 pixel ≈ ' + roofFeetPerPixel.toFixed(4) + ' ft</p>';
-        } else {
-          html += '<p>No scale set yet.</p>';
-        }
-        html += '<ul>';
-        html += '<li><strong>Ridge / hip / shingle:</strong> ' + totals.ridge.toFixed(1) + ' ft</li>';
-        html += '<li><strong>Eaves / gutters:</strong> ' + totals.eaves.toFixed(1) + ' ft</li>';
-        html += '<li><strong>Gable returns / other:</strong> ' + totals.gable.toFixed(1) + ' ft</li>';
-        html += '</ul>';
-        html += '<p><strong>Total measured length (all types):</strong> ' + all.toFixed(1) + ' ft</p>';
-
-        roofTotals.innerHTML = html;
-      }
-
-      // Image upload
-      if (roofImageInput && roofCtx && roofCanvas) {
-        roofImageInput.addEventListener('change', function (e) {
-          var file = e.target.files && e.target.files[0];
-          if (!file) { return; }
-
-          var reader = new FileReader();
-          reader.onload = function (ev) {
-            var img = new Image();
-            img.onload = function () {
-              roofImage = img;
-              var cw = roofCanvas.width;
-              var ch = roofCanvas.height;
-              var iw = img.width;
-              var ih = img.height;
-              var scale = Math.min(cw / iw, ch / ih);
-              var drawW = iw * scale;
-              var drawH = ih * scale;
-              var offsetX = (cw - drawW) / 2;
-              var offsetY = (ch - drawH) / 2;
-              roofDrawParams = {
-                x: offsetX,
-                y: offsetY,
-                w: drawW,
-                h: drawH
-              };
-
-              roofScalePoints = [];
-              roofSegments = [];
-              roofFeetPerPixel = null;
-              roofMode = 'none';
-              roofLastPoint = null;
-
-              roofDrawBase();
-              roofSetInfo('Image loaded. Step 1: click "Set scale" and draw a known distance.');
-              roofUpdateTotals();
-            };
-            img.src = ev.target.result;
-          };
-          reader.readAsDataURL(file);
-        });
-      }
-
-      // Set scale mode
-      if (roofSetScaleBtn) {
-        roofSetScaleBtn.addEventListener('click', function () {
-          if (!roofImage) {
-            roofSetInfo('Upload an image first.');
-            return;
-          }
-          roofMode = 'scale';
           roofScalePoints = [];
-          roofLastPoint = null;
           roofSegments = [];
           roofFeetPerPixel = null;
-          roofRedraw();
-          roofSetInfo('Scale mode: click two points on a known distance (e.g., 40 ft wall).');
-          roofUpdateTotals();
-        });
-      }
-
-      // Measure mode
-      if (roofMeasureBtn) {
-        roofMeasureBtn.addEventListener('click', function () {
-          if (!roofImage) {
-            roofSetInfo('Upload an image first.');
-            return;
-          }
-          if (!roofFeetPerPixel) {
-            roofSetInfo('Set the scale first, then measure runs.');
-            return;
-          }
-          roofMode = 'measure';
+          roofMode = 'none';
           roofLastPoint = null;
-          roofRedraw();
-          roofSetInfo('Measure mode: choose run type, then click along each run.');
-        });
-      }
 
-      // Clear lines
-            if (roofClearBtn) {
-        roofClearBtn.addEventListener('click', function () {
-          // Keep the scale, only clear measured segments
-          roofSegments = [];
-          roofLastPoint = null;
-          roofIsDragging = false;
-          roofDragSegmentIndex = -1;
-          roofDragEnd = null;
-
-          // Redraw just the image + scale line
           roofDrawBase();
-          roofRedraw();  // will redraw scale line if roofScalePoints still has 2 points
+          roofSetInfo('Image loaded. Step 1: click "Set scale" and draw a known distance.');
           roofUpdateTotals();
-
-          roofSetInfo('Lines cleared. Scale is still set. You can measure again.');
-        });
-      }
-      // Undo last segment
-      if (roofUndoBtn) {
-        roofUndoBtn.addEventListener('click', function () {
-          roofSetInfo(
-            'Undo clicked. Segments before undo: ' + roofSegments.length
-          );
-
-          if (roofSegments.length === 0) {
-            roofSetInfo('No segments to undo.');
-            return;
-          }
-
-          // Remove the last segment
-          roofSegments.pop();
-          roofLastPoint = null;
-          roofIsDragging = false;
-          roofDragSegmentIndex = -1;
-          roofDragEnd = null;
-
-          roofRedraw();
-          roofUpdateTotals();
-
-          roofSetInfo(
-            'Last segment removed. Segments now: ' + roofSegments.length
-          );
-        });
-      }
-      
-      // Enter adjust mode
-      if (roofAdjustBtn) {
-        roofAdjustBtn.addEventListener('click', function () {
-          if (!roofImage) {
-            roofSetInfo('Upload an image first.');
-            return;
-          }
-          if (!roofFeetPerPixel) {
-            roofSetInfo('Set the scale first before adjusting lines.');
-            return;
-          }
-          if (roofSegments.length === 0) {
-            roofSetInfo(
-              'There are no segments to adjust yet. Measure some runs first.'
-            );
-            return;
-          }
-
-          roofMode = 'adjust';
-          roofLastPoint = null;
-          roofIsDragging = false;
-          roofDragSegmentIndex = -1;
-          roofDragEnd = null;
-
-          roofSetInfo(
-            'Adjust mode: click near a segment endpoint and drag to move it.'
-          );
-        });
-      }
-
-      // Send to Estimate
-      if (roofSendBtn) {
-        roofSendBtn.addEventListener('click', function () {
-          if (!roofFeetPerPixel || roofSegments.length === 0) {
-            alert('Measure some runs first.');
-            return;
-          }
-          var totals = { ridge: 0, eaves: 0, gable: 0 };
-          for (var i = 0; i < roofSegments.length; i++) {
-            var seg = roofSegments[i];
-            if (totals.hasOwnProperty(seg.type)) {
-              totals[seg.type] += seg.feet || 0;
-            }
-          }
-          if (ridgeInput) {
-            ridgeInput.value = totals.ridge.toFixed(1);
-          }
-          if (eavesInput) {
-            eavesInput.value = totals.eaves.toFixed(1);
-          }
-          roofSetInfo(
-            'Sent to Estimate: ridge ' + totals.ridge.toFixed(1) +
-            ' ft, eaves ' + totals.eaves.toFixed(1) + ' ft.'
-          );
-        });
-      }
-
-      // Canvas click handling (scale + measure)
-      if (roofCanvas && roofCtx) {
-        roofCanvas.addEventListener('click', function (evt) {
-          if (!roofImage) { return; }
-
-          // In adjust mode we use drag (mousedown/mousemove), so ignore plain clicks
-          if (roofMode === 'adjust') {
-            return;
-          }
-
-          var pt = roofCanvasPoint(evt);
-
-          // Always draw a small dot so you can see the click
-          roofCtx.fillStyle = '#ff8800';
-          roofCtx.beginPath();
-          roofCtx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
-          roofCtx.fill();
-
-          if (roofMode === 'scale') {
-            roofScalePoints.push(pt);
-            if (roofScalePoints.length > 2) {
-              roofScalePoints = [pt];
-            }
-            if (roofScalePoints.length === 2) {
-              var pixels = roofPixelDistance(roofScalePoints[0], roofScalePoints[1]);
-              var feetVal = parseFloat(roofScaleFeetInput && roofScaleFeetInput.value) || 0;
-              if (feetVal > 0 && pixels > 0) {
-                roofFeetPerPixel = feetVal / pixels;
-                roofSetInfo('Scale set: ' + feetVal.toFixed(1) + ' ft = ' + pixels.toFixed(1) + ' px.');
-              } else {
-                roofFeetPerPixel = null;
-                roofSetInfo('Enter a positive known distance in ft and click two points again.');
-              }
-            }
-            roofRedraw();
-            roofUpdateTotals();
-          } else if (roofMode === 'measure') {
-            if (!roofFeetPerPixel) {
-              roofSetInfo('Set the scale first.');
-              return;
-            }
-
-            var runType = roofRunTypeSelect ? roofRunTypeSelect.value : 'ridge';
-
-            if (!roofLastPoint) {
-              // first point of a run
-              roofLastPoint = pt;
-            } else {
-              // second (or next) point of the run: create a segment
-              var pixels2 = roofPixelDistance(roofLastPoint, pt);
-              var feet = pixels2 * roofFeetPerPixel;
-
-              roofSegments.push({
-                from: roofLastPoint,
-                to: pt,
-                feet: feet,
-                type: runType
-              });
-
-              roofSetInfo(
-                'Segment added: ' + feet.toFixed(1) +
-                ' ft, total segments: ' + roofSegments.length
-              );
-
-              // prepare for next segment in the same run
-              roofLastPoint = pt;
-            }
-
-            roofRedraw();
-            roofUpdateTotals();
-          } else {
-            roofSetInfo('Click "Set scale" or "Measure runs" before clicking on the roof.');
-          }
-        });
-      }
-      // Drag endpoints in adjust mode
-      if (roofCanvas && roofCtx) {
-        // Start drag
-        roofCanvas.addEventListener('mousedown', function (evt) {
-          if (!roofImage) { return; }
-          if (roofMode !== 'adjust') { return; }
-
-          var pt = roofCanvasPoint(evt);
-          var nearestDist = 8; // pixels
-          var hitIndex = -1;
-          var hitEnd = null;
-
-          for (var i = 0; i < roofSegments.length; i++) {
-            var seg = roofSegments[i];
-            var dFrom = roofPixelDistance(pt, seg.from);
-            var dTo = roofPixelDistance(pt, seg.to);
-
-            if (dFrom < nearestDist) {
-              nearestDist = dFrom;
-              hitIndex = i;
-              hitEnd = 'from';
-            }
-            if (dTo < nearestDist) {
-              nearestDist = dTo;
-              hitIndex = i;
-              hitEnd = 'to';
-            }
-          }
-
-          if (hitIndex >= 0) {
-            roofIsDragging = true;
-            roofDragSegmentIndex = hitIndex;
-            roofDragEnd = hitEnd;
-            roofSetInfo(
-              'Dragging endpoint of segment ' + hitIndex + ' (' + hitEnd + ').'
-            );
-          }
-        });
-
-        // Drag move
-        roofCanvas.addEventListener('mousemove', function (evt) {
-          if (!roofIsDragging) { return; }
-          if (roofDragSegmentIndex < 0 || !roofDragEnd) { return; }
-
-          var seg = roofSegments[roofDragSegmentIndex];
-          if (!seg) { return; }
-
-          var pt = roofCanvasPoint(evt);
-          seg[roofDragEnd] = pt;
-
-          if (roofFeetPerPixel) {
-            seg.feet = roofPixelDistance(seg.from, seg.to) * roofFeetPerPixel;
-          }
-
-          roofRedraw();
-          roofUpdateTotals();
-        });
-
-        // End drag
-        window.addEventListener('mouseup', function () {
-          if (roofIsDragging) {
-            roofIsDragging = false;
-            roofDragSegmentIndex = -1;
-            roofDragEnd = null;
-            roofSetInfo('Endpoint adjusted.');
-          }
-        });
-      }
-
-    console.log('Willy Good Christmas Tool core script loaded.');
-
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
     });
-   
-    // Roof Measure image
-    var roofInput = document.getElementById('roof-image-input');
-    var roofCanvas = document.getElementById('roof-canvas');
-    var roofCtx = roofCanvas ? roofCanvas.getContext('2d') : null;
+  }
 
-    if (roofInput && roofCtx) {
-      roofInput.addEventListener('change', function (e) {
-        var file = e.target.files && e.target.files[0];
-        if (!file) { return; }
+  // Set scale
+  if (roofSetScaleBtn) {
+    roofSetScaleBtn.addEventListener('click', function () {
+      if (!roofImage) {
+        roofSetInfo('Upload an image first.');
+        return;
+      }
+      roofMode = 'scale';
+      roofScalePoints = [];
+      roofLastPoint = null;
+      roofSegments = [];
+      roofFeetPerPixel = null;
+      roofRedraw();
+      roofUpdateTotals();
+      roofSetInfo('Scale mode: click two points on a known distance (e.g., 40 ft wall).');
+    });
+  }
 
-        var reader = new FileReader();
-        reader.onload = function (ev) {
-          var img = new Image();
-          img.onload = function () {
-            var cw = roofCanvas.width;
-            var ch = roofCanvas.height;
-            roofCtx.clearRect(0, 0, cw, ch);
+  // Measure mode
+  if (roofMeasureBtn) {
+    roofMeasureBtn.addEventListener('click', function () {
+      if (!roofImage) {
+        roofSetInfo('Upload an image first.');
+        return;
+      }
+      if (!roofFeetPerPixel) {
+        roofSetInfo('Set the scale first, then measure runs.');
+        return;
+      }
+      roofMode = 'measure';
+      roofLastPoint = null;
+      roofSetInfo('Measure mode: choose run type, then click along each run.');
+    });
+  }
 
-            var iw = img.width;
-            var ih = img.height;
-            var scale = Math.min(cw / iw, ch / ih);
-            var drawW = iw * scale;
-            var drawH = ih * scale;
-            var offsetX = (cw - drawW) / 2;
-            var offsetY = (ch - drawH) / 2;
+  // Clear lines (keep scale)
+  if (roofClearBtn) {
+    roofClearBtn.addEventListener('click', function () {
+      roofSegments = [];
+      roofLastPoint = null;
+      roofIsDragging = false;
+      roofDragSegmentIndex = -1;
+      roofDragEnd = null;
+      roofRedraw();
+      roofUpdateTotals();
+      roofSetInfo('Lines cleared. Scale is still set. You can measure again.');
+    });
+  }
 
-            roofCtx.drawImage(img, offsetX, offsetY, drawW, drawH);
-          };
-          img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
-    }
+  // Undo last segment
+  if (roofUndoBtn) {
+    roofUndoBtn.addEventListener('click', function () {
+      roofSetInfo('Undo clicked. Segments before undo: ' + roofSegments.length);
+      if (roofSegments.length === 0) {
+        roofSetInfo('No segments to undo.');
+        return;
+      }
+      roofSegments.pop();
+      roofLastPoint = null;
+      roofIsDragging = false;
+      roofDragSegmentIndex = -1;
+      roofDragEnd = null;
+      roofRedraw();
+      roofUpdateTotals();
+      roofSetInfo('Last segment removed. Segments now: ' + roofSegments.length);
+    });
+  }
 
-    // Photo / Satellite Mockup image
-    var mockInput = document.getElementById('mockup-image-input');
-    var mockCanvas = document.getElementById('mockup-canvas');
-    var mockCtx = mockCanvas ? mockCanvas.getContext('2d') : null;
+  // Adjust mode
+  if (roofAdjustBtn) {
+    roofAdjustBtn.addEventListener('click', function () {
+      if (!roofImage) {
+        roofSetInfo('Upload an image first.');
+        return;
+      }
+      if (!roofFeetPerPixel) {
+        roofSetInfo('Set the scale first before adjusting lines.');
+        return;
+      }
+      if (roofSegments.length === 0) {
+        roofSetInfo('There are no segments to adjust yet. Measure some runs first.');
+        return;
+      }
+      roofMode = 'adjust';
+      roofLastPoint = null;
+      roofIsDragging = false;
+      roofDragSegmentIndex = -1;
+      roofDragEnd = null;
+      roofSetInfo('Adjust mode: click near a segment endpoint and drag to move it.');
+    });
+  }
 
-    if (mockInput && mockCtx) {
-      mockInput.addEventListener('change', function (e) {
-        var file = e.target.files && e.target.files[0];
-        if (!file) { return; }
+  // Send to Estimate
+  if (roofSendBtn) {
+    roofSendBtn.addEventListener('click', function () {
+      if (!roofFeetPerPixel || roofSegments.length === 0) {
+        alert('Measure some runs first.');
+        return;
+      }
+      var totals = { ridge: 0, eaves: 0, gable: 0 };
+      for (var i = 0; i < roofSegments.length; i++) {
+        var seg = roofSegments[i];
+        if (totals.hasOwnProperty(seg.type)) {
+          totals[seg.type] += seg.feet || 0;
+        }
+      }
+      if (ridgeInput) ridgeInput.value = totals.ridge.toFixed(1);
+      if (eavesInput) eavesInput.value = totals.eaves.toFixed(1);
+      roofSetInfo(
+        'Sent to Estimate: ridge ' + totals.ridge.toFixed(1) +
+        ' ft, eaves ' + totals.eaves.toFixed(1) + ' ft.'
+      );
+    });
+  }
 
-        var reader = new FileReader();
-        reader.onload = function (ev) {
-          var img = new Image();
-          img.onload = function () {
-            var cw = mockCanvas.width;
-            var ch = mockCanvas.height;
-            mockCtx.clearRect(0, 0, cw, ch);
+  // Canvas click (scale + measure)
+  if (roofCanvas && roofCtx) {
+    roofCanvas.addEventListener('click', function (evt) {
+      if (!roofImage) return;
+      if (roofMode === 'adjust') return; // clicks ignored in adjust mode
 
-            var iw = img.width;
-            var ih = img.height;
-            var scale = Math.min(cw / iw, ch / ih);
-            var drawW = iw * scale;
-            var drawH = ih * scale;
-            var offsetX = (cw - drawW) / 2;
-            var offsetY = (ch - drawH) / 2;
+      var pt = roofCanvasPoint(evt);
 
-            mockCtx.drawImage(img, offsetX, offsetY, drawW, drawH);
-          };
-          img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-  })();
+      // draw dot so you can see clicks
+      roofCtx.fillStyle = '#ff8800';
+      roofCtx.beginPath();
+      roofCtx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+      roofCtx.fill();
 
-  </script>
+      if (roofMode === 'scale') {
+        roofScalePoints.push(pt);
+        if (roofScalePoints.length > 2) {
+          roofScalePoints = [pt];
+        }
+        if (roofScalePoints.length === 2) {
+          var pixels = roofPixelDistance(roofScalePoints[0], roofScalePoints[1]);
+          var feetVal = parseFloat(roofScaleFeetInput && roofScaleFeetInput.value) || 0;
+          if (feetVal > 0 && pixels > 0) {
+            roofFeetPerPixel = feetVal / pixels;
+            roofSetInfo('Scale set: ' + feetVal.toFixed(1) + ' ft = ' + pixels.toFixed(1) + ' px.');
+          } else {
+            roofFeetPerPixel = null;
+            roofSetInfo('Enter a positive known distance in ft and click two points again.');
+          }
+        }
+        roofRedraw();
+        roofUpdateTotals();
+      } else if (roofMode === 'measure') {
+        if (!roofFeetPerPixel) {
+          roofSetInfo('Set the scale first.');
+          return;
+        }
+        var runType = roofRunTypeSelect ? roofRunTypeSelect.value : 'ridge';
+        if (!roofLastPoint) {
+          roofLastPoint = pt;
+        } else {
+          var pixels2 = roofPixelDistance(roofLastPoint, pt);
+          var feet = pixels2 * roofFeetPerPixel;
+          roofSegments.push({
+            from: roofLastPoint,
+            to: pt,
+            feet: feet,
+            type: runType
+          });
+          roofSetInfo(
+            'Segment added: ' + feet.toFixed(1) +
+            ' ft, total segments: ' + roofSegments.length
+          );
+          roofLastPoint = pt;
+        }
+        roofRedraw();
+        roofUpdateTotals();
+      } else {
+        roofSetInfo('Click "Set scale" or "Measure runs" before clicking on the roof.');
+      }
+    });
+
+    // Drag adjust
+    roofCanvas.addEventListener('mousedown', function (evt) {
+      if (!roofImage) return;
+      if (roofMode !== 'adjust') return;
+
+      var pt = roofCanvasPoint(evt);
+      var nearestDist = 8;
+      var hitIndex = -1;
+      var hitEnd = null;
+
+      for (var i = 0; i < roofSegments.length; i++) {
+        var seg = roofSegments[i];
+        var dFrom = roofPixelDistance(pt, seg.from);
+        var dTo = roofPixelDistance(pt, seg.to);
+        if (dFrom < nearestDist) {
+          nearestDist = dFrom;
+          hitIndex = i;
+          hitEnd = 'from';
+        }
+        if (dTo < nearestDist) {
+          nearestDist = dTo;
+          hitIndex = i;
+          hitEnd = 'to';
+        }
+      }
+
+      if (hitIndex >= 0) {
+        roofIsDragging = true;
+        roofDragSegmentIndex = hitIndex;
+        roofDragEnd = hitEnd;
+        roofSetInfo('Dragging endpoint of segment ' + hitIndex + ' (' + hitEnd + ').');
+      }
+    });
+
+    roofCanvas.addEventListener('mousemove', function (evt) {
+      if (!roofIsDragging) return;
+      if (roofDragSegmentIndex < 0 || !roofDragEnd) return;
+      var seg = roofSegments[roofDragSegmentIndex];
+      if (!seg) return;
+
+      var pt = roofCanvasPoint(evt);
+      seg[roofDragEnd] = pt;
+      if (roofFeetPerPixel) {
+        seg.feet = roofPixelDistance(seg.from, seg.to) * roofFeetPerPixel;
+      }
+      roofRedraw();
+      roofUpdateTotals();
+    });
+
+    window.addEventListener('mouseup', function () {
+      if (roofIsDragging) {
+        roofIsDragging = false;
+        roofDragSegmentIndex = -1;
+        roofDragEnd = null;
+        roofSetInfo('Endpoint adjusted.');
+      }
+    });
+  }
+
+  console.log('Willy Good Christmas Tool core script loaded.');
+});
+</script>
+
 </body>
 </html>
