@@ -1019,16 +1019,21 @@
       }
 
       // Clear lines
-      if (roofClearBtn) {
+            if (roofClearBtn) {
         roofClearBtn.addEventListener('click', function () {
-          roofScalePoints = [];
+          // Keep the scale, only clear measured segments
           roofSegments = [];
-          roofFeetPerPixel = null;
-          roofMode = 'none';
           roofLastPoint = null;
+          roofIsDragging = false;
+          roofDragSegmentIndex = -1;
+          roofDragEnd = null;
+
+          // Redraw just the image + scale line
           roofDrawBase();
-          roofSetInfo('Cleared lines. Set scale again if needed.');
+          roofRedraw();  // will redraw scale line if roofScalePoints still has 2 points
           roofUpdateTotals();
+
+          roofSetInfo('Lines cleared. Scale is still set. You can measure again.');
         });
       }
 
