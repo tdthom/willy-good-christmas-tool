@@ -297,76 +297,88 @@
     </div>
   </section>
 
-    <!-- Screen 4: Photo Mockup (visual-only with bulbs + undo + adjust) -->
+     <!-- Screen 4: Photo Mockup (visual-only color designer) -->
   <section id="screen-mockup" class="screen">
-    <h2>Photo Mockup</h2>
+    <h2>Photo / Front View Mockup</h2>
     <p>
-      Upload a front-of-house photo, draw runs, and preview bulb colors.
-      This screen is visual only and does not affect measurements or pricing.
+      Upload a front photo or Google Street View screenshot, then draw where the lights will go.
+      This screen is <strong>visual only</strong> – it does not affect your estimate numbers.
     </p>
 
     <ol>
-      <li>Upload a front photo of the house.</li>
-      <li>Click <strong>Draw runs</strong> and click along the roof/eaves where the lights go.</li>
-      <li>Use <strong>Adjust lines</strong> to drag endpoints into perfect position.</li>
+      <li>Upload a photo of the front of the house.</li>
+      <li>Choose the <strong>run type</strong> (roof, ground, trees, other).</li>
+      <li>Click along the edges to draw the light runs. Each click adds a new segment.</li>
     </ol>
 
     <input type="file" id="mockup-image-input" accept="image/*"><br><br>
 
-    <button id="mockup-draw-mode">Draw runs</button>
-    <button id="mockup-adjust-mode">Adjust lines</button>
-    <button id="mockup-undo">Undo last segment</button>
-    <button id="mockup-clear">Clear all</button>
-    <br><br>
+    <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start;">
+      <!-- Controls column -->
+      <div style="min-width:250px; max-width:320px;">
+        <h3 style="margin-top:0;">Light style</h3>
 
-    <label for="mockup-color-mode"><strong>Color pattern:</strong></label>
-    <select id="mockup-color-mode">
-      <option value="single">Single color</option>
-      <option value="two">2 colors (alternate)</option>
-      <option value="three">3 colors (1-2-3 pattern)</option>
-    </select>
-    <br><br>
+        <label for="mockup-color-mode"><strong>Color pattern:</strong></label><br>
+        <select id="mockup-color-mode" style="width:220px;">
+          <option value="single">Single color</option>
+          <option value="two">2 colors (alternate)</option>
+          <option value="three">3 colors (1-2-3 pattern)</option>
+        </select><br><br>
 
-    <label for="mockup-color1"><strong>Color 1:</strong></label>
-    <input type="color" id="mockup-color1" value="#ffffff">
-    &nbsp;
-    <label for="mockup-color2"><strong>Color 2:</strong></label>
-    <input type="color" id="mockup-color2" value="#ff0000">
-    &nbsp;
-    <label for="mockup-color3"><strong>Color 3:</strong></label>
-    <input type="color" id="mockup-color3" value="#00ff00">
-    <br><br>
+        <label for="mockup-color1"><strong>Color 1:</strong></label>
+        <input type="color" id="mockup-color1" value="#ffffff">
+        <label for="mockup-color2" style="margin-left:0.75rem;"><strong>Color 2:</strong></label>
+        <input type="color" id="mockup-color2" value="#ff0000">
+        <label for="mockup-color3" style="margin-left:0.75rem;"><strong>Color 3:</strong></label>
+        <input type="color" id="mockup-color3" value="#00ff00">
+        <br><br>
 
-    <label for="mockup-bulb-spacing"><strong>Bulb spacing:</strong></label>
-    <select id="mockup-bulb-spacing">
-      <option value="12">12" spacing</option>
-      <option value="15">15" spacing</option>
-    </select>
-    &nbsp;&nbsp;
-    <label for="mockup-bulb-size"><strong>Bulb size:</strong></label>
-    <select id="mockup-bulb-size">
-      <option value="small">Small</option>
-      <option value="medium" selected>Medium</option>
-      <option value="large">Large</option>
-    </select>
-    <br><br>
+        <label for="mockup-bulb-spacing"><strong>Bulb spacing:</strong></label><br>
+        <select id="mockup-bulb-spacing" style="width:220px;">
+          <option value="12">12" spacing</option>
+          <option value="15">15" spacing</option>
+        </select><br><br>
 
-    <label>
-      <input type="checkbox" id="mockup-show-wire" checked>
-      Show wire / guide line (hide for print)
-    </label>
+        <label for="mockup-bulb-size"><strong>Bulb size:</strong></label><br>
+        <select id="mockup-bulb-size" style="width:220px;">
+          <option value="small">Small</option>
+          <option value="medium" selected>Medium</option>
+          <option value="large">Large</option>
+        </select><br><br>
 
-    <div style="margin-top:1rem;">
-      <canvas
-        id="mockup-canvas"
-        width="800"
-        height="500"
-        style="border:1px solid #ccc; max-width:100%;"
-      ></canvas>
+        <label for="mockup-run-type"><strong>Run type:</strong></label><br>
+        <select id="mockup-run-type" style="width:220px;">
+          <option value="roof">Roof / gutters</option>
+          <option value="ground">Ground / beds / stakes</option>
+          <option value="tree">Trees / bushes</option>
+          <option value="other">Other accents</option>
+        </select><br><br>
+
+        <label>
+          <input type="checkbox" id="mockup-show-wire" checked>
+          Show wire under bulbs
+        </label><br><br>
+
+        <button id="mockup-undo">Undo last segment</button>
+        <button id="mockup-clear">Clear all lines</button><br><br>
+
+        <button id="mockup-zoom-in">Zoom in</button>
+        <button id="mockup-zoom-out">Zoom out</button>
+      </div>
+
+      <!-- Canvas column -->
+      <div style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff;">
+        <canvas
+          id="mockup-canvas"
+          width="1000"
+          height="550"
+          style="border:1px solid #ccc; max-width:none; transform-origin:0 0;"
+        ></canvas>
+      </div>
     </div>
 
     <div id="mockup-info" class="small-note" style="margin-top:0.5rem;">
-      No image loaded.
+      No photo loaded.
     </div>
   </section>
   
