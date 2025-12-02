@@ -1649,6 +1649,298 @@ window.addEventListener('DOMContentLoaded', function () {
           mockupDragEnd = null;
         });
       }
+      // -----------------------------
+      // Photo Mockup (visual-only color designer)
+      // -----------------------------
+      var mockImageInput = document.getElementById('mockup-image-input');
+      var mockCanvas = document.getElementById('mockup-canvas');
+      var mockCtx = mockCanvas ? mockCanvas.getContext('2d') : null;
+
+      var mockInfo = document.getElementById('mockup-info');
+      var mockColorModeSelect = document.getElementById('mockup-color-mode');
+      var mockColor1Input = document.getElementById('mockup-color1');
+      var mockColor2Input = document.getElementById('mockup-color2');
+      var mockColor3Input = document.getElementById('mockup-color3');
+      var mockBulbSpacingSelect = document.getElementById('mockup-bulb-spacing');
+      var mockBulbSizeSelect = document.getElementById('mockup-bulb-size');
+      var mockRunTypeSelect = document.getElementById('mockup-run-type');
+      var mockShowWireCheckbox = document.getElementById('mockup-show-wire');
+      var mockUndoBtn = document.getElementById('mockup-undo');
+      var mockClearBtn = document.getElementById('mockup-clear');
+      var mockZoomInBtn = document.getElementById('mockup-zoom-in');
+      var mockZoomOutBtn = document.getElementById('mockup-zoom-out');
+
+      var mockImage = null;
+      var mockDrawParams = null;   // {x, y, w, h}
+      var mockSegments = [];       // [{from:{x,y}, to:{x,y}, type:'roof'|'ground'|'tree'|'other'}]
+      var mockLastPoint = null;
+      var mockZoom = 1;
+      var MOCK_ZOOM_MIN = 0.5;
+      var MOCK_ZOOM_MAX = 3;
+
+      function mockSetInfo(text) {
+        if (mockInfo) {
+          mockInfo.textContent = text;
+        }
+      }
+
+      function mockApplyZoom() {
+        if (!mockCanvas) { return; }
+        mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
+      }
+
+      function mockDrawBase() {
+        if (!mockCtx || !mockCanvas) { return; }
+        mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
+        if (mockImage && mockDrawParams) {
+          mockCtx.drawImage(
+            mockImage,
+            mockDrawParams.x,
+            mockDrawParams.y,
+            mockDrawParams.w,
+            mockDrawParams.h
+          );
+        }
+      }
+
+      function mockCanvasPoint(evt) {
+        if (!mockCanvas) {
+          return { x: 0, y: 0 };
+        }
+        var rect = mockCanvas.getBoundingClientRect();
+        var scaleX = mockCanvas.width / rect.width;
+        var scaleY = mockCanvas.height / rect.height;
+        return {
+          x: (evt.clientX - rect.left) * scaleX,
+          y: (evt.clientY - rect.top) * scaleY
+        };
+      }
+
+      function mockRedraw() {
+        if (!mockCtx || !mockCanvas) { return; }
+        mockDrawBase();
+
+        if (!mockImage) { return; }
+
+        // Style settings
+        var mode = mockColorModeSelect ? mockColorModeSelect.value : 'single';
+        var c1 = (mockColor1Input && mockColor1Input.value) || '#ffffff';
+        var c2 = (mockColor2Input && mockColor2Input.value) || '#ff0000';
+        var c3 = (mockColor3Input && mockColor3Input.value) || '#00ff00';
+
+        var spacingInches = 12;
+        if (mockBulbSpacingSelect) {
+          var sval = parseFloat(mockBulbSpacingSelect.value);
+          if (!isNaN(sval) && sval > 0) {
+            spacingInches = sval;
+          }
+        }
+        // Visual-only spacing in pixels (looks good on screen)
+        var spacingPx = spacingInches === 15 ? 28 : 22;
+
+        var baseSize = 3.0;
+        if (mockBulbSizeSelect) {
+          var sizeVal = mockBulbSizeSelect.value;
+          if (sizeVal === 'small') { baseSize = 2.2; }
+          else if (sizeVal === 'large') { baseSize = 4.2; }
+          else { baseSize = 3.2; } // medium
+        }
+        var bulbHeight = baseSize * 2.4;
+        var glowRadius = bulbHeight * 0.9;
+
+        var showWire = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
+
+        for (var i = 0; i < mockSegments.length; i++) {
+          var seg = mockSegments[i];
+          var from = seg.from;
+          var to = seg.to;
+
+          var dx = to.x - from.x;
+          var dy = to.y - from.y;
+          var lengthPx = Math.sqrt(dx * dx + dy * dy);
+          if (lengthPx === 0) { continue; }
+          var angle = Math.atan2(dy, dx);
+
+          // Wire color varies by run type
+          if (showWire) {
+            var wireColor = '#555555';
+            if (seg.type === 'ground') { wireColor = '#3a7a3a'; } // green-ish
+            else if (seg.type === 'tree') { wireColor = '#8b5a2b'; } // brown-ish
+            mockCtx.beginPath();
+            mockCtx.strokeStyle = wireColor;
+            mockCtx.lineWidth = 1.2;
+            mockCtx.moveTo(from.x, from.y);
+            mockCtx.lineTo(to.x, to.y);
+            mockCtx.stroke();
+          }
+
+          // Number of bulbs along this segment
+          var count = Math.max(1, Math.round(lengthPx / spacingPx));
+          for (var b = 0; b <= count; b++) {
+            var t = count === 0 ? 0 : b / count;
+            var x = from.x + dx * t;
+            var y = from.y + dy * t;
+
+            // Pick bulb color based on pattern
+            var color = c1;
+            if (mode === 'two') {
+              color = (b % 2 === 0) ? c1 : c2;
+            } else if (mode === 'three') {
+              var idx = b % 3;
+              color = idx === 0 ? c1 : (idx === 1 ? c2 : c3);
+            }
+
+            mockCtx.save();
+            mockCtx.translate(x, y);
+            mockCtx.rotate(angle);
+
+            // Soft glow
+            mockCtx.beginPath();
+            mockCtx.globalAlpha = 0.22;
+            mockCtx.fillStyle = color;
+            mockCtx.arc(0, 0, glowRadius, 0, Math.PI * 2, false);
+            mockCtx.fill();
+            mockCtx.globalAlpha = 1;
+
+            // Teardrop bulb
+            mockCtx.beginPath();
+            mockCtx.moveTo(0, -bulbHeight / 2);
+            mockCtx.quadraticCurveTo(baseSize, 0, 0, bulbHeight / 2);
+            mockCtx.quadraticCurveTo(-baseSize, 0, 0, -bulbHeight / 2);
+            mockCtx.closePath();
+            mockCtx.fillStyle = color;
+            mockCtx.strokeStyle = '#f5f5f5';
+            mockCtx.lineWidth = 0.8;
+            mockCtx.fill();
+            mockCtx.stroke();
+
+            // Small socket
+            mockCtx.fillStyle = '#444444';
+            mockCtx.fillRect(
+              -baseSize * 0.6,
+              bulbHeight / 2,
+              baseSize * 1.2,
+              baseSize * 0.6
+            );
+
+            mockCtx.restore();
+          }
+        }
+      }
+
+      // Load image into mockup canvas
+      if (mockImageInput && mockCtx && mockCanvas) {
+        mockImageInput.addEventListener('change', function (e) {
+          var file = e.target.files && e.target.files[0];
+          if (!file) { return; }
+
+          var reader = new FileReader();
+          reader.onload = function (ev) {
+            var img = new Image();
+            img.onload = function () {
+              mockImage = img;
+
+              var cw = mockCanvas.width;
+              var ch = mockCanvas.height;
+              var iw = img.width;
+              var ih = img.height;
+              var scale = Math.min(cw / iw, ch / ih);
+              var drawW = iw * scale;
+              var drawH = ih * scale;
+              var offsetX = (cw - drawW) / 2;
+              var offsetY = (ch - drawH) / 2;
+
+              mockDrawParams = {
+                x: offsetX,
+                y: offsetY,
+                w: drawW,
+                h: drawH
+              };
+
+              mockSegments = [];
+              mockLastPoint = null;
+              mockZoom = 1;
+              mockApplyZoom();
+              mockDrawBase();
+              mockSetInfo('Photo loaded. Click on the image to start drawing light runs.');
+            };
+            img.src = ev.target.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      // Clicking on the canvas: draw segments (roof, ground, trees, etc.)
+      if (mockCanvas && mockCtx) {
+        mockCanvas.addEventListener('click', function (evt) {
+          if (!mockImage) { return; }
+          var pt = mockCanvasPoint(evt);
+
+          if (!mockLastPoint) {
+            mockLastPoint = pt;
+          } else {
+            var runType = mockRunTypeSelect ? mockRunTypeSelect.value : 'roof';
+            mockSegments.push({
+              from: mockLastPoint,
+              to: pt,
+              type: runType
+            });
+            mockLastPoint = pt;
+          }
+          mockRedraw();
+        });
+      }
+
+      // Undo last segment
+      if (mockUndoBtn) {
+        mockUndoBtn.addEventListener('click', function () {
+          if (mockSegments.length === 0) { return; }
+          mockSegments.pop();
+          if (mockSegments.length > 0) {
+            var lastSeg = mockSegments[mockSegments.length - 1];
+            mockLastPoint = { x: lastSeg.to.x, y: lastSeg.to.y };
+          } else {
+            mockLastPoint = null;
+          }
+          mockRedraw();
+        });
+      }
+
+      // Clear all segments
+      if (mockClearBtn) {
+        mockClearBtn.addEventListener('click', function () {
+          mockSegments = [];
+          mockLastPoint = null;
+          mockDrawBase();
+        });
+      }
+
+      // Zoom controls
+      if (mockZoomInBtn) {
+        mockZoomInBtn.addEventListener('click', function () {
+          mockZoom = Math.min(mockZoom + 0.25, MOCK_ZOOM_MAX);
+          mockApplyZoom();
+        });
+      }
+      if (mockZoomOutBtn) {
+        mockZoomOutBtn.addEventListener('click', function () {
+          mockZoom = Math.max(mockZoom - 0.25, MOCK_ZOOM_MIN);
+          mockApplyZoom();
+        });
+      }
+
+      // Re-draw bulbs when style options change
+      function mockAttachRedrawControl(el) {
+        if (!el) { return; }
+        el.addEventListener('change', mockRedraw);
+      }
+      mockAttachRedrawControl(mockColorModeSelect);
+      mockAttachRedrawControl(mockColor1Input);
+      mockAttachRedrawControl(mockColor2Input);
+      mockAttachRedrawControl(mockColor3Input);
+      mockAttachRedrawControl(mockBulbSpacingSelect);
+      mockAttachRedrawControl(mockBulbSizeSelect);
+      mockAttachRedrawControl(mockShowWireCheckbox);
 
   console.log('Willy Good Christmas Tool core script loaded.');
 });
