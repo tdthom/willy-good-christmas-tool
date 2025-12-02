@@ -743,108 +743,116 @@ window.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // -----------------------------
-  // Proposal rendering
-  // -----------------------------
-  var proposalContent = document.getElementById('proposal-content');
-  var refreshProposalButton = document.getElementById('refresh-proposal');
+        // -----------------------------
+      // Proposal rendering
+      // -----------------------------
+      var proposalContent = document.getElementById('proposal-content');
+      var refreshProposalButton = document.getElementById('refresh-proposal');
 
-  function renderProposal() {
-  if (!proposalContent) {
-    return;
-  }
+      function renderProposal() {
+        if (!proposalContent) {
+          console.warn('[Proposal] No proposal-content element found.');
+          return;
+        }
 
-  var est = loadLastEstimate();
-  console.log('[Proposal] Loaded estimate:', est);
+        var est = loadLastEstimate();
+        console.log('[Proposal] Loaded estimate:', est);
 
-  // If nothing saved yet, show a clear message
-  if (!est) {
-    proposalContent.innerHTML =
-      '<em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate estimate" first.</em>';
-    return;
-  }
+        // Nothing saved yet
+        if (!est) {
+          proposalContent.innerHTML =
+            '<em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate estimate" first.</em>';
+          return;
+        }
 
-  // Helper: safely turn values into numbers so toFixed() never crashes
-  function safeNum(val) {
-    var n = Number(val);
-    return isNaN(n) ? 0 : n;
-  }
+        // Helper: safely coerce anything to a number so .toFixed() never crashes
+        function safeNum(val) {
+          var n = Number(val);
+          return isNaN(n) ? 0 : n;
+        }
 
-  var totalFeet            = safeNum(est.totalFeet);
-  var installSubtotal      = safeNum(est.installSubtotal);
-  var takedownSubtotal     = safeNum(est.takedownSubtotal);
-  var equipmentSubtotal    = safeNum(est.equipmentSubtotal);
-  var taxRatePercent       = safeNum(est.taxRatePercent);
-  var taxAmount            = safeNum(est.taxAmount);
-  var customerTotalWithTax = safeNum(est.customerTotalWithTax);
+        var totalFeet            = safeNum(est.totalFeet);
+        var installSubtotal      = safeNum(est.installSubtotal);
+        var takedownSubtotal     = safeNum(est.takedownSubtotal);
+        var equipmentSubtotal    = safeNum(est.equipmentSubtotal);
+        var taxRatePercent       = safeNum(est.taxRatePercent);
+        var taxAmount            = safeNum(est.taxAmount);
+        var customerTotalWithTax = safeNum(est.customerTotalWithTax);
+        var ratePerFoot          = safeNum(est.rate);
+        var takedownRatePerFoot  = safeNum(est.takedownRate);
 
-  var client = est.client || getCurrentClient();
-  var dateStr = '';
-  if (est.timestamp) {
-    try {
-      dateStr = new Date(est.timestamp).toLocaleDateString();
-    } catch (e) {
-      dateStr = '';
-    }
-  }
+        var client = est.client || getCurrentClient();
+        var dateStr = '';
+        if (est.timestamp) {
+          try {
+            dateStr = new Date(est.timestamp).toLocaleDateString();
+          } catch (e) {
+            dateStr = '';
+          }
+        }
 
-  var clientHtml = '';
-  if (client) {
-    clientHtml += '<div class="proposal-header">';
-    clientHtml += '<strong>' + (client.name || '') + '</strong><br>';
-    if (client.address) {
-      clientHtml += client.address + '<br>';
-    }
-    if (client.phone) {
-      clientHtml += 'Phone: ' + client.phone + '<br>';
-    }
-    if (client.email) {
-      clientHtml += 'Email: ' + client.email + '<br>';
-    }
-    if (client.preferred) {
-      clientHtml += 'Preferred install: ' + client.preferred + '<br>';
-    }
-    clientHtml += '</div>';
-  } else {
-    clientHtml = '<p><em>No client selected.</em></p>';
-  }
+        var clientHtml = '';
+        if (client) {
+          clientHtml += '<div class="proposal-header">';
+          clientHtml +=   '<strong>' + (client.name || '') + '</strong><br>';
+          if (client.address) {
+            clientHtml += client.address + '<br>';
+          }
+          if (client.phone) {
+            clientHtml += 'Phone: ' + client.phone + '<br>';
+          }
+          if (client.email) {
+            clientHtml += 'Email: ' + client.email + '<br>';
+          }
+          if (client.preferred) {
+            clientHtml += 'Preferred install: ' + client.preferred + '<br>';
+          }
+          clientHtml += '</div>';
+        } else {
+          clientHtml = '<p><em>No client selected.</em></p>';
+        }
 
-  var html = '';
-  html += '<div class="proposal-card-inner">';
-  html += '  <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">';
-  html += '    <img src="logo.png" alt="Company logo" class="company-logo">';
-  html += '    <div>';
-  html += '      <h3 style="margin:0;">Willy Good Christmas Lights</h3>';
-  html += '      <p style="margin:0; font-size:0.85rem;">Phone: 806.215.7047 • william@willygoodcleaning.com</p>';
-  html += '    </div>';
-  html += '  </div>';
+        var html = '';
+        html += '<div class="proposal-card-inner">';
+        html += '  <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">';
+        html += '    <img src="logo.png" alt="Company logo" class="company-logo">';
+        html += '    <div>';
+        html += '      <h3 style="margin:0;">Willy Good Christmas Lights</h3>';
+        html += '      <p style="margin:0; font-size:0.85rem;">Phone: 806.215.7047 • william@willygoodcleaning.com</p>';
+        html += '    </div>';
+        html += '  </div>';
 
-  html += '  <p><strong>Proposal date:</strong> ' + dateStr + '</p>';
-  html += clientHtml;
-  html += '  <h3>Christmas Light Installation &amp; Takedown</h3>';
-  html += '  <p><strong>Total feet:</strong> ' + totalFeet.toFixed(1) + ' ft (ridge, hip, eaves)</p>';
-  html += '  <ul>';
-  html += '    <li>Install: $' + installSubtotal.toFixed(2) + ' (at $' + safeNum(est.rate).toFixed(2) + '/ft)</li>';
-  html += '    <li>Takedown: $' + takedownSubtotal.toFixed(2) + ' (at $' + safeNum(est.takedownRate).toFixed(2) + '/ft)</li>';
-  html += '  </ul>';
-  html += '  <div class="proposal-totals">';
-  html += '    <p>Equipment and supplies (taxable): $' + equipmentSubtotal.toFixed(2) + '</p>';
-  html += '    <p>Sales tax (' + taxRatePercent.toFixed(2) + '% on taxable base): $' + taxAmount.toFixed(2) + '</p>';
-  html += '    <p><strong>Total investment:</strong> $' + customerTotalWithTax.toFixed(2) + '</p>';
-  html += '  </div>';
-  html += '  <p class="small-note" style="margin-top:1rem;">';
-  html += '    This proposal includes professional installation, season-long use, and scheduled takedown of lights. ';
-  html += '    Tax is calculated on equipment and materials only, not on labor.';
-  html += '  </p>';
-  html += '</div>';
+        html += '  <p><strong>Proposal date:</strong> ' + dateStr + '</p>';
+        html += clientHtml;
+        html += '  <h3>Christmas Light Installation &amp; Takedown</h3>';
+        html += '  <p><strong>Total feet:</strong> ' + totalFeet.toFixed(1) + ' ft (ridge, hip, eaves)</p>';
+        html += '  <ul>';
+        html += '    <li>Install: $' + installSubtotal.toFixed(2) +
+                ' (at $' + ratePerFoot.toFixed(2) + '/ft)</li>';
+        html += '    <li>Takedown: $' + takedownSubtotal.toFixed(2) +
+                ' (at $' + takedownRatePerFoot.toFixed(2) + '/ft)</li>';
+        html += '  </ul>';
+        html += '  <div class="proposal-totals">';
+        html += '    <p>Equipment and supplies (taxable): $' + equipmentSubtotal.toFixed(2) + '</p>';
+        html += '    <p>Sales tax (' + taxRatePercent.toFixed(2) +
+                '% on taxable base): $' + taxAmount.toFixed(2) + '</p>';
+        html += '    <p><strong>Total investment:</strong> $' + customerTotalWithTax.toFixed(2) + '</p>';
+        html += '  </div>';
+        html += '  <p class="small-note" style="margin-top:1rem;">';
+        html += '    This proposal includes professional installation, season-long use, and scheduled takedown of lights. ';
+        html += '    Tax is calculated on equipment and materials only, not on labor.';
+        html += '  </p>';
+        html += '</div>';
 
-  proposalContent.innerHTML = html;
-}
+        proposalContent.innerHTML = html;
+      }
 
-  if (refreshProposalButton) {
-    refreshProposalButton.addEventListener('click', renderProposal);
-  }
-  renderProposal();
+      if (refreshProposalButton) {
+        refreshProposalButton.addEventListener('click', renderProposal);
+      }
+
+      // Initial proposal render when the page loads
+      renderProposal();
 
   // -----------------------------
   // Roof Measure with Undo + Adjust
