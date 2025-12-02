@@ -1064,10 +1064,16 @@
         });
       }
 
-      // Canvas click handling
+           // Canvas click handling (scale + measure)
       if (roofCanvas && roofCtx) {
         roofCanvas.addEventListener('click', function (evt) {
           if (!roofImage) { return; }
+
+          // In adjust mode we use drag (mousedown/mousemove), so ignore plain clicks
+          if (roofMode === 'adjust') {
+            return;
+          }
+
           var pt = roofCanvasPoint(evt);
 
           // Always draw a small dot so you can see the click
@@ -1099,20 +1105,33 @@
               roofSetInfo('Set the scale first.');
               return;
             }
+
             var runType = roofRunTypeSelect ? roofRunTypeSelect.value : 'ridge';
+
             if (!roofLastPoint) {
+              // first point of a run
               roofLastPoint = pt;
             } else {
+              // second (or next) point of the run: create a segment
               var pixels2 = roofPixelDistance(roofLastPoint, pt);
               var feet = pixels2 * roofFeetPerPixel;
+
               roofSegments.push({
                 from: roofLastPoint,
                 to: pt,
                 feet: feet,
                 type: runType
               });
+
+              roofSetInfo(
+                'Segment added: ' + feet.toFixed(1) +
+                ' ft, total segments: ' + roofSegments.length
+              );
+
+              // prepare for next segment in the same run
               roofLastPoint = pt;
             }
+
             roofRedraw();
             roofUpdateTotals();
           } else {
