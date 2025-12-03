@@ -1317,7 +1317,8 @@ window.addEventListener('DOMContentLoaded', function () {
       }
     });
   }
-     // -----------------------------
+  
+   // -----------------------------
   // Photo Mockup (visual-only color designer with zoom + adjust)
   // -----------------------------
   var mockImageInput = document.getElementById('mockup-image-input');
@@ -1390,7 +1391,7 @@ window.addEventListener('DOMContentLoaded', function () {
     return {
       x: (evt.clientX - rect.left) * scaleX,
       y: (evt.clientY - rect.top) * scaleY
-   };
+    };
   }
 
   function mockPointDistance(a, b) {
@@ -1506,6 +1507,22 @@ window.addEventListener('DOMContentLoaded', function () {
 
         mockCtx.restore();
       }
+
+      // In adjust mode, draw visible handles at endpoints so they are easy to grab
+      if (mockMode === 'adjust') {
+        mockCtx.beginPath();
+        mockCtx.fillStyle = '#00ffff';
+        mockCtx.strokeStyle = '#004b80';
+        mockCtx.lineWidth = 1;
+        mockCtx.arc(from.x, from.y, 5, 0, Math.PI * 2);
+        mockCtx.fill();
+        mockCtx.stroke();
+
+        mockCtx.beginPath();
+        mockCtx.arc(to.x, to.y, 5, 0, Math.PI * 2);
+        mockCtx.fill();
+        mockCtx.stroke();
+      }
     }
   }
 
@@ -1581,7 +1598,7 @@ window.addEventListener('DOMContentLoaded', function () {
       if (mockMode !== 'adjust') { return; }
 
       var pt = mockCanvasPoint(evt);
-      var hitThreshold = 10;
+      var hitThreshold = 18; // easier to grab
 
       mockIsDragging = false;
       mockDragSegmentIndex = -1;
@@ -1682,7 +1699,8 @@ window.addEventListener('DOMContentLoaded', function () {
       }
       mockMode = 'adjust';
       mockLastPoint = null;
-      mockSetInfo('Adjust mode: click near an endpoint and drag it to fine-tune your lines.');
+      mockSetInfo('Adjust mode: click on a blue handle and drag it to fine-tune your lines.');
+      mockRedraw(); // show the endpoint handles
     });
   }
 
@@ -1735,7 +1753,7 @@ window.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // Print / save just using browser's print dialog
+  // Print / save mockup via browser print dialog
   if (mockPrintBtn) {
     mockPrintBtn.addEventListener('click', function () {
       window.print();
