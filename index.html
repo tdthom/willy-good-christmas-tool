@@ -360,7 +360,9 @@
         </label><br><br>
 
         <button id="mockup-undo">Undo last segment</button>
+        <button id="mockup-new-run">End run / start new run</button>
         <button id="mockup-clear">Clear all lines</button><br><br>
+
 
         <button id="mockup-zoom-in">Zoom in</button>
         <button id="mockup-zoom-out">Zoom out</button>
@@ -1666,9 +1668,11 @@ window.addEventListener('DOMContentLoaded', function () {
       var mockRunTypeSelect = document.getElementById('mockup-run-type');
       var mockShowWireCheckbox = document.getElementById('mockup-show-wire');
       var mockUndoBtn = document.getElementById('mockup-undo');
+      var mockNewRunBtn = document.getElementById('mockup-new-run');
       var mockClearBtn = document.getElementById('mockup-clear');
       var mockZoomInBtn = document.getElementById('mockup-zoom-in');
       var mockZoomOutBtn = document.getElementById('mockup-zoom-out');
+
 
       var mockImage = null;
       var mockDrawParams = null;   // {x, y, w, h}
@@ -1905,6 +1909,15 @@ window.addEventListener('DOMContentLoaded', function () {
           mockRedraw();
         });
       }
+      // End current run and start a new one
+      if (mockNewRunBtn) {
+        mockNewRunBtn.addEventListener('click', function () {
+          mockLastPoint = null;
+          mockSetInfo(
+            'New run started. Next click will begin a fresh run without connecting to previous lines.'
+          );
+        });
+      }
 
       // Clear all segments
       if (mockClearBtn) {
@@ -1941,6 +1954,15 @@ window.addEventListener('DOMContentLoaded', function () {
       mockAttachRedrawControl(mockBulbSpacingSelect);
       mockAttachRedrawControl(mockBulbSizeSelect);
       mockAttachRedrawControl(mockShowWireCheckbox);
+        // Changing run type also starts a fresh run so lines don't connect across types
+      if (mockRunTypeSelect) {
+        mockRunTypeSelect.addEventListener('change', function () {
+          mockLastPoint = null;
+          mockSetInfo(
+            'Run type changed. Next click will start a new run with this type.'
+          );
+        });
+      }
 
   console.log('Willy Good Christmas Tool core script loaded.');
 });
