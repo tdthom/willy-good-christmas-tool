@@ -897,7 +897,7 @@ window.addEventListener('DOMContentLoaded', function () {
         proposalContent.innerHTML = html;
 
         // Attach Photo Mockup canvas snapshot under the proposal
-        if (proposalMockupImg && mockupCanvas) {
+                if (proposalMockupImg && mockupCanvas) {
           try {
             var dataUrl;
 
@@ -924,6 +924,7 @@ window.addEventListener('DOMContentLoaded', function () {
             proposalMockupImg.style.display = 'none';
           }
         }
+      } // 👈 THIS closes function renderProposal()
 
       if (refreshProposalButton) {
         refreshProposalButton.addEventListener('click', renderProposal);
@@ -931,7 +932,6 @@ window.addEventListener('DOMContentLoaded', function () {
 
       // Initial render on page load
       renderProposal();
-
 
   // -----------------------------
   // Roof Measure with Undo + Adjust
