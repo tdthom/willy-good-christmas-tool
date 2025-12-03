@@ -247,9 +247,76 @@
 
     <label for="container-cost"><strong>Container cost (internal only)</strong></label><br>
     <input id="container-cost" type="number" min="0" step="0.01" value="0.00"> $<br>
-    <span class="small-note">Included in your internal totals and tax base, not shown as a separate line on the proposal.</span><br><br>
+    <span class="small-note">
+  Included in your internal totals and tax base, not shown as a separate line on the proposal.
+</span><br><br>
 
-    <button id="calc-estimate">Calculate estimate</button>
+<h3>Decoration add-ons</h3>
+<p class="small-note">
+  These can be auto-filled from the Photo Mockup, but you can edit the quantities and prices here.
+</p>
+
+<label for="decor-wreath-count"><strong>Wreaths</strong> (qty)</label><br>
+<input
+  id="decor-wreath-count"
+  type="number"
+  min="0"
+  step="1"
+  value="0"
+  style="width:80px;"
+>
+&nbsp;
+<label for="decor-wreath-price">Price each</label>
+<input
+  id="decor-wreath-price"
+  type="number"
+  min="0"
+  step="0.01"
+  value="60.00"
+  style="width:90px;"
+><br><br>
+
+<label for="decor-garland-count"><strong>Garland runs</strong> (qty)</label><br>
+<input
+  id="decor-garland-count"
+  type="number"
+  min="0"
+  step="1"
+  value="0"
+  style="width:80px;"
+>
+&nbsp;
+<label for="decor-garland-price">Price each</label>
+<input
+  id="decor-garland-price"
+  type="number"
+  min="0"
+  step="0.01"
+  value="75.00"
+  style="width:90px;"
+><br><br>
+
+<label for="decor-bow-count"><strong>Bows</strong> (qty)</label><br>
+<input
+  id="decor-bow-count"
+  type="number"
+  min="0"
+  step="1"
+  value="0"
+  style="width:80px;"
+>
+&nbsp;
+<label for="decor-bow-price">Price each</label>
+<input
+  id="decor-bow-price"
+  type="number"
+  min="0"
+  step="0.01"
+  value="30.00"
+  style="width:90px;"
+><br><br>
+
+<button id="calc-estimate">Calculate estimate</button>
 
     <h3>Result</h3>
     <div id="estimate-result">
@@ -383,12 +450,26 @@
         <button id="mockup-adjust-mode">Adjust lines</button>
         <button id="mockup-clear">Clear all lines</button><br><br>
 
+        <h3 style="margin-top:0.5rem;">Decorations</h3>
+        <p class="small-note">
+          Click on the photo to place icons. These will also be counted in the Estimate tab.
+        </p>
+
+        <label for="mockup-decor-type"><strong>Decoration type:</strong></label><br>
+        <select id="mockup-decor-type" style="width:220px;">
+          <option value="wreath">Wreath</option>
+          <option value="garland">Garland</option>
+          <option value="bow">Bow</option>
+        </select><br><br>
+
+        <button id="mockup-decor-mode">Place decorations</button>
+        <button id="mockup-decor-clear">Clear decorations</button><br><br>
+
         <button id="mockup-zoom-in">Zoom in</button>
         <button id="mockup-zoom-out">Zoom out</button>
-       <button id="mockup-print" style="margin-bottom:0.5rem;">
-      Print / Save this mockup as PDF
-    </button>
-
+        <button id="mockup-print" style="margin-bottom:0.5rem;">
+          Print / Save this mockup as PDF
+        </button>
       </div>
 
       <!-- Canvas column -->
@@ -450,7 +531,19 @@ window.addEventListener('DOMContentLoaded', function () {
       screens.forEach(function (s) {
         if (s.id === 'screen-' + target) s.classList.add('active');
         else s.classList.remove('active');
+       navButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var target = btn.getAttribute('data-screen');
+      navButtons.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      screens.forEach(function (s) {
+        if (s.id === 'screen-' + target) s.classList.add('active');
+        else s.classList.remove('active');
       });
+
+      if (target === 'estimate' && typeof syncDecorationsToEstimate === 'function') {
+        syncDecorationsToEstimate();
+      }
     });
   });
 
@@ -723,6 +816,13 @@ window.addEventListener('DOMContentLoaded', function () {
   var equipModeSelect = document.getElementById('equipment-mode');
   var taxRateInput = document.getElementById('tax-rate');
   var containerInput = document.getElementById('container-cost');
+  var decorWreathCountInput = document.getElementById('decor-wreath-count');
+  var decorWreathPriceInput = document.getElementById('decor-wreath-price');
+  var decorGarlandCountInput = document.getElementById('decor-garland-count');
+  var decorGarlandPriceInput = document.getElementById('decor-garland-price');
+  var decorBowCountInput = document.getElementById('decor-bow-count');
+  var decorBowPriceInput = document.getElementById('decor-bow-price');
+
   var calcButton = document.getElementById('calc-estimate');
   var resultBox = document.getElementById('estimate-result');
 
@@ -736,6 +836,18 @@ window.addEventListener('DOMContentLoaded', function () {
       var equipRate = parseFloat(equipRateInput && equipRateInput.value) || 0;
       var taxRatePercent = parseFloat(taxRateInput && taxRateInput.value) || 0;
       var container = parseFloat(containerInput && containerInput.value) || 0;
+            // Decoration add-ons
+      var wreathCount = parseFloat(decorWreathCountInput && decorWreathCountInput.value) || 0;
+      var wreathPrice = parseFloat(decorWreathPriceInput && decorWreathPriceInput.value) || 0;
+      var garlandCount = parseFloat(decorGarlandCountInput && decorGarlandCountInput.value) || 0;
+      var garlandPrice = parseFloat(decorGarlandPriceInput && decorGarlandPriceInput.value) || 0;
+      var bowCount = parseFloat(decorBowCountInput && decorBowCountInput.value) || 0;
+      var bowPrice = parseFloat(decorBowPriceInput && decorBowPriceInput.value) || 0;
+
+      var decorSubtotal =
+        wreathCount * wreathPrice +
+        garlandCount * garlandPrice +
+        bowCount * bowPrice;
 
       var totalFeet = ridge + hip + eaves;
 
@@ -747,8 +859,11 @@ window.addEventListener('DOMContentLoaded', function () {
       var takedownSubtotal = totalFeet * takedownRate;
       var equipmentSubtotal = totalFeet * equipRate;
 
-      var customerSubtotalBeforeTax = installSubtotal + takedownSubtotal;
-      var taxableBase = equipmentSubtotal + container;
+      var customerSubtotalBeforeTax = installSubtotal + takedownSubtotal + decorSubtotal;
+
+      // Decorations are treated as taxable equipment/supplies
+      var taxableBase = equipmentSubtotal + container + decorSubtotal;
+
       var taxRate = taxRatePercent / 100;
       var taxAmount = taxableBase * taxRate;
       var customerTotalWithTax = customerSubtotalBeforeTax + taxAmount;
@@ -774,6 +889,13 @@ window.addEventListener('DOMContentLoaded', function () {
         equipmentSubtotal: equipmentSubtotal,
         taxableBase: taxableBase,
         taxAmount: taxAmount,
+        decorWreathCount: wreathCount,
+        decorGarlandCount: garlandCount,
+        decorBowCount: bowCount,
+        decorWreathPrice: wreathPrice,
+        decorGarlandPrice: garlandPrice,
+        decorBowPrice: bowPrice,
+        decorSubtotal: decorSubtotal,
         customerSubtotalBeforeTax: customerSubtotalBeforeTax,
         customerTotalWithTax: customerTotalWithTax,
         internalTotalPreTax: internalTotalPreTax,
@@ -797,6 +919,17 @@ window.addEventListener('DOMContentLoaded', function () {
       html += '<p><strong>Takedown subtotal (assumed labor only):</strong> $' + takedownSubtotal.toFixed(2) + '</p>';
       html += '<p><strong>Equipment and supplies (per-foot total):</strong> $' + equipmentSubtotal.toFixed(2) + '</p>';
       html += '<p><strong>Taxable base (equipment + container):</strong> $' + taxableBase.toFixed(2) + '</p>';
+     html += '<p><strong>Decoration add-ons (wreaths / garland / bows):</strong> $' +
+              decorSubtotal.toFixed(2) + '</p>';
+
+      var decorDetails = [];
+      if (wreathCount > 0) decorDetails.push(wreathCount + ' wreath(s)');
+      if (garlandCount > 0) decorDetails.push(garlandCount + ' garland run(s)');
+      if (bowCount > 0) decorDetails.push(bowCount + ' bow(s)');
+      if (decorDetails.length > 0) {
+        html += '<p class="small-note">Includes ' + decorDetails.join(', ') + '.</p>';
+      }
+
       html += '<p><strong>Sales tax (' + taxRatePercent.toFixed(2) + '% on taxable base):</strong> $' + taxAmount.toFixed(2) + '</p>';
       html += '<p><strong>Customer total (install + takedown + tax):</strong> $' + customerTotalWithTax.toFixed(2) + '</p>';
       html += '<br>';
@@ -805,6 +938,28 @@ window.addEventListener('DOMContentLoaded', function () {
 
       if (resultBox) resultBox.innerHTML = html;
     });
+  }
+  function syncDecorationsToEstimate() {
+    if (!decorWreathCountInput || !decorGarlandCountInput || !decorBowCountInput) return;
+    if (!Array.isArray(mockDecorations) || mockDecorations.length === 0) return;
+
+    var wreath = 0;
+    var garland = 0;
+    var bow = 0;
+
+    for (var i = 0; i < mockDecorations.length; i++) {
+      var d = mockDecorations[i];
+      if (!d || !d.type) continue;
+      if (d.type === 'wreath') wreath++;
+      else if (d.type === 'garland') garland++;
+      else if (d.type === 'bow') bow++;
+    }
+
+    if (wreath === 0 && garland === 0 && bow === 0) return;
+
+    decorWreathCountInput.value = wreath;
+    decorGarlandCountInput.value = garland;
+    decorBowCountInput.value = bow;
   }
 
       // -----------------------------
@@ -880,7 +1035,13 @@ window.addEventListener('DOMContentLoaded', function () {
                 ' (@ $' + est.rate.toFixed(2) + '/ft)</li>';
         html += '    <li>Takedown: $' + est.takedownSubtotal.toFixed(2) +
                 ' (@ $' + est.takedownRate.toFixed(2) + '/ft)</li>';
+
+        if (est.decorSubtotal && est.decorSubtotal > 0) {
+          html += '    <li>Decoration add-ons: $' + est.decorSubtotal.toFixed(2) + '</li>';
+        }
+
         html += '  </ul>';
+
         html += '  <div class="proposal-totals">';
         html += '    <p>Equipment and supplies (taxable): $' + est.equipmentSubtotal.toFixed(2) + '</p>';
         html += '    <p>Sales tax (' + est.taxRatePercent.toFixed(2) +
@@ -1366,6 +1527,12 @@ window.addEventListener('DOMContentLoaded', function () {
   var mockZoom = 1;
   var MOCK_ZOOM_MIN = 0.5;
   var MOCK_ZOOM_MAX = 3;
+  var mockDecorTypeSelect = document.getElementById('mockup-decor-type');
+  var mockDecorModeBtn = document.getElementById('mockup-decor-mode');
+  var mockDecorClearBtn = document.getElementById('mockup-decor-clear');
+
+  var mockDecorations = [];   // { type:'wreath'|'garland'|'bow', x, y, size }
+  var mockTool = 'lights';    // 'lights' or 'decor'
 
   var mockIsDragging = false;
   var mockDragSegmentIndex = -1;
@@ -1575,8 +1742,13 @@ window.addEventListener('DOMContentLoaded', function () {
           mockLastPoint = null;
           mockMode = 'draw';
           mockZoom = 1;
+          mockDecorations = [];
+          mockTool = 'lights';
           mockApplyZoom();
           mockDrawBase();
+          if (mockDecorModeBtn) {
+            mockDecorModeBtn.textContent = 'Place decorations';
+          }
           mockSetInfo('Photo loaded. Click to start drawing light runs.');
         };
         img.src = ev.target.result;
@@ -1588,12 +1760,26 @@ window.addEventListener('DOMContentLoaded', function () {
   // Canvas interactions
   if (mockCanvas && mockCtx) {
     // Draw mode: click to add segments
-    mockCanvas.addEventListener('click', function (evt) {
+    m    mockCanvas.addEventListener('click', function (evt) {
       if (!mockImage) { return; }
       if (mockMode !== 'draw') { return; }
 
       var pt = mockCanvasPoint(evt);
 
+      // Decoration placement mode
+      if (mockTool === 'decor') {
+        var decorType = mockDecorTypeSelect ? mockDecorTypeSelect.value : 'wreath';
+        mockDecorations.push({
+          type: decorType,
+          x: pt.x,
+          y: pt.y,
+          size: 40
+        });
+        mockRedraw();
+        return;
+      }
+
+      // Normal light-run drawing
       if (!mockLastPoint) {
         mockLastPoint = pt;
       } else {
@@ -1660,6 +1846,56 @@ window.addEventListener('DOMContentLoaded', function () {
       }
       mockRedraw();
     });
+  if (mockDecorModeBtn) {
+    mockDecorModeBtn.addEventListener('click', function () {
+      if (!mockImage) {
+        mockSetInfo('Upload a photo first, then place decorations.');
+        return;
+      }
+
+      if (mockTool === 'decor') {
+        // Back to drawing lights
+        mockTool = 'lights';
+        mockMode = 'draw';
+        mockLastPoint = null;
+        mockDecorModeBtn.textContent = 'Place decorations';
+        mockSetInfo('Back to drawing lights. Click along the roof/gutters to add runs.');
+      } else {
+        // Switch to decoration placement
+        mockTool = 'decor';
+        mockMode = 'draw';   // exit adjust mode if needed
+        mockLastPoint = null;
+        mockDecorModeBtn.textContent = 'Place lights / runs';
+        var label = 'decorations';
+        if (mockDecorTypeSelect && mockDecorTypeSelect.selectedIndex >= 0) {
+          label = mockDecorTypeSelect.options[mockDecorTypeSelect.selectedIndex].text;
+        }
+        mockSetInfo('Decor mode: click on the photo to place ' + label + '.');
+      }
+      mockRedraw();
+    });
+  }
+
+  if (mockDecorTypeSelect) {
+    mockDecorTypeSelect.addEventListener('change', function () {
+      if (mockTool === 'decor') {
+        var label = mockDecorTypeSelect.options[mockDecorTypeSelect.selectedIndex].text;
+        mockSetInfo('Decor mode: placing ' + label + '. Click on the photo to add more.');
+      }
+    });
+  }
+
+  if (mockDecorClearBtn) {
+    mockDecorClearBtn.addEventListener('click', function () {
+      if (!mockDecorations.length) {
+        mockSetInfo('No decorations to clear.');
+        return;
+      }
+      mockDecorations = [];
+      mockRedraw();
+      mockSetInfo('All decorations cleared. Light runs are unchanged.');
+    });
+  }
 
     function mockStopDrag() {
       if (!mockIsDragging) { return; }
@@ -1720,6 +1956,12 @@ window.addEventListener('DOMContentLoaded', function () {
       mockRedraw(); // show the endpoint handles
     });
   }
+  
+    // Draw decorations on top
+    for (var j = 0; j < mockDecorations.length; j++) {
+      mockDrawDecoration(mockDecorations[j]);
+    }
+  }
 
   // Clear all lines
   if (mockClearBtn) {
@@ -1770,6 +2012,100 @@ window.addEventListener('DOMContentLoaded', function () {
     mockRedraw(); // also hide handles
   });
 }
+  function mockDrawDecoration(dec) {
+    if (!mockCtx) { return; }
+    var x = dec.x;
+    var y = dec.y;
+    var size = dec.size || 40;
+    var r = size / 2;
+
+    if (dec.type === 'wreath') {
+      mockCtx.save();
+      mockCtx.translate(x, y);
+
+      // Outer green ring
+      mockCtx.beginPath();
+      mockCtx.fillStyle = '#0b5d1e';
+      mockCtx.arc(0, 0, r, 0, Math.PI * 2);
+      mockCtx.fill();
+
+      // Inner cut-out
+      mockCtx.globalCompositeOperation = 'destination-out';
+      mockCtx.beginPath();
+      mockCtx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
+      mockCtx.fill();
+
+      // Restore normal drawing and outline
+      mockCtx.globalCompositeOperation = 'source-over';
+      mockCtx.lineWidth = 2;
+      mockCtx.strokeStyle = '#083616';
+      mockCtx.beginPath();
+      mockCtx.arc(0, 0, r, 0, Math.PI * 2);
+      mockCtx.stroke();
+
+      // Simple red bow at bottom
+      mockCtx.fillStyle = '#c02222';
+      mockCtx.beginPath();
+      mockCtx.moveTo(-r * 0.3, r * 0.1);
+      mockCtx.lineTo(0, r * 0.55);
+      mockCtx.lineTo(r * 0.3, r * 0.1);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+      mockCtx.restore();
+    } else if (dec.type === 'garland') {
+      mockCtx.save();
+      mockCtx.translate(x, y);
+      mockCtx.strokeStyle = '#0b5d1e';
+      mockCtx.lineWidth = 5;
+      mockCtx.beginPath();
+      mockCtx.moveTo(-r, -r * 0.2);
+      mockCtx.quadraticCurveTo(-r * 0.3, r * 0.5, 0, r * 0.2);
+      mockCtx.quadraticCurveTo(r * 0.3, -r * 0.3, r, r * 0.4);
+      mockCtx.stroke();
+      mockCtx.restore();
+    } else if (dec.type === 'bow') {
+      mockCtx.save();
+      mockCtx.translate(x, y);
+      mockCtx.fillStyle = '#c02222';
+
+      // Center knot
+      mockCtx.fillRect(-r * 0.15, -r * 0.15, r * 0.3, r * 0.3);
+
+      // Left loop
+      mockCtx.beginPath();
+      mockCtx.moveTo(-r * 0.15, -r * 0.15);
+      mockCtx.lineTo(-r * 0.7, -r * 0.4);
+      mockCtx.lineTo(-r * 0.5, 0);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+      // Right loop
+      mockCtx.beginPath();
+      mockCtx.moveTo(r * 0.15, -r * 0.15);
+      mockCtx.lineTo(r * 0.7, -r * 0.4);
+      mockCtx.lineTo(r * 0.5, 0);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+      // Tails
+      mockCtx.beginPath();
+      mockCtx.moveTo(-r * 0.1, r * 0.15);
+      mockCtx.lineTo(-r * 0.3, r * 0.9);
+      mockCtx.lineTo(0, r * 0.4);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+      mockCtx.beginPath();
+      mockCtx.moveTo(r * 0.1, r * 0.15);
+      mockCtx.lineTo(r * 0.3, r * 0.9);
+      mockCtx.lineTo(0, r * 0.4);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+      mockCtx.restore();
+    }
+  }
 
   // Print / save mockup via browser print dialog
 if (mockPrintBtn) {
