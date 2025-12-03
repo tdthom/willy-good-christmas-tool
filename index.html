@@ -118,6 +118,25 @@
       font-size: 0.8rem;
       color: #555555;
     }
+      @media print {
+    header,
+    nav {
+      display: none !important;
+    }
+
+    body {
+      background: #ffffff;
+    }
+
+    .screen {
+      display: none !important;
+    }
+
+    .screen.active {
+      display: block !important;
+    }
+  }
+
   </style>
 </head>
 <body>
@@ -366,6 +385,10 @@
 
         <button id="mockup-zoom-in">Zoom in</button>
         <button id="mockup-zoom-out">Zoom out</button>
+       <button id="mockup-print" style="margin-bottom:0.5rem;">
+      Print / Save this mockup as PDF
+    </button>
+
       </div>
 
       <!-- Canvas column -->
@@ -406,6 +429,18 @@
         "Calculate estimate" first.
       </em>
     </div>
+        <div id="proposal-mockup-wrapper"
+         style="margin-top:16px; max-width:700px;">
+      <h3>Photo / color mockup</h3>
+      <p class="small-note">
+        This preview comes from the Photo Mockup tab and will appear in the PDF.
+      </p>
+      <img id="proposal-mockup-image"
+           src=""
+           alt="Customer light layout preview"
+           style="max-width:100%; border:1px solid #ccc; display:none;">
+    </div>
+    
   </section>
 
   <script>
@@ -787,21 +822,38 @@ window.addEventListener('DOMContentLoaded', function () {
       var proposalContent = document.getElementById('proposal-content');
       var refreshProposalButton = document.getElementById('refresh-proposal');
 
-      function renderProposal() {
+      // NEW: hook proposal to the mockup image/canvas
+      var proposalMockupImg = document.getElementById('proposal-mockup-image');
+      var mockupCanvas = document.getElementById('mockup-canvas');  // your mockup canvas
+
+            function renderProposal() {
         if (!proposalContent) {
           console.warn('[Proposal] No proposal-content element found.');
           return;
         }
-
         var est = loadLastEstimate();
-        console.log('[Proposal] Loaded estimate:', est);
-
-        // Nothing saved yet
         if (!est) {
           proposalContent.innerHTML =
             '<em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate estimate" first.</em>';
           return;
         }
+
+        // ... you already build `html` here ...
+
+        proposalContent.innerHTML = html;
+
+        // NEW: capture the Photo Mockup canvas under the proposal
+        if (proposalMockupImg && mockupCanvas) {
+          try {
+            var dataUrl = mockupCanvas.toDataURL('image/png');
+            proposalMockupImg.src = dataUrl;
+            proposalMockupImg.style.display = 'block';
+          } catch (e) {
+            console.warn('[Proposal] Could not capture mockup canvas', e);
+            proposalMockupImg.style.display = 'none';
+          }
+        }
+      }
 
         // Helper: safely coerce anything to a number so .toFixed() never crashes
         function safeNum(val) {
@@ -884,6 +936,17 @@ window.addEventListener('DOMContentLoaded', function () {
 
         proposalContent.innerHTML = html;
       }
+        // Also snapshot the current Photo Mockup canvas below the proposal
+        if (proposalMockupImg && mockupCanvas) {
+          try {
+            var dataUrl = mockupCanvas.toDataURL('image/png');
+            proposalMockupImg.src = dataUrl;
+            proposalMockupImg.style.display = 'block';
+          } catch (e) {
+            console.warn('[Proposal] Could not capture mockup canvas', e);
+            proposalMockupImg.style.display = 'none';
+          }
+        }
 
       if (refreshProposalButton) {
         refreshProposalButton.addEventListener('click', renderProposal);
@@ -1364,6 +1427,13 @@ window.addEventListener('DOMContentLoaded', function () {
       function mockupRedraw() {
         if (!mockupCtx || !mockupCanvas) { return; }
         mockupDrawBase();
+        
+      var mockupPrintBtn = document.getElementById('mockup-print');
+      if (mockupPrintBtn) {
+        mockupPrintBtn.addEventListener('click', function () {
+          window.print();
+        });
+      }
 
         var showWire = !mockupShowWireCheckbox || mockupShowWireCheckbox.checked;
 
@@ -1528,6 +1598,78 @@ window.addEventListener('DOMContentLoaded', function () {
           mockupLastPoint = null;
           mockupSetInfo('Adjust mode: click near an endpoint and drag to fine-tune the line.');
         });
+      }
+      // Helper: distance between two points
+      function mockupPointDistance(a, b) {
+        var dx = a.x - b.x;
+        var dy = a.y - b.y;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+
+      // mousedown: pick an endpoint to drag
+      if (mockupCanvas && mockupCtx) {
+        mockupCanvas.addEventListener('mousedown', function (event) {
+          if (mockupMode !== 'adjust') { return; }
+          if (!mockupImage || runSegments.length === 0) { return; }
+
+          var p = getCanvasPointFromEvent(event);
+          var threshold = 12; // pixels
+          var best = null;
+          var bestDist = Infinity;
+
+          for (var i = 0; i < runSegments.length; i++) {
+            var seg = runSegments[i];
+            ['from', 'to'].forEach(function (endKey) {
+              var end = seg[endKey];
+              var dist = mockupPointDistance(p, end);
+              if (dist < threshold && dist < bestDist) {
+                bestDist = dist;
+                best = { index: i, endKey: endKey };
+              }
+            });
+          }
+
+          if (best) {
+            mockupIsDragging = true;
+            mockupDragSegmentIndex = best.index;
+            mockupDragEnd = best.endKey;
+            mockupSetInfo(
+              'Dragging endpoint of segment ' +
+              best.index + ' (' + best.endKey + ').'
+            );
+          }
+        });
+
+        // mousemove: update dragged endpoint
+        mockupCanvas.addEventListener('mousemove', function (event) {
+          if (!mockupIsDragging) { return; }
+          var seg = runSegments[mockupDragSegmentIndex];
+          if (!seg) { return; }
+
+          var p = getCanvasPointFromEvent(event);
+          seg[mockupDragEnd] = p;
+
+          // keep feet length roughly correct (even though pricing doesn't use it)
+          if (feetPerPixel) {
+            var px = pixelDistance(seg.from, seg.to);
+            seg.feet = px * feetPerPixel;
+          }
+
+          redrawMockup();
+          updateMockupTotals();
+        });
+
+        // mouseup/mouseleave: stop dragging
+        function mockupStopDrag() {
+          if (!mockupIsDragging) { return; }
+          mockupIsDragging = false;
+          mockupDragSegmentIndex = -1;
+          mockupDragEnd = null;
+          mockupSetInfo('Endpoint adjusted.');
+        }
+
+        mockupCanvas.addEventListener('mouseup', mockupStopDrag);
+        mockupCanvas.addEventListener('mouseleave', mockupStopDrag);
       }
 
       if (mockupUndoBtn) {
