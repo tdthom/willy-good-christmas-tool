@@ -1632,10 +1632,109 @@ window.addEventListener('DOMContentLoaded', function () {
   if (mockCanvas && mockCtx) {
     // Draw mode: click to add segments
     mockCanvas.addEventListener('click', function (evt) {
-      if (!mockImage) return;
-      if (mockMode !== 'draw') return;
+  if (!mockImage) { return; }
+mockCanvas.addEventListener('click', function (evt) {
+  if (!mockImage) { return; }
+  if (mockMode === 'adjust') { return; }
 
-      var pt = mockCanvasPoint(evt);
+  var pt = mockCanvasPoint(evt);
+
+  // --- NEW: placing decorations ---
+  if (mockPlacementMode === 'decor') {
+    var decorType = mockDecorationTypeSelect
+      ? mockDecorationTypeSelect.value
+      : 'other';
+
+    mockDecorations.push({
+      x: pt.x,
+      y: pt.y,
+      kind: decorType
+    });
+
+    mockSetInfo(
+      'Decoration added: ' + decorType + '. Total decorations: ' +
+      mockDecorations.length
+    );
+    mockRedraw();
+    return;
+  }
+
+  // --- EXISTING: drawing light runs ---
+  if (!mockLastPoint) {
+    mockLastPoint = pt;
+  } else {
+    var runType = mockRunTypeSelect ? mockRunTypeSelect.value : 'roof';
+    mockSegments.push({
+      from: mockLastPoint,
+      to: pt,
+      type: runType
+    });
+    mockLastPoint = pt;
+  }
+  mockRedraw();
+});
+function mockRedraw() {
+  if (!mockCtx || !mockCanvas) { return; }
+  mockDrawBase();
+  if (!mockImage) { return; }
+
+  // existing bulb drawing over mockSegments...
+  // (leave all your current code for wires + bulbs + adjust handles)
+
+  // --- NEW: draw decorations (simple icons) ---
+  for (var d = 0; d < mockDecorations.length; d++) {
+    var deco = mockDecorations[d];
+    mockCtx.save();
+    mockCtx.translate(deco.x, deco.y);
+
+    if (deco.kind === 'wreath') {
+      mockCtx.beginPath();
+      mockCtx.strokeStyle = '#006400';
+      mockCtx.lineWidth = 6;
+      mockCtx.arc(0, 0, 18, 0, Math.PI * 2);
+      mockCtx.stroke();
+
+      mockCtx.beginPath();
+      mockCtx.fillStyle = '#ff0000';
+      mockCtx.arc(0, -4, 4, 0, Math.PI * 2);
+      mockCtx.fill();
+    } else if (deco.kind === 'tree') {
+      mockCtx.fillStyle = '#006400';
+      mockCtx.beginPath();
+      mockCtx.moveTo(0, -20);
+      mockCtx.lineTo(12, 4);
+      mockCtx.lineTo(-12, 4);
+      mockCtx.closePath();
+      mockCtx.fill();
+      mockCtx.fillStyle = '#8b4513';
+      mockCtx.fillRect(-3, 4, 6, 8);
+    } else if (deco.kind === 'stake') {
+      mockCtx.fillStyle = '#444444';
+      mockCtx.fillRect(-10, 0, 20, 3);
+      mockCtx.fillStyle = '#ffcc00';
+      mockCtx.beginPath();
+      mockCtx.arc(-7, -2, 3, 0, Math.PI * 2);
+      mockCtx.arc(0, -2, 3, 0, Math.PI * 2);
+      mockCtx.arc(7, -2, 3, 0, Math.PI * 2);
+      mockCtx.fill();
+    } else {
+      // generic marker
+      mockCtx.fillStyle = '#ff00ff';
+      mockCtx.beginPath();
+      mockCtx.arc(0, 0, 6, 0, Math.PI * 2);
+      mockCtx.fill();
+    }
+
+    mockCtx.restore();
+  }
+
+  // existing code that shows blue adjust handles only when mockMode === 'adjust'
+}
+
+  // Only ignore clicks while adjusting existing lines.
+  if (mockMode === 'adjust') { return; }
+
+  var pt = mockCanvasPoint(evt);
       if (!mockLastPoint) {
         mockLastPoint = pt;
       } else {
@@ -1803,6 +1902,24 @@ window.addEventListener('DOMContentLoaded', function () {
       mockRedraw();
     });
   }
+var mockPlacementMode = 'lights';   // 'lights' or 'decor'
+var mockDecorations = [];           // [{x,y,type}]
+var mockDecorationTypeSelect = document.getElementById('mockup-decoration-type');
+var mockPlacementRadios = document.querySelectorAll('input[name="mockup-placement"]');
+
+mockPlacementRadios.forEach(function (r) {
+  r.addEventListener('change', function () {
+    mockPlacementMode = r.value; // 'lights' or 'decor'
+    mockLastPoint = null;        // don’t chain a line through a decoration
+    mockMode = 'draw';           // keep canvas out of adjust mode
+    mockSetInfo(
+      mockPlacementMode === 'decor'
+        ? 'Decoration mode: click to place icons like wreaths and trees.'
+        : 'Lights mode: click to draw light runs.'
+    );
+    mockRedraw();
+  });
+});
 
   // Print / save mockup via browser print dialog, without handles
   if (mockPrintBtn) {
