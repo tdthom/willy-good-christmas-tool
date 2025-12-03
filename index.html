@@ -514,8 +514,8 @@
     >
   </div>
 </section>
-
-  <script>
+  
+<script>
 window.addEventListener('DOMContentLoaded', function () {
   // -----------------------------
   // Navigation
@@ -528,22 +528,11 @@ window.addEventListener('DOMContentLoaded', function () {
       var target = btn.getAttribute('data-screen');
       navButtons.forEach(function (b) { b.classList.remove('active'); });
       btn.classList.add('active');
-      screens.forEach(function (s) {
-        if (s.id === 'screen-' + target) s.classList.add('active');
-        else s.classList.remove('active');
-       navButtons.forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var target = btn.getAttribute('data-screen');
-      navButtons.forEach(function (b) { b.classList.remove('active'); });
-      btn.classList.add('active');
+
       screens.forEach(function (s) {
         if (s.id === 'screen-' + target) s.classList.add('active');
         else s.classList.remove('active');
       });
-
-      if (target === 'estimate' && typeof syncDecorationsToEstimate === 'function') {
-        syncDecorationsToEstimate();
-      }
     });
   });
 
@@ -788,16 +777,6 @@ window.addEventListener('DOMContentLoaded', function () {
       saveCurrentClientId(id);
       renderClientsList();
       updateCurrentClientSummary();
-
-      var c = getCurrentClient();
-      if (c) {
-        if (clientRateInput && typeof c.defaultRate === 'number') {
-          clientRateInput.value = c.defaultRate.toFixed(2);
-        }
-        if (clientTakedownRateInput && typeof c.defaultTakedown === 'number') {
-          clientTakedownRateInput.value = c.defaultTakedown.toFixed(2);
-        }
-      }
     });
   }
 
@@ -816,13 +795,6 @@ window.addEventListener('DOMContentLoaded', function () {
   var equipModeSelect = document.getElementById('equipment-mode');
   var taxRateInput = document.getElementById('tax-rate');
   var containerInput = document.getElementById('container-cost');
-  var decorWreathCountInput = document.getElementById('decor-wreath-count');
-  var decorWreathPriceInput = document.getElementById('decor-wreath-price');
-  var decorGarlandCountInput = document.getElementById('decor-garland-count');
-  var decorGarlandPriceInput = document.getElementById('decor-garland-price');
-  var decorBowCountInput = document.getElementById('decor-bow-count');
-  var decorBowPriceInput = document.getElementById('decor-bow-price');
-
   var calcButton = document.getElementById('calc-estimate');
   var resultBox = document.getElementById('estimate-result');
 
@@ -836,18 +808,6 @@ window.addEventListener('DOMContentLoaded', function () {
       var equipRate = parseFloat(equipRateInput && equipRateInput.value) || 0;
       var taxRatePercent = parseFloat(taxRateInput && taxRateInput.value) || 0;
       var container = parseFloat(containerInput && containerInput.value) || 0;
-            // Decoration add-ons
-      var wreathCount = parseFloat(decorWreathCountInput && decorWreathCountInput.value) || 0;
-      var wreathPrice = parseFloat(decorWreathPriceInput && decorWreathPriceInput.value) || 0;
-      var garlandCount = parseFloat(decorGarlandCountInput && decorGarlandCountInput.value) || 0;
-      var garlandPrice = parseFloat(decorGarlandPriceInput && decorGarlandPriceInput.value) || 0;
-      var bowCount = parseFloat(decorBowCountInput && decorBowCountInput.value) || 0;
-      var bowPrice = parseFloat(decorBowPriceInput && decorBowPriceInput.value) || 0;
-
-      var decorSubtotal =
-        wreathCount * wreathPrice +
-        garlandCount * garlandPrice +
-        bowCount * bowPrice;
 
       var totalFeet = ridge + hip + eaves;
 
@@ -859,11 +819,8 @@ window.addEventListener('DOMContentLoaded', function () {
       var takedownSubtotal = totalFeet * takedownRate;
       var equipmentSubtotal = totalFeet * equipRate;
 
-      var customerSubtotalBeforeTax = installSubtotal + takedownSubtotal + decorSubtotal;
-
-      // Decorations are treated as taxable equipment/supplies
-      var taxableBase = equipmentSubtotal + container + decorSubtotal;
-
+      var customerSubtotalBeforeTax = installSubtotal + takedownSubtotal;
+      var taxableBase = equipmentSubtotal + container;
       var taxRate = taxRatePercent / 100;
       var taxAmount = taxableBase * taxRate;
       var customerTotalWithTax = customerSubtotalBeforeTax + taxAmount;
@@ -889,13 +846,6 @@ window.addEventListener('DOMContentLoaded', function () {
         equipmentSubtotal: equipmentSubtotal,
         taxableBase: taxableBase,
         taxAmount: taxAmount,
-        decorWreathCount: wreathCount,
-        decorGarlandCount: garlandCount,
-        decorBowCount: bowCount,
-        decorWreathPrice: wreathPrice,
-        decorGarlandPrice: garlandPrice,
-        decorBowPrice: bowPrice,
-        decorSubtotal: decorSubtotal,
         customerSubtotalBeforeTax: customerSubtotalBeforeTax,
         customerTotalWithTax: customerTotalWithTax,
         internalTotalPreTax: internalTotalPreTax,
@@ -919,17 +869,6 @@ window.addEventListener('DOMContentLoaded', function () {
       html += '<p><strong>Takedown subtotal (assumed labor only):</strong> $' + takedownSubtotal.toFixed(2) + '</p>';
       html += '<p><strong>Equipment and supplies (per-foot total):</strong> $' + equipmentSubtotal.toFixed(2) + '</p>';
       html += '<p><strong>Taxable base (equipment + container):</strong> $' + taxableBase.toFixed(2) + '</p>';
-     html += '<p><strong>Decoration add-ons (wreaths / garland / bows):</strong> $' +
-              decorSubtotal.toFixed(2) + '</p>';
-
-      var decorDetails = [];
-      if (wreathCount > 0) decorDetails.push(wreathCount + ' wreath(s)');
-      if (garlandCount > 0) decorDetails.push(garlandCount + ' garland run(s)');
-      if (bowCount > 0) decorDetails.push(bowCount + ' bow(s)');
-      if (decorDetails.length > 0) {
-        html += '<p class="small-note">Includes ' + decorDetails.join(', ') + '.</p>';
-      }
-
       html += '<p><strong>Sales tax (' + taxRatePercent.toFixed(2) + '% on taxable base):</strong> $' + taxAmount.toFixed(2) + '</p>';
       html += '<p><strong>Customer total (install + takedown + tax):</strong> $' + customerTotalWithTax.toFixed(2) + '</p>';
       html += '<br>';
@@ -939,36 +878,17 @@ window.addEventListener('DOMContentLoaded', function () {
       if (resultBox) resultBox.innerHTML = html;
     });
   }
-  function syncDecorationsToEstimate() {
-    if (!decorWreathCountInput || !decorGarlandCountInput || !decorBowCountInput) return;
-    if (!Array.isArray(mockDecorations) || mockDecorations.length === 0) return;
-
-    var wreath = 0;
-    var garland = 0;
-    var bow = 0;
-
-    for (var i = 0; i < mockDecorations.length; i++) {
-      var d = mockDecorations[i];
-      if (!d || !d.type) continue;
-      if (d.type === 'wreath') wreath++;
-      else if (d.type === 'garland') garland++;
-      else if (d.type === 'bow') bow++;
-    }
-
-    if (wreath === 0 && garland === 0 && bow === 0) return;
-
-    decorWreathCountInput.value = wreath;
-    decorGarlandCountInput.value = garland;
-    decorBowCountInput.value = bow;
-  }
 
   // -----------------------------
-  // PROPOSAL RENDERING
+  // Proposal rendering (with mockup snapshot)
   // -----------------------------
   var proposalContent = document.getElementById('proposal-content');
   var refreshProposalButton = document.getElementById('refresh-proposal');
   var proposalMockupImg = document.getElementById('proposal-mockup-image');
-  var mockupCanvas = document.getElementById('mockup-canvas'); // Photo Mockup canvas
+
+  // We'll define mockCanvas and mockRedraw in the Photo Mockup section,
+  // but they live in the same scope so we can safely reference them here.
+  var mockCanvas; // will be assigned later
 
   function renderProposal() {
     if (!proposalContent) {
@@ -1000,18 +920,10 @@ window.addEventListener('DOMContentLoaded', function () {
     if (client) {
       clientHtml += '<div class="proposal-header">';
       clientHtml += '<strong>' + (client.name || '') + '</strong><br>';
-      if (client.address) {
-        clientHtml += client.address + '<br>';
-      }
-      if (client.phone) {
-        clientHtml += 'Phone: ' + client.phone + '<br>';
-      }
-      if (client.email) {
-        clientHtml += 'Email: ' + client.email + '<br>';
-      }
-      if (client.preferred) {
-        clientHtml += 'Preferred install: ' + client.preferred + '<br>';
-      }
+      if (client.address) clientHtml += client.address + '<br>';
+      if (client.phone) clientHtml += 'Phone: ' + client.phone + '<br>';
+      if (client.email) clientHtml += 'Email: ' + client.email + '<br>';
+      if (client.preferred) clientHtml += 'Preferred install: ' + client.preferred + '<br>';
       clientHtml += '</div>';
     } else {
       clientHtml = '<p><em>No client selected.</em></p>';
@@ -1051,488 +963,36 @@ window.addEventListener('DOMContentLoaded', function () {
 
     proposalContent.innerHTML = html;
 
-    // Attach Photo Mockup canvas snapshot under the proposal
-    if (proposalMockupImg && mockupCanvas) {
+    // Attach Photo Mockup canvas snapshot under the proposal (if available)
+    if (proposalMockupImg && mockCanvas) {
       try {
         var dataUrl;
-
-        // If our mockup redraw function exists, temporarily switch to draw mode (no handles)
         if (typeof mockRedraw === 'function' && typeof mockMode !== 'undefined') {
           var prevMode = mockMode;
-          mockMode = 'draw';
-          mockRedraw(); // redraw without blue circles
-
-          dataUrl = mockupCanvas.toDataURL('image/png');
-
-          // Restore previous mode & view (so the user still sees adjust handles if they were on)
-          mockMode = prevMode;
+          mockMode = 'draw';    // hide adjust handles
+          mockRedraw();
+          dataUrl = mockCanvas.toDataURL('image/png');
+          mockMode = prevMode;  // restore previous view
           mockRedraw();
         } else {
-          // Fallback: just capture whatever is on the canvas
-          dataUrl = mockupCanvas.toDataURL('image/png');
+          dataUrl = mockCanvas.toDataURL('image/png');
         }
-
         proposalMockupImg.src = dataUrl;
         proposalMockupImg.style.display = 'block';
       } catch (e) {
         console.warn('[Proposal] Could not capture mockup canvas', e);
         proposalMockupImg.style.display = 'none';
       }
+    } else if (proposalMockupImg) {
+      proposalMockupImg.style.display = 'none';
     }
-  } // end renderProposal
+  }
 
   if (refreshProposalButton) {
     refreshProposalButton.addEventListener('click', renderProposal);
   }
 
-  // PHOTO MOCKUP (visual-only with zoom + adjust)
-  var mockImageInput = document.getElementById('mockup-image-input');
-  var mockCanvas = document.getElementById('mockup-canvas');
-  var mockCtx = mockCanvas ? mockCanvas.getContext('2d') : null;
-
-  var mockInfo = document.getElementById('mockup-info');
-  var mockColorModeSelect = document.getElementById('mockup-color-mode');
-  var mockColor1Input = document.getElementById('mockup-color1');
-  var mockColor2Input = document.getElementById('mockup-color2');
-  var mockColor3Input = document.getElementById('mockup-color3');
-  var mockBulbSpacingSelect = document.getElementById('mockup-bulb-spacing');
-  var mockBulbSizeSelect = document.getElementById('mockup-bulb-size');
-  var mockRunTypeSelect = document.getElementById('mockup-run-type');
-  var mockShowWireCheckbox = document.getElementById('mockup-show-wire');
-  var mockUndoBtn = document.getElementById('mockup-undo');
-  var mockNewRunBtn = document.getElementById('mockup-new-run');
-  var mockAdjustBtn = document.getElementById('mockup-adjust-mode');
-  var mockClearBtn = document.getElementById('mockup-clear');
-  var mockZoomInBtn = document.getElementById('mockup-zoom-in');
-  var mockZoomOutBtn = document.getElementById('mockup-zoom-out');
-  var mockPrintBtn = document.getElementById('mockup-print');
-
-  var mockImage = null;
-  var mockDrawParams = null;   // {x, y, w, h}
-  var mockSegments = [];       // [{from:{x,y}, to:{x,y}, type:'roof'|'ground'|'tree'|'other'}]
-  var mockLastPoint = null;
-  var mockMode = 'draw';       // 'draw' or 'adjust'
-  var mockZoom = 1;
-  var MOCK_ZOOM_MIN = 0.5;
-  var MOCK_ZOOM_MAX = 3;
-
-  var mockIsDragging = false;
-  var mockDragSegmentIndex = -1;
-  var mockDragEnd = null;  // 'from' or 'to'
-
-  function mockSetInfo(text) {
-    if (mockInfo) {
-      mockInfo.textContent = text;
-    }
-  }
-
-  function mockApplyZoom() {
-    if (!mockCanvas) { return; }
-    mockCanvas.style.transformOrigin = '0 0';
-    mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
-  }
-
-  function mockDrawBase() {
-    if (!mockCtx || !mockCanvas) { return; }
-    mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
-    if (mockImage && mockDrawParams) {
-      mockCtx.drawImage(
-        mockImage,
-        mockDrawParams.x,
-        mockDrawParams.y,
-        mockDrawParams.w,
-        mockDrawParams.h
-      );
-    }
-  }
-
-  function mockCanvasPoint(evt) {
-    if (!mockCanvas) {
-      return { x: 0, y: 0 };
-    }
-    var rect = mockCanvas.getBoundingClientRect();
-    var scaleX = mockCanvas.width / rect.width;
-    var scaleY = mockCanvas.height / rect.height;
-    return {
-      x: (evt.clientX - rect.left) * scaleX,
-      y: (evt.clientY - rect.top) * scaleY
-    };
-  }
-
-  function mockPointDistance(a, b) {
-    var dx = a.x - b.x;
-    var dy = a.y - b.y;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-
-  function mockRedraw() {
-    if (!mockCtx || !mockCanvas) { return; }
-    mockDrawBase();
-
-    if (!mockImage) { return; }
-
-    var mode = mockColorModeSelect ? mockColorModeSelect.value : 'single';
-    var c1 = (mockColor1Input && mockColor1Input.value) || '#ffffff';
-    var c2 = (mockColor2Input && mockColor2Input.value) || '#ff0000';
-    var c3 = (mockColor3Input && mockColor3Input.value) || '#00ff00';
-
-    var spacingInches = 12;
-    if (mockBulbSpacingSelect) {
-      var sval = parseFloat(mockBulbSpacingSelect.value);
-      if (!isNaN(sval) && sval > 0) {
-        spacingInches = sval;
-      }
-    }
-    // visual-only spacing
-    var spacingPx = spacingInches === 15 ? 28 : 22;
-
-    var baseSize = 3.2;
-    if (mockBulbSizeSelect) {
-      var sizeVal = mockBulbSizeSelect.value;
-      if (sizeVal === 'small') { baseSize = 2.2; }
-      else if (sizeVal === 'large') { baseSize = 4.2; }
-      else { baseSize = 3.2; } // medium
-    }
-    var bulbHeight = baseSize * 2.4;
-    var glowRadius = bulbHeight * 0.9;
-
-    var showWire = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
-
-    for (var i = 0; i < mockSegments.length; i++) {
-      var seg = mockSegments[i];
-      var from = seg.from;
-      var to = seg.to;
-
-      var dx = to.x - from.x;
-      var dy = to.y - from.y;
-      var lengthPx = Math.sqrt(dx * dx + dy * dy);
-      if (lengthPx === 0) { continue; }
-      var angle = Math.atan2(dy, dx);
-
-      // Wire color by run type
-      if (showWire) {
-        var wireColor = '#555555';
-        if (seg.type === 'ground') wireColor = '#3a7a3a';
-        else if (seg.type === 'tree') wireColor = '#8b5a2b';
-
-        mockCtx.beginPath();
-        mockCtx.strokeStyle = wireColor;
-        mockCtx.lineWidth = 1.2;
-        mockCtx.moveTo(from.x, from.y);
-        mockCtx.lineTo(to.x, to.y);
-        mockCtx.stroke();
-      }
-
-      var count = Math.max(1, Math.round(lengthPx / spacingPx));
-      for (var b = 0; b <= count; b++) {
-        var t = count === 0 ? 0 : b / count;
-        var x = from.x + dx * t;
-        var y = from.y + dy * t;
-
-        var color = c1;
-        if (mode === 'two') {
-          color = (b % 2 === 0) ? c1 : c2;
-        } else if (mode === 'three') {
-          var idx = b % 3;
-          color = idx === 0 ? c1 : (idx === 1 ? c2 : c3);
-        }
-
-        mockCtx.save();
-        mockCtx.translate(x, y);
-        mockCtx.rotate(angle);
-
-        // Soft glow
-        mockCtx.beginPath();
-        mockCtx.globalAlpha = 0.22;
-        mockCtx.fillStyle = color;
-        mockCtx.arc(0, 0, glowRadius, 0, Math.PI * 2, false);
-        mockCtx.fill();
-        mockCtx.globalAlpha = 1;
-
-        // Teardrop bulb
-        mockCtx.beginPath();
-        mockCtx.moveTo(0, -bulbHeight / 2);
-        mockCtx.quadraticCurveTo(baseSize, 0, 0, bulbHeight / 2);
-        mockCtx.quadraticCurveTo(-baseSize, 0, 0, -bulbHeight / 2);
-        mockCtx.closePath();
-        mockCtx.fillStyle = color;
-        mockCtx.strokeStyle = '#f5f5f5';
-        mockCtx.lineWidth = 0.8;
-        mockCtx.fill();
-        mockCtx.stroke();
-
-        // Socket
-        mockCtx.fillStyle = '#444444';
-        mockCtx.fillRect(
-          -baseSize * 0.6,
-          bulbHeight / 2,
-          baseSize * 1.2,
-          baseSize * 0.6
-        );
-
-        mockCtx.restore();
-      }
-
-      // In adjust mode, draw visible handles at endpoints so they are easy to grab
-      if (mockMode === 'adjust') {
-        mockCtx.beginPath();
-        mockCtx.fillStyle = '#00ffff';
-        mockCtx.strokeStyle = '#004b80';
-        mockCtx.lineWidth = 1;
-        mockCtx.arc(from.x, from.y, 3, 0, Math.PI * 2);
-        mockCtx.fill();
-        mockCtx.stroke();
-
-        mockCtx.beginPath();
-        mockCtx.arc(to.x, to.y, 3, 0, Math.PI * 2);
-        mockCtx.fill();
-        mockCtx.stroke();
-      }
-    }
-  }
-
-  // Load image into mockup canvas
-  if (mockImageInput && mockCtx && mockCanvas) {
-    mockImageInput.addEventListener('change', function (e) {
-      var file = e.target.files && e.target.files[0];
-      if (!file) { return; }
-
-      var reader = new FileReader();
-      reader.onload = function (ev) {
-        var img = new Image();
-        img.onload = function () {
-          mockImage = img;
-
-          var cw = mockCanvas.width;
-          var ch = mockCanvas.height;
-          var iw = img.width;
-          var ih = img.height;
-          var scale = Math.min(cw / iw, ch / ih);
-          var drawW = iw * scale;
-          var drawH = ih * scale;
-          var offsetX = (cw - drawW) / 2;
-          var offsetY = (ch - drawH) / 2;
-
-          mockDrawParams = {
-            x: offsetX,
-            y: offsetY,
-            w: drawW,
-            h: drawH
-          };
-
-          mockSegments = [];
-          mockLastPoint = null;
-          mockMode = 'draw';
-          mockZoom = 1;
-          mockApplyZoom();
-          mockDrawBase();
-          mockSetInfo('Photo loaded. Click to start drawing light runs.');
-        };
-        img.src = ev.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  // Canvas interactions
-  if (mockCanvas && mockCtx) {
-    // Draw mode: click to add segments
-    mockCanvas.addEventListener('click', function (evt) {
-      if (!mockImage) { return; }
-      if (mockMode !== 'draw') { return; }
-
-      var pt = mockCanvasPoint(evt);
-
-      if (!mockLastPoint) {
-        mockLastPoint = pt;
-      } else {
-        var runType = mockRunTypeSelect ? mockRunTypeSelect.value : 'roof';
-        mockSegments.push({
-          from: mockLastPoint,
-          to: pt,
-          type: runType
-        });
-        mockLastPoint = pt;
-      }
-      mockRedraw();
-    });
-
-    // Adjust mode: drag endpoints
-    mockCanvas.addEventListener('mousedown', function (evt) {
-      if (!mockImage) { return; }
-      if (mockMode !== 'adjust') { return; }
-
-      var pt = mockCanvasPoint(evt);
-      var hitThreshold = 18; // easier to grab
-
-      mockIsDragging = false;
-      mockDragSegmentIndex = -1;
-      mockDragEnd = null;
-
-      for (var i = 0; i < mockSegments.length; i++) {
-        var seg = mockSegments[i];
-        var dFrom = mockPointDistance(pt, seg.from);
-        var dTo = mockPointDistance(pt, seg.to);
-        if (dFrom <= hitThreshold) {
-          mockIsDragging = true;
-          mockDragSegmentIndex = i;
-          mockDragEnd = 'from';
-          break;
-        } else if (dTo <= hitThreshold) {
-          mockIsDragging = true;
-          mockDragSegmentIndex = i;
-          mockDragEnd = 'to';
-          break;
-        }
-      }
-
-      if (mockIsDragging) {
-        mockSetInfo(
-          'Adjusting segment ' + mockDragSegmentIndex +
-          ' (' + mockDragEnd + '). Drag to move.'
-        );
-      }
-    });
-
-    mockCanvas.addEventListener('mousemove', function (evt) {
-      if (!mockIsDragging) { return; }
-      if (mockDragSegmentIndex < 0) { return; }
-
-      var pt = mockCanvasPoint(evt);
-      var seg = mockSegments[mockDragSegmentIndex];
-      if (!seg) { return; }
-
-      if (mockDragEnd === 'from') {
-        seg.from = pt;
-      } else if (mockDragEnd === 'to') {
-        seg.to = pt;
-      }
-      mockRedraw();
-    });
-
-    function mockStopDrag() {
-      if (!mockIsDragging) { return; }
-      mockIsDragging = false;
-      mockDragSegmentIndex = -1;
-      mockDragEnd = null;
-      mockSetInfo('Endpoint adjusted. You can keep adjusting or switch back to drawing.');
-    }
-
-    mockCanvas.addEventListener('mouseup', mockStopDrag);
-    mockCanvas.addEventListener('mouseleave', mockStopDrag);
-  }
-
-  // Undo last segment
-  if (mockUndoBtn) {
-    mockUndoBtn.addEventListener('click', function () {
-      if (!mockSegments.length) {
-        mockSetInfo('No segments to undo.');
-        return;
-      }
-      mockSegments.pop();
-      if (mockSegments.length > 0) {
-        var lastSeg = mockSegments[mockSegments.length - 1];
-        mockLastPoint = { x: lastSeg.to.x, y: lastSeg.to.y };
-      } else {
-        mockLastPoint = null;
-      }
-      mockMode = 'draw';
-      mockRedraw();
-      mockSetInfo('Last segment removed. You are back in draw mode.');
-    });
-  }
-
-  // End current run / start new run (also switches to draw mode)
-  if (mockNewRunBtn) {
-    mockNewRunBtn.addEventListener('click', function () {
-      mockLastPoint = null;
-      mockMode = 'draw';
-      mockSetInfo('New run started. Next click will begin a fresh run.');
-      mockRedraw(); // hide adjust handles immediately
-    });
-  }
-
-  // Adjust mode button
-  if (mockAdjustBtn) {
-    mockAdjustBtn.addEventListener('click', function () {
-      if (!mockImage) {
-        mockSetInfo('Upload a photo first.');
-        return;
-      }
-      if (!mockSegments.length) {
-        mockSetInfo('Draw some runs first, then adjust.');
-        return;
-      }
-      mockMode = 'adjust';
-      mockLastPoint = null;
-      mockSetInfo('Adjust mode: click on a blue handle and drag it to fine-tune your lines.');
-      mockRedraw(); // show the endpoint handles
-    });
-  }
-
-  // Clear all lines
-  if (mockClearBtn) {
-    mockClearBtn.addEventListener('click', function () {
-      mockSegments = [];
-      mockLastPoint = null;
-      mockMode = 'draw';
-      mockDrawBase();
-      mockSetInfo('All lines cleared. You can start drawing again.');
-    });
-  }
-
-  // Zoom controls
-  if (mockZoomInBtn) {
-    mockZoomInBtn.addEventListener('click', function () {
-      mockZoom = Math.min(mockZoom + 0.25, MOCK_ZOOM_MAX);
-      mockApplyZoom();
-    });
-  }
-  if (mockZoomOutBtn) {
-    mockZoomOutBtn.addEventListener('click', function () {
-      mockZoom = Math.max(mockZoom - 0.25, MOCK_ZOOM_MIN);
-      mockApplyZoom();
-    });
-  }
-
-  // Re-draw bulbs when style options change
-  function mockAttachRedrawControl(el) {
-    if (!el) { return; }
-    el.addEventListener('change', mockRedraw);
-  }
-  mockAttachRedrawControl(mockColorModeSelect);
-  mockAttachRedrawControl(mockColor1Input);
-  mockAttachRedrawControl(mockColor2Input);
-  mockAttachRedrawControl(mockColor3Input);
-  mockAttachRedrawControl(mockBulbSpacingSelect);
-  mockAttachRedrawControl(mockBulbSizeSelect);
-  mockAttachRedrawControl(mockShowWireCheckbox);
-
-  // Changing run type starts a fresh run so lines don't connect across types
-  if (mockRunTypeSelect) {
-    mockRunTypeSelect.addEventListener('change', function () {
-      mockLastPoint = null;
-      mockMode = 'draw';
-      mockSetInfo(
-        'Run type changed. Next click will start a new run with this type.'
-      );
-      mockRedraw(); // also hide handles
-    });
-  }
-
-  // Print / save mockup via browser print dialog
-  if (mockPrintBtn) {
-    mockPrintBtn.addEventListener('click', function () {
-      var prevMode = mockMode;
-      mockMode = 'draw';
-      mockRedraw(); // no handles in the printed image
-      window.print();
-      mockMode = prevMode;
-      mockRedraw();
-    });
-  }
-
-  // Initial proposal render (after mock functions exist so snapshot can use them)
+  // Do an initial render (will show "no estimate" message if nothing yet)
   renderProposal();
 
   // -----------------------------
@@ -1935,12 +1395,12 @@ window.addEventListener('DOMContentLoaded', function () {
       }
     });
   }
-  
-   // -----------------------------
+
+  // -----------------------------
   // Photo Mockup (visual-only color designer with zoom + adjust)
   // -----------------------------
   var mockImageInput = document.getElementById('mockup-image-input');
-  var mockCanvas = document.getElementById('mockup-canvas');
+  mockCanvas = document.getElementById('mockup-canvas'); // assigns to var declared above
   var mockCtx = mockCanvas ? mockCanvas.getContext('2d') : null;
 
   var mockInfo = document.getElementById('mockup-info');
@@ -1961,38 +1421,30 @@ window.addEventListener('DOMContentLoaded', function () {
   var mockPrintBtn = document.getElementById('mockup-print');
 
   var mockImage = null;
-  var mockDrawParams = null;   // {x, y, w, h}
-  var mockSegments = [];       // [{from:{x,y}, to:{x,y}, type:'roof'|'ground'|'tree'|'other'}]
+  var mockDrawParams = null;
+  var mockSegments = [];
   var mockLastPoint = null;
-  var mockMode = 'draw';       // 'draw' or 'adjust'
+  var mockMode = 'draw';
   var mockZoom = 1;
   var MOCK_ZOOM_MIN = 0.5;
   var MOCK_ZOOM_MAX = 3;
-  var mockDecorTypeSelect = document.getElementById('mockup-decor-type');
-  var mockDecorModeBtn = document.getElementById('mockup-decor-mode');
-  var mockDecorClearBtn = document.getElementById('mockup-decor-clear');
-
-  var mockDecorations = [];   // { type:'wreath'|'garland'|'bow', x, y, size }
-  var mockTool = 'lights';    // 'lights' or 'decor'
 
   var mockIsDragging = false;
   var mockDragSegmentIndex = -1;
-  var mockDragEnd = null;  // 'from' or 'to'
+  var mockDragEnd = null;
 
   function mockSetInfo(text) {
-    if (mockInfo) {
-      mockInfo.textContent = text;
-    }
+    if (mockInfo) mockInfo.textContent = text;
   }
 
   function mockApplyZoom() {
-    if (!mockCanvas) { return; }
+    if (!mockCanvas) return;
     mockCanvas.style.transformOrigin = '0 0';
     mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
   }
 
   function mockDrawBase() {
-    if (!mockCtx || !mockCanvas) { return; }
+    if (!mockCtx || !mockCanvas) return;
     mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
     if (mockImage && mockDrawParams) {
       mockCtx.drawImage(
@@ -2006,9 +1458,7 @@ window.addEventListener('DOMContentLoaded', function () {
   }
 
   function mockCanvasPoint(evt) {
-    if (!mockCanvas) {
-      return { x: 0, y: 0 };
-    }
+    if (!mockCanvas) return { x: 0, y: 0 };
     var rect = mockCanvas.getBoundingClientRect();
     var scaleX = mockCanvas.width / rect.width;
     var scaleY = mockCanvas.height / rect.height;
@@ -2025,10 +1475,9 @@ window.addEventListener('DOMContentLoaded', function () {
   }
 
   function mockRedraw() {
-    if (!mockCtx || !mockCanvas) { return; }
+    if (!mockCtx || !mockCanvas) return;
     mockDrawBase();
-
-    if (!mockImage) { return; }
+    if (!mockImage) return;
 
     var mode = mockColorModeSelect ? mockColorModeSelect.value : 'single';
     var c1 = (mockColor1Input && mockColor1Input.value) || '#ffffff';
@@ -2038,37 +1487,30 @@ window.addEventListener('DOMContentLoaded', function () {
     var spacingInches = 12;
     if (mockBulbSpacingSelect) {
       var sval = parseFloat(mockBulbSpacingSelect.value);
-      if (!isNaN(sval) && sval > 0) {
-        spacingInches = sval;
-      }
+      if (!isNaN(sval) && sval > 0) spacingInches = sval;
     }
-    // visual-only spacing
     var spacingPx = spacingInches === 15 ? 28 : 22;
 
     var baseSize = 3.2;
     if (mockBulbSizeSelect) {
       var sizeVal = mockBulbSizeSelect.value;
-      if (sizeVal === 'small') { baseSize = 2.2; }
-      else if (sizeVal === 'large') { baseSize = 4.2; }
-      else { baseSize = 3.2; } // medium
+      if (sizeVal === 'small') baseSize = 2.2;
+      else if (sizeVal === 'large') baseSize = 4.2;
     }
     var bulbHeight = baseSize * 2.4;
     var glowRadius = bulbHeight * 0.9;
-
     var showWire = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
 
     for (var i = 0; i < mockSegments.length; i++) {
       var seg = mockSegments[i];
       var from = seg.from;
       var to = seg.to;
-
       var dx = to.x - from.x;
       var dy = to.y - from.y;
       var lengthPx = Math.sqrt(dx * dx + dy * dy);
-      if (lengthPx === 0) { continue; }
+      if (lengthPx === 0) continue;
       var angle = Math.atan2(dy, dx);
 
-      // Wire color by run type
       if (showWire) {
         var wireColor = '#555555';
         if (seg.type === 'ground') wireColor = '#3a7a3a';
@@ -2100,7 +1542,7 @@ window.addEventListener('DOMContentLoaded', function () {
         mockCtx.translate(x, y);
         mockCtx.rotate(angle);
 
-        // Soft glow
+        // glow
         mockCtx.beginPath();
         mockCtx.globalAlpha = 0.22;
         mockCtx.fillStyle = color;
@@ -2108,7 +1550,7 @@ window.addEventListener('DOMContentLoaded', function () {
         mockCtx.fill();
         mockCtx.globalAlpha = 1;
 
-        // Teardrop bulb
+        // bulb body
         mockCtx.beginPath();
         mockCtx.moveTo(0, -bulbHeight / 2);
         mockCtx.quadraticCurveTo(baseSize, 0, 0, bulbHeight / 2);
@@ -2120,7 +1562,7 @@ window.addEventListener('DOMContentLoaded', function () {
         mockCtx.fill();
         mockCtx.stroke();
 
-        // Socket
+        // socket
         mockCtx.fillStyle = '#444444';
         mockCtx.fillRect(
           -baseSize * 0.6,
@@ -2132,8 +1574,8 @@ window.addEventListener('DOMContentLoaded', function () {
         mockCtx.restore();
       }
 
-      // In adjust mode, draw visible handles at endpoints so they are easy to grab
-            if (mockMode === 'adjust') {
+      // Smaller adjust handles so they don't feel huge
+      if (mockMode === 'adjust') {
         mockCtx.beginPath();
         mockCtx.fillStyle = '#00ffff';
         mockCtx.strokeStyle = '#004b80';
@@ -2154,14 +1596,13 @@ window.addEventListener('DOMContentLoaded', function () {
   if (mockImageInput && mockCtx && mockCanvas) {
     mockImageInput.addEventListener('change', function (e) {
       var file = e.target.files && e.target.files[0];
-      if (!file) { return; }
+      if (!file) return;
 
       var reader = new FileReader();
       reader.onload = function (ev) {
         var img = new Image();
         img.onload = function () {
           mockImage = img;
-
           var cw = mockCanvas.width;
           var ch = mockCanvas.height;
           var iw = img.width;
@@ -2172,24 +1613,13 @@ window.addEventListener('DOMContentLoaded', function () {
           var offsetX = (cw - drawW) / 2;
           var offsetY = (ch - drawH) / 2;
 
-          mockDrawParams = {
-            x: offsetX,
-            y: offsetY,
-            w: drawW,
-            h: drawH
-          };
-
+          mockDrawParams = { x: offsetX, y: offsetY, w: drawW, h: drawH };
           mockSegments = [];
           mockLastPoint = null;
           mockMode = 'draw';
           mockZoom = 1;
-          mockDecorations = [];
-          mockTool = 'lights';
           mockApplyZoom();
           mockDrawBase();
-          if (mockDecorModeBtn) {
-            mockDecorModeBtn.textContent = 'Place decorations';
-          }
           mockSetInfo('Photo loaded. Click to start drawing light runs.');
         };
         img.src = ev.target.result;
@@ -2201,35 +1631,16 @@ window.addEventListener('DOMContentLoaded', function () {
   // Canvas interactions
   if (mockCanvas && mockCtx) {
     // Draw mode: click to add segments
-    m    mockCanvas.addEventListener('click', function (evt) {
-      if (!mockImage) { return; }
-      if (mockMode !== 'draw') { return; }
+    mockCanvas.addEventListener('click', function (evt) {
+      if (!mockImage) return;
+      if (mockMode !== 'draw') return;
 
       var pt = mockCanvasPoint(evt);
-
-      // Decoration placement mode
-      if (mockTool === 'decor') {
-        var decorType = mockDecorTypeSelect ? mockDecorTypeSelect.value : 'wreath';
-        mockDecorations.push({
-          type: decorType,
-          x: pt.x,
-          y: pt.y,
-          size: 40
-        });
-        mockRedraw();
-        return;
-      }
-
-      // Normal light-run drawing
       if (!mockLastPoint) {
         mockLastPoint = pt;
       } else {
         var runType = mockRunTypeSelect ? mockRunTypeSelect.value : 'roof';
-        mockSegments.push({
-          from: mockLastPoint,
-          to: pt,
-          type: runType
-        });
+        mockSegments.push({ from: mockLastPoint, to: pt, type: runType });
         mockLastPoint = pt;
       }
       mockRedraw();
@@ -2237,11 +1648,11 @@ window.addEventListener('DOMContentLoaded', function () {
 
     // Adjust mode: drag endpoints
     mockCanvas.addEventListener('mousedown', function (evt) {
-      if (!mockImage) { return; }
-      if (mockMode !== 'adjust') { return; }
+      if (!mockImage) return;
+      if (mockMode !== 'adjust') return;
 
       var pt = mockCanvasPoint(evt);
-      var hitThreshold = 18; // easier to grab
+      var hitThreshold = 14; // easier to grab
 
       mockIsDragging = false;
       mockDragSegmentIndex = -1;
@@ -2273,73 +1684,20 @@ window.addEventListener('DOMContentLoaded', function () {
     });
 
     mockCanvas.addEventListener('mousemove', function (evt) {
-      if (!mockIsDragging) { return; }
-      if (mockDragSegmentIndex < 0) { return; }
+      if (!mockIsDragging) return;
+      if (mockDragSegmentIndex < 0) return;
 
       var pt = mockCanvasPoint(evt);
       var seg = mockSegments[mockDragSegmentIndex];
-      if (!seg) { return; }
+      if (!seg) return;
 
-      if (mockDragEnd === 'from') {
-        seg.from = pt;
-      } else if (mockDragEnd === 'to') {
-        seg.to = pt;
-      }
+      if (mockDragEnd === 'from') seg.from = pt;
+      else if (mockDragEnd === 'to') seg.to = pt;
       mockRedraw();
     });
-  if (mockDecorModeBtn) {
-    mockDecorModeBtn.addEventListener('click', function () {
-      if (!mockImage) {
-        mockSetInfo('Upload a photo first, then place decorations.');
-        return;
-      }
-
-      if (mockTool === 'decor') {
-        // Back to drawing lights
-        mockTool = 'lights';
-        mockMode = 'draw';
-        mockLastPoint = null;
-        mockDecorModeBtn.textContent = 'Place decorations';
-        mockSetInfo('Back to drawing lights. Click along the roof/gutters to add runs.');
-      } else {
-        // Switch to decoration placement
-        mockTool = 'decor';
-        mockMode = 'draw';   // exit adjust mode if needed
-        mockLastPoint = null;
-        mockDecorModeBtn.textContent = 'Place lights / runs';
-        var label = 'decorations';
-        if (mockDecorTypeSelect && mockDecorTypeSelect.selectedIndex >= 0) {
-          label = mockDecorTypeSelect.options[mockDecorTypeSelect.selectedIndex].text;
-        }
-        mockSetInfo('Decor mode: click on the photo to place ' + label + '.');
-      }
-      mockRedraw();
-    });
-  }
-
-  if (mockDecorTypeSelect) {
-    mockDecorTypeSelect.addEventListener('change', function () {
-      if (mockTool === 'decor') {
-        var label = mockDecorTypeSelect.options[mockDecorTypeSelect.selectedIndex].text;
-        mockSetInfo('Decor mode: placing ' + label + '. Click on the photo to add more.');
-      }
-    });
-  }
-
-  if (mockDecorClearBtn) {
-    mockDecorClearBtn.addEventListener('click', function () {
-      if (!mockDecorations.length) {
-        mockSetInfo('No decorations to clear.');
-        return;
-      }
-      mockDecorations = [];
-      mockRedraw();
-      mockSetInfo('All decorations cleared. Light runs are unchanged.');
-    });
-  }
 
     function mockStopDrag() {
-      if (!mockIsDragging) { return; }
+      if (!mockIsDragging) return;
       mockIsDragging = false;
       mockDragSegmentIndex = -1;
       mockDragEnd = null;
@@ -2370,15 +1728,15 @@ window.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // End current run / start new run (also switches to draw mode)
- if (mockNewRunBtn) {
-  mockNewRunBtn.addEventListener('click', function () {
-    mockLastPoint = null;
-    mockMode = 'draw';
-    mockSetInfo('New run started. Next click will begin a fresh run.');
-    mockRedraw(); // hide adjust handles immediately
-  });
-}
+  // End current run / start new run
+  if (mockNewRunBtn) {
+    mockNewRunBtn.addEventListener('click', function () {
+      mockLastPoint = null;
+      mockMode = 'draw';
+      mockSetInfo('New run started. Next click will begin a fresh run.');
+      mockRedraw(); // hides handles if they were on
+    });
+  }
 
   // Adjust mode button
   if (mockAdjustBtn) {
@@ -2394,14 +1752,8 @@ window.addEventListener('DOMContentLoaded', function () {
       mockMode = 'adjust';
       mockLastPoint = null;
       mockSetInfo('Adjust mode: click on a blue handle and drag it to fine-tune your lines.');
-      mockRedraw(); // show the endpoint handles
+      mockRedraw(); // show endpoint handles
     });
-  }
-  
-    // Draw decorations on top
-    for (var j = 0; j < mockDecorations.length; j++) {
-      mockDrawDecoration(mockDecorations[j]);
-    }
   }
 
   // Clear all lines
@@ -2429,9 +1781,9 @@ window.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // Re-draw bulbs when style options change
+  // Redraw when style options change
   function mockAttachRedrawControl(el) {
-    if (!el) { return; }
+    if (!el) return;
     el.addEventListener('change', mockRedraw);
   }
   mockAttachRedrawControl(mockColorModeSelect);
@@ -2442,127 +1794,35 @@ window.addEventListener('DOMContentLoaded', function () {
   mockAttachRedrawControl(mockBulbSizeSelect);
   mockAttachRedrawControl(mockShowWireCheckbox);
 
-  // Changing run type starts a fresh run so lines don't connect across types
+  // Changing run type starts a fresh run
   if (mockRunTypeSelect) {
-  mockRunTypeSelect.addEventListener('change', function () {
-    mockLastPoint = null;
-    mockMode = 'draw';
-    mockSetInfo(
-      'Run type changed. Next click will start a new run with this type.'
-    );
-    mockRedraw(); // also hide handles
-  });
-}
-  function mockDrawDecoration(dec) {
-    if (!mockCtx) { return; }
-    var x = dec.x;
-    var y = dec.y;
-    var size = dec.size || 40;
-    var r = size / 2;
-
-    if (dec.type === 'wreath') {
-      mockCtx.save();
-      mockCtx.translate(x, y);
-
-      // Outer green ring
-      mockCtx.beginPath();
-      mockCtx.fillStyle = '#0b5d1e';
-      mockCtx.arc(0, 0, r, 0, Math.PI * 2);
-      mockCtx.fill();
-
-      // Inner cut-out
-      mockCtx.globalCompositeOperation = 'destination-out';
-      mockCtx.beginPath();
-      mockCtx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
-      mockCtx.fill();
-
-      // Restore normal drawing and outline
-      mockCtx.globalCompositeOperation = 'source-over';
-      mockCtx.lineWidth = 2;
-      mockCtx.strokeStyle = '#083616';
-      mockCtx.beginPath();
-      mockCtx.arc(0, 0, r, 0, Math.PI * 2);
-      mockCtx.stroke();
-
-      // Simple red bow at bottom
-      mockCtx.fillStyle = '#c02222';
-      mockCtx.beginPath();
-      mockCtx.moveTo(-r * 0.3, r * 0.1);
-      mockCtx.lineTo(0, r * 0.55);
-      mockCtx.lineTo(r * 0.3, r * 0.1);
-      mockCtx.closePath();
-      mockCtx.fill();
-
-      mockCtx.restore();
-    } else if (dec.type === 'garland') {
-      mockCtx.save();
-      mockCtx.translate(x, y);
-      mockCtx.strokeStyle = '#0b5d1e';
-      mockCtx.lineWidth = 5;
-      mockCtx.beginPath();
-      mockCtx.moveTo(-r, -r * 0.2);
-      mockCtx.quadraticCurveTo(-r * 0.3, r * 0.5, 0, r * 0.2);
-      mockCtx.quadraticCurveTo(r * 0.3, -r * 0.3, r, r * 0.4);
-      mockCtx.stroke();
-      mockCtx.restore();
-    } else if (dec.type === 'bow') {
-      mockCtx.save();
-      mockCtx.translate(x, y);
-      mockCtx.fillStyle = '#c02222';
-
-      // Center knot
-      mockCtx.fillRect(-r * 0.15, -r * 0.15, r * 0.3, r * 0.3);
-
-      // Left loop
-      mockCtx.beginPath();
-      mockCtx.moveTo(-r * 0.15, -r * 0.15);
-      mockCtx.lineTo(-r * 0.7, -r * 0.4);
-      mockCtx.lineTo(-r * 0.5, 0);
-      mockCtx.closePath();
-      mockCtx.fill();
-
-      // Right loop
-      mockCtx.beginPath();
-      mockCtx.moveTo(r * 0.15, -r * 0.15);
-      mockCtx.lineTo(r * 0.7, -r * 0.4);
-      mockCtx.lineTo(r * 0.5, 0);
-      mockCtx.closePath();
-      mockCtx.fill();
-
-      // Tails
-      mockCtx.beginPath();
-      mockCtx.moveTo(-r * 0.1, r * 0.15);
-      mockCtx.lineTo(-r * 0.3, r * 0.9);
-      mockCtx.lineTo(0, r * 0.4);
-      mockCtx.closePath();
-      mockCtx.fill();
-
-      mockCtx.beginPath();
-      mockCtx.moveTo(r * 0.1, r * 0.15);
-      mockCtx.lineTo(r * 0.3, r * 0.9);
-      mockCtx.lineTo(0, r * 0.4);
-      mockCtx.closePath();
-      mockCtx.fill();
-
-      mockCtx.restore();
-    }
+    mockRunTypeSelect.addEventListener('change', function () {
+      mockLastPoint = null;
+      mockMode = 'draw';
+      mockSetInfo('Run type changed. Next click will start a new run with this type.');
+      mockRedraw();
+    });
   }
 
-  // Print / save mockup via browser print dialog
-if (mockPrintBtn) {
-  mockPrintBtn.addEventListener('click', function () {
-    var prevMode = mockMode;
-    mockMode = 'draw';
-    mockRedraw(); // no handles in the printed image
-    window.print();
-    // After printing, we just leave it in draw mode. If you want adjust again,
-    // just click "Adjust lines" and the handles will come back.
-  });
-}
- 
+  // Print / save mockup via browser print dialog, without handles
+  if (mockPrintBtn) {
+    mockPrintBtn.addEventListener('click', function () {
+      if (!mockCanvas) {
+        window.print();
+        return;
+      }
+      var prevMode = mockMode;
+      mockMode = 'draw';
+      mockRedraw(); // no handles
+      window.print();
+      mockMode = prevMode;
+      mockRedraw();
+    });
+  }
+
   console.log('Willy Good Christmas Tool core script loaded.');
 });
 </script>
-
+ 
 </body>
 </html>
