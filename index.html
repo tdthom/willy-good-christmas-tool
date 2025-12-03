@@ -899,7 +899,24 @@ window.addEventListener('DOMContentLoaded', function () {
         // Attach Photo Mockup canvas snapshot under the proposal
         if (proposalMockupImg && mockupCanvas) {
           try {
-            var dataUrl = mockupCanvas.toDataURL('image/png');
+            var dataUrl;
+
+            // If our mockup redraw function exists, temporarily switch to draw mode (no handles)
+            if (typeof mockRedraw === 'function' && typeof mockMode !== 'undefined') {
+              var prevMode = mockMode;
+              mockMode = 'draw';
+              mockRedraw(); // redraw without blue circles
+
+              dataUrl = mockupCanvas.toDataURL('image/png');
+
+              // Restore previous mode & view (so the user still sees adjust handles if they were on)
+              mockMode = prevMode;
+              mockRedraw();
+            } else {
+              // Fallback: just capture whatever is on the canvas
+              dataUrl = mockupCanvas.toDataURL('image/png');
+            }
+
             proposalMockupImg.src = dataUrl;
             proposalMockupImg.style.display = 'block';
           } catch (e) {
@@ -907,7 +924,6 @@ window.addEventListener('DOMContentLoaded', function () {
             proposalMockupImg.style.display = 'none';
           }
         }
-      }
 
       if (refreshProposalButton) {
         refreshProposalButton.addEventListener('click', renderProposal);
@@ -1509,17 +1525,17 @@ window.addEventListener('DOMContentLoaded', function () {
       }
 
       // In adjust mode, draw visible handles at endpoints so they are easy to grab
-      if (mockMode === 'adjust') {
+            if (mockMode === 'adjust') {
         mockCtx.beginPath();
         mockCtx.fillStyle = '#00ffff';
         mockCtx.strokeStyle = '#004b80';
         mockCtx.lineWidth = 1;
-        mockCtx.arc(from.x, from.y, 5, 0, Math.PI * 2);
+        mockCtx.arc(from.x, from.y, 3, 0, Math.PI * 2);
         mockCtx.fill();
         mockCtx.stroke();
 
         mockCtx.beginPath();
-        mockCtx.arc(to.x, to.y, 5, 0, Math.PI * 2);
+        mockCtx.arc(to.x, to.y, 3, 0, Math.PI * 2);
         mockCtx.fill();
         mockCtx.stroke();
       }
@@ -1678,13 +1694,14 @@ window.addEventListener('DOMContentLoaded', function () {
   }
 
   // End current run / start new run (also switches to draw mode)
-  if (mockNewRunBtn) {
-    mockNewRunBtn.addEventListener('click', function () {
-      mockLastPoint = null;
-      mockMode = 'draw';
-      mockSetInfo('New run started. Next click will begin a fresh run.');
-    });
-  }
+ if (mockNewRunBtn) {
+  mockNewRunBtn.addEventListener('click', function () {
+    mockLastPoint = null;
+    mockMode = 'draw';
+    mockSetInfo('New run started. Next click will begin a fresh run.');
+    mockRedraw(); // hide adjust handles immediately
+  });
+}
 
   // Adjust mode button
   if (mockAdjustBtn) {
@@ -1744,21 +1761,27 @@ window.addEventListener('DOMContentLoaded', function () {
 
   // Changing run type starts a fresh run so lines don't connect across types
   if (mockRunTypeSelect) {
-    mockRunTypeSelect.addEventListener('change', function () {
-      mockLastPoint = null;
-      mockMode = 'draw';
-      mockSetInfo(
-        'Run type changed. Next click will start a new run with this type.'
-      );
-    });
-  }
+  mockRunTypeSelect.addEventListener('change', function () {
+    mockLastPoint = null;
+    mockMode = 'draw';
+    mockSetInfo(
+      'Run type changed. Next click will start a new run with this type.'
+    );
+    mockRedraw(); // also hide handles
+  });
+}
 
   // Print / save mockup via browser print dialog
-  if (mockPrintBtn) {
-    mockPrintBtn.addEventListener('click', function () {
-      window.print();
-    });
-  }
+if (mockPrintBtn) {
+  mockPrintBtn.addEventListener('click', function () {
+    var prevMode = mockMode;
+    mockMode = 'draw';
+    mockRedraw(); // no handles in the printed image
+    window.print();
+    // After printing, we just leave it in draw mode. If you want adjust again,
+    // just click "Adjust lines" and the handles will come back.
+  });
+}
  
   console.log('Willy Good Christmas Tool core script loaded.');
 });
