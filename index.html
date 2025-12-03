@@ -450,21 +450,32 @@
         <button id="mockup-adjust-mode">Adjust lines</button>
         <button id="mockup-clear">Clear all lines</button><br><br>
 
-        <h3 style="margin-top:0.5rem;">Decorations</h3>
+         <h3 style="margin-top:0.5rem;">Decorations</h3>
         <p class="small-note">
-          Click on the photo to place icons. These will also be counted in the Estimate tab.
+          Switch to decoration mode, then click on the photo to place icons for wreaths, garland,
+          bows, tree-wrap lights, or net lights. Click a decoration to select it, drag to move it,
+          and use the buttons to resize or rotate.
         </p>
 
         <label for="mockup-decor-type"><strong>Decoration type:</strong></label><br>
         <select id="mockup-decor-type" style="width:220px;">
-        <option value="wreath">Wreath</option>
-        <option value="garland">Garland</option>
-        <option value="bow">Bow</option>
-        <option value="tree">Lit tree (mini lights)</option>
+          <option value="wreath">Wreath</option>
+          <option value="garland">Garland</option>
+          <option value="bow">Bow</option>
+          <option value="treewrap">Tree wrap (mini lights)</option>
+          <option value="net">Net lights (bush/tree)</option>
         </select><br><br>
 
         <button id="mockup-decor-mode">Place decorations</button>
         <button id="mockup-decor-clear">Clear decorations</button><br><br>
+
+        <div class="small-note" style="margin-bottom:4px;">
+          With a decoration selected:
+        </div>
+        <button id="decor-smaller">Smaller</button>
+        <button id="decor-bigger">Bigger</button>
+        <button id="decor-rotate-left">Rotate ⟲</button>
+        <button id="decor-rotate-right">Rotate ⟳</button><br><br>
 
         <button id="mockup-zoom-in">Zoom in</button>
         <button id="mockup-zoom-out">Zoom out</button>
@@ -1397,11 +1408,11 @@ window.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-    // -----------------------------
+  // -----------------------------
   // Photo Mockup (visual-only color designer with zoom + adjust + decorations)
   // -----------------------------
   var mockImageInput = document.getElementById('mockup-image-input');
-  mockCanvas = document.getElementById('mockup-canvas'); // uses the outer var for Proposal snapshot
+  mockCanvas = document.getElementById('mockup-canvas'); // global used by Proposal snapshot
   var mockCtx = mockCanvas ? mockCanvas.getContext('2d') : null;
 
   var mockInfo = document.getElementById('mockup-info');
@@ -1425,28 +1436,34 @@ window.addEventListener('DOMContentLoaded', function () {
   var mockDecorTypeSelect = document.getElementById('mockup-decor-type');
   var mockDecorModeBtn = document.getElementById('mockup-decor-mode');
   var mockDecorClearBtn = document.getElementById('mockup-decor-clear');
+  var decorSmallerBtn = document.getElementById('decor-smaller');
+  var decorBiggerBtn = document.getElementById('decor-bigger');
+  var decorRotateLeftBtn = document.getElementById('decor-rotate-left');
+  var decorRotateRightBtn = document.getElementById('decor-rotate-right');
 
+  // State
   var mockImage = null;
-  var mockDrawParams = null;      // {x, y, w, h}
-  var mockSegments = [];          // light runs
-  var mockDecorations = [];       // [{x,y,kind}]
+  var mockDrawParams = null;         // {x,y,w,h}
+  var mockSegments = [];             // light runs
+  var mockDecorations = [];          // [{x,y,kind,scale,rotation}]
   var mockLastPoint = null;
 
-  var mockMode = 'draw';          // 'draw' or 'adjust' (for light runs)
-  var mockPlacementMode = 'lights'; // 'lights' or 'decor'
+  var mockMode = 'draw';             // 'draw' or 'adjust' (for light runs)
+  var mockPlacementMode = 'lights';  // 'lights' or 'decor'
   var mockZoom = 1;
   var MOCK_ZOOM_MIN = 0.5;
   var MOCK_ZOOM_MAX = 3;
 
-  // Drag state for adjusting light segments
+  // Drag state for light segments
   var mockIsDraggingSegment = false;
   var mockDragSegmentIndex = -1;
-  var mockDragEnd = null;         // 'from' or 'to'
+  var mockDragEnd = null;            // 'from' or 'to'
 
-  // Drag state for moving decorations
+  // Drag/selection state for decorations
   var mockIsDraggingDecor = false;
   var mockDragDecorIndex = -1;
-  var mockDecorWasDragging = false; // to avoid adding a new icon after a drag
+  var mockSelectedDecorIndex = -1;
+  var mockLastClickWasOnDecor = false;
 
   function mockSetInfo(text) {
     if (mockInfo) mockInfo.textContent = text;
@@ -1489,102 +1506,186 @@ window.addEventListener('DOMContentLoaded', function () {
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  // Draw simple icons for decorations
+  function mockSelectDecor(index) {
+    if (index == null || index < 0 || index >= mockDecorations.length) {
+      mockSelectedDecorIndex = -1;
+      mockSetInfo('No decoration selected. Click one to select it, then drag or edit.');
+    } else {
+      mockSelectedDecorIndex = index;
+      var d = mockDecorations[index];
+      mockSetInfo(
+        'Selected ' + d.kind + '. Drag to move, or use size/rotate buttons.'
+      );
+    }
+    mockRedraw();
+  }
+
+  // Draw one decoration shape at origin, unscaled/unrotated
+  function mockDrawDecorationShape(kind) {
+    var k = kind || 'wreath';
+
+    if (k === 'wreath') {
+      // wreath ring
+      mockCtx.beginPath();
+      mockCtx.strokeStyle = '#006400';
+      mockCtx.lineWidth = 5;
+      mockCtx.arc(0, 0, 16, 0, Math.PI * 2);
+      mockCtx.stroke();
+      // berries
+      var berries = 5;
+      for (var b = 0; b < berries; b++) {
+        var ang = (b / berries) * Math.PI * 2;
+        var bx = Math.cos(ang) * 12;
+        var by = Math.sin(ang) * 12;
+        mockCtx.beginPath();
+        mockCtx.fillStyle = '#ff0000';
+        mockCtx.arc(bx, by, 2.5, 0, Math.PI * 2);
+        mockCtx.fill();
+      }
+    } else if (k === 'garland') {
+      // sagging garland line
+      mockCtx.strokeStyle = '#006400';
+      mockCtx.lineWidth = 3;
+      mockCtx.beginPath();
+      mockCtx.moveTo(-24, 0);
+      mockCtx.quadraticCurveTo(0, 10, 24, 0);
+      mockCtx.stroke();
+      // bulbs along it
+      var xs = [-18, -6, 6, 18];
+      var colors = ['#ff0000', '#ffd700', '#00bfff', '#ff00ff'];
+      for (var i = 0; i < xs.length; i++) {
+        mockCtx.beginPath();
+        mockCtx.fillStyle = colors[i % colors.length];
+        mockCtx.arc(xs[i], 2, 3, 0, Math.PI * 2);
+        mockCtx.fill();
+      }
+    } else if (k === 'bow') {
+      // left loop
+      mockCtx.fillStyle = '#ff0000';
+      mockCtx.beginPath();
+      mockCtx.moveTo(-10, 0);
+      mockCtx.lineTo(-2, -8);
+      mockCtx.lineTo(0, 0);
+      mockCtx.closePath();
+      mockCtx.fill();
+      // right loop
+      mockCtx.beginPath();
+      mockCtx.moveTo(10, 0);
+      mockCtx.lineTo(2, -8);
+      mockCtx.lineTo(0, 0);
+      mockCtx.closePath();
+      mockCtx.fill();
+      // center knot
+      mockCtx.beginPath();
+      mockCtx.fillStyle = '#cc0000';
+      mockCtx.arc(0, 0, 3, 0, Math.PI * 2);
+      mockCtx.fill();
+    } else if (k === 'treewrap') {
+      // trunk
+      var trunkTop = -22;
+      var trunkBottom = 22;
+      mockCtx.strokeStyle = '#8b4513';
+      mockCtx.lineWidth = 6;
+      mockCtx.beginPath();
+      mockCtx.moveTo(0, trunkTop);
+      mockCtx.lineTo(0, trunkBottom);
+      mockCtx.stroke();
+
+      // simple branches
+      mockCtx.strokeStyle = '#8b4513';
+      mockCtx.lineWidth = 3;
+      mockCtx.beginPath();
+      mockCtx.moveTo(0, trunkTop);
+      mockCtx.lineTo(12, trunkTop - 10);
+      mockCtx.moveTo(0, trunkTop);
+      mockCtx.lineTo(-12, trunkTop - 8);
+      mockCtx.stroke();
+
+      // spiral of mini lights around the trunk
+      mockCtx.strokeStyle = '#ffffff';
+      mockCtx.lineWidth = 2;
+      var loops = 6;
+      var radius = 10;
+      for (var l = 0; l < loops; l++) {
+        var y = trunkTop + (l / (loops - 1)) * (trunkBottom - trunkTop);
+        mockCtx.beginPath();
+        mockCtx.arc(0, y, radius, -0.8, 0.8);
+        mockCtx.stroke();
+      }
+
+      // a few brighter bulbs
+      var bulbs = [
+        { x: -8, y: -10 }, { x: 8, y: -2 },
+        { x: -8, y: 6 }, { x: 7, y: 14 }
+      ];
+      for (var bi = 0; bi < bulbs.length; bi++) {
+        mockCtx.beginPath();
+        mockCtx.fillStyle = '#ffffee';
+        mockCtx.arc(bulbs[bi].x, bulbs[bi].y, 2.5, 0, Math.PI * 2);
+        mockCtx.fill();
+      }
+    } else if (k === 'net') {
+      // rectangular net with grid + bulbs
+      var w = 32;
+      var h = 24;
+      mockCtx.strokeStyle = '#00bfff';
+      mockCtx.lineWidth = 1.5;
+      mockCtx.strokeRect(-w / 2, -h / 2, w, h);
+
+      mockCtx.lineWidth = 1;
+      // vertical lines
+      for (var vx = -1; vx <= 1; vx++) {
+        mockCtx.beginPath();
+        mockCtx.moveTo((vx * w) / 4, -h / 2);
+        mockCtx.lineTo((vx * w) / 4, h / 2);
+        mockCtx.stroke();
+      }
+      // horizontal lines
+      for (var vy = -1; vy <= 1; vy++) {
+        mockCtx.beginPath();
+        mockCtx.moveTo(-w / 2, (vy * h) / 4);
+        mockCtx.lineTo(w / 2, (vy * h) / 4);
+        mockCtx.stroke();
+      }
+
+      // bulbs on intersections
+      for (var ix = -1; ix <= 1; ix++) {
+        for (var iy = -1; iy <= 1; iy++) {
+          mockCtx.beginPath();
+          mockCtx.fillStyle = '#ffffee';
+          mockCtx.arc((ix * w) / 4, (iy * h) / 4, 2.3, 0, Math.PI * 2);
+          mockCtx.fill();
+        }
+      }
+    } else {
+      // generic fallback
+      mockCtx.fillStyle = '#ff00ff';
+      mockCtx.beginPath();
+      mockCtx.arc(0, 0, 5, 0, Math.PI * 2);
+      mockCtx.fill();
+    }
+  }
+
   function mockDrawDecorations() {
     if (!mockCtx) return;
-
     for (var i = 0; i < mockDecorations.length; i++) {
       var deco = mockDecorations[i];
       mockCtx.save();
       mockCtx.translate(deco.x, deco.y);
+      var scale = deco.scale || 1;
+      var rotation = deco.rotation || 0;
+      mockCtx.rotate(rotation);
+      mockCtx.scale(scale, scale);
 
-      if (deco.kind === 'wreath') {
-        // green ring + red bow
+      mockDrawDecorationShape(deco.kind);
+
+      // highlight selection
+      if (i === mockSelectedDecorIndex) {
         mockCtx.beginPath();
-        mockCtx.strokeStyle = '#006400';
-        mockCtx.lineWidth = 5;
-        mockCtx.arc(0, 0, 16, 0, Math.PI * 2);
+        mockCtx.strokeStyle = '#00ffff';
+        mockCtx.lineWidth = 1.2;
+        mockCtx.arc(0, 0, 24, 0, Math.PI * 2);
         mockCtx.stroke();
-
-        mockCtx.beginPath();
-        mockCtx.fillStyle = '#ff0000';
-        mockCtx.moveTo(-6, -4);
-        mockCtx.lineTo(0, 4);
-        mockCtx.lineTo(6, -4);
-        mockCtx.closePath();
-        mockCtx.fill();
-      } else if (deco.kind === 'garland') {
-        // sagging garland with tiny bulbs
-        mockCtx.strokeStyle = '#006400';
-        mockCtx.lineWidth = 3;
-        mockCtx.beginPath();
-        mockCtx.moveTo(-24, 0);
-        mockCtx.quadraticCurveTo(0, 10, 24, 0);
-        mockCtx.stroke();
-
-        var bulbPositions = [-18, -6, 6, 18];
-        var colors = ['#ff0000', '#ffd700', '#00bfff', '#ff00ff'];
-        for (var g = 0; g < bulbPositions.length; g++) {
-          mockCtx.beginPath();
-          mockCtx.fillStyle = colors[g % colors.length];
-          mockCtx.arc(bulbPositions[g], 2, 3, 0, Math.PI * 2);
-          mockCtx.fill();
-        }
-      } else if (deco.kind === 'bow') {
-        // simple bow
-        mockCtx.fillStyle = '#ff0000';
-        mockCtx.beginPath();
-        mockCtx.moveTo(-10, 0);
-        mockCtx.lineTo(-2, -8);
-        mockCtx.lineTo(0, 0);
-        mockCtx.closePath();
-        mockCtx.fill();
-
-        mockCtx.beginPath();
-        mockCtx.moveTo(10, 0);
-        mockCtx.lineTo(2, -8);
-        mockCtx.lineTo(0, 0);
-        mockCtx.closePath();
-        mockCtx.fill();
-
-        mockCtx.beginPath();
-        mockCtx.fillStyle = '#cc0000';
-        mockCtx.arc(0, 0, 3, 0, Math.PI * 2);
-        mockCtx.fill();
-      } else if (deco.kind === 'tree') {
-        // small tree with mini lights
-        mockCtx.fillStyle = '#0b6623';
-        mockCtx.beginPath();
-        mockCtx.moveTo(0, -22);
-        mockCtx.lineTo(14, 8);
-        mockCtx.lineTo(-14, 8);
-        mockCtx.closePath();
-        mockCtx.fill();
-
-        // trunk
-        mockCtx.fillStyle = '#8b4513';
-        mockCtx.fillRect(-3, 8, 6, 8);
-
-        // mini bulbs dotted on the tree
-        var treeLights = [
-          { x: -7, y: -8, c: '#ff0000' },
-          { x: 0,  y: -4, c: '#ffd700' },
-          { x: 7,  y: -8, c: '#00bfff' },
-          { x: -4, y: 0,  c: '#ff00ff' },
-          { x: 4,  y: 0,  c: '#ffffff' }
-        ];
-        for (var t = 0; t < treeLights.length; t++) {
-          mockCtx.beginPath();
-          mockCtx.fillStyle = treeLights[t].c;
-          mockCtx.arc(treeLights[t].x, treeLights[t].y, 2.5, 0, Math.PI * 2);
-          mockCtx.fill();
-        }
-      } else {
-        // generic marker
-        mockCtx.fillStyle = '#ff00ff';
-        mockCtx.beginPath();
-        mockCtx.arc(0, 0, 5, 0, Math.PI * 2);
-        mockCtx.fill();
       }
 
       mockCtx.restore();
@@ -1669,7 +1770,7 @@ window.addEventListener('DOMContentLoaded', function () {
         mockCtx.fill();
         mockCtx.globalAlpha = 1;
 
-        // bulb
+        // bulb body
         mockCtx.beginPath();
         mockCtx.moveTo(0, -bulbHeight / 2);
         mockCtx.quadraticCurveTo(baseSize, 0, 0, bulbHeight / 2);
@@ -1693,8 +1794,8 @@ window.addEventListener('DOMContentLoaded', function () {
         mockCtx.restore();
       }
 
-      // Small endpoint handles when adjusting lines
-      if (mockMode === 'adjust' && mockPlacementMode === 'lights') {
+      // endpoint handles when adjusting light runs
+      if (mockMode === 'adjust') {
         mockCtx.beginPath();
         mockCtx.fillStyle = '#00ffff';
         mockCtx.strokeStyle = '#004b80';
@@ -1710,7 +1811,7 @@ window.addEventListener('DOMContentLoaded', function () {
       }
     }
 
-    // Decorations drawn on top of lights
+    // Decorations on top
     mockDrawDecorations();
   }
 
@@ -1744,7 +1845,7 @@ window.addEventListener('DOMContentLoaded', function () {
           mockZoom = 1;
           mockApplyZoom();
           mockDrawBase();
-          mockSetInfo('Photo loaded. Click to start drawing light runs, or switch to decorations.');
+          mockSetInfo('Photo loaded. Draw runs, or switch to decoration mode to place icons.');
         };
         img.src = ev.target.result;
       };
@@ -1754,32 +1855,37 @@ window.addEventListener('DOMContentLoaded', function () {
 
   // Canvas interactions
   if (mockCanvas && mockCtx) {
-    // Click: draw lights or place decorations
+    // Click: new segment or new decoration
     mockCanvas.addEventListener('click', function (evt) {
       if (!mockImage) return;
 
-      // While adjusting light lines, ignore clicks
-      if (mockMode === 'adjust' && mockPlacementMode === 'lights') return;
-
-      // If we just dragged a decoration, don't also add a new one
-      if (mockPlacementMode === 'decor' && mockDecorWasDragging) {
-        mockDecorWasDragging = false;
+      // If click started on a decoration, don't also add a new one
+      if (mockLastClickWasOnDecor) {
+        mockLastClickWasOnDecor = false;
         return;
       }
+
+      // Ignore clicks if adjusting light runs
+      if (mockMode === 'adjust') return;
 
       var pt = mockCanvasPoint(evt);
 
       if (mockPlacementMode === 'decor') {
         var kind = mockDecorTypeSelect ? mockDecorTypeSelect.value : 'wreath';
-        mockDecorations.push({ x: pt.x, y: pt.y, kind: kind });
-        mockSetInfo(
-          'Decoration added: ' + kind + '. Total decorations: ' + mockDecorations.length
-        );
+        var deco = {
+          x: pt.x,
+          y: pt.y,
+          kind: kind,
+          scale: 1,
+          rotation: 0
+        };
+        mockDecorations.push(deco);
+        mockSelectDecor(mockDecorations.length - 1);
         mockRedraw();
         return;
       }
 
-      // Lights mode: draw segments
+      // Lights mode: draw line segments
       if (!mockLastPoint) {
         mockLastPoint = pt;
       } else {
@@ -1794,33 +1900,35 @@ window.addEventListener('DOMContentLoaded', function () {
       mockRedraw();
     });
 
-    // Mouse down: start drag (decor or segment endpoint)
+    // Mouse down: try decorations first, then segment endpoints
     mockCanvas.addEventListener('mousedown', function (evt) {
       if (!mockImage) return;
       var pt = mockCanvasPoint(evt);
 
-      // Drag decorations when in decoration mode
-      if (mockPlacementMode === 'decor' && mockDecorations.length) {
-        var hitIndex = -1;
-        var minDist = 18;
-        for (var i = 0; i < mockDecorations.length; i++) {
-          var d = mockPointDistance(pt, { x: mockDecorations[i].x, y: mockDecorations[i].y });
-          if (d < minDist) {
-            minDist = d;
-            hitIndex = i;
-          }
-        }
-        if (hitIndex >= 0) {
-          mockIsDraggingDecor = true;
-          mockDragDecorIndex = hitIndex;
-          mockDecorWasDragging = false;
-          return;
+      // hit-test decorations (always allowed)
+      var hitIndex = -1;
+      var minDist = 22;
+      for (var i = 0; i < mockDecorations.length; i++) {
+        var d = mockDecorations[i];
+        var dist = mockPointDistance(pt, { x: d.x, y: d.y });
+        if (dist < minDist) {
+          minDist = dist;
+          hitIndex = i;
         }
       }
+      if (hitIndex >= 0) {
+        mockIsDraggingDecor = true;
+        mockDragDecorIndex = hitIndex;
+        mockLastClickWasOnDecor = true;
+        mockSelectDecor(hitIndex);
+        return;
+      }
+      mockLastClickWasOnDecor = false;
 
-      // Adjust light endpoints when in adjust mode
+      // If not on a decoration and not in adjust mode, nothing else to drag
       if (mockMode !== 'adjust') return;
 
+      // Adjust segment endpoints
       var hitThreshold = 14;
       mockIsDraggingSegment = false;
       mockDragSegmentIndex = -1;
@@ -1859,15 +1967,12 @@ window.addEventListener('DOMContentLoaded', function () {
         if (deco) {
           deco.x = pt.x;
           deco.y = pt.y;
-          mockDecorWasDragging = true;
           mockRedraw();
         }
         return;
       }
 
-      if (!mockIsDraggingSegment) return;
-      if (mockDragSegmentIndex < 0 || !mockDragEnd) return;
-
+      if (!mockIsDraggingSegment || mockDragSegmentIndex < 0 || !mockDragEnd) return;
       var seg = mockSegments[mockDragSegmentIndex];
       if (!seg) return;
 
@@ -1923,7 +2028,7 @@ window.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // Adjust mode button (for light lines)
+  // Adjust mode button (for light lines only)
   if (mockAdjustBtn) {
     mockAdjustBtn.addEventListener('click', function () {
       if (!mockImage) {
@@ -1935,14 +2040,13 @@ window.addEventListener('DOMContentLoaded', function () {
         return;
       }
       mockMode = 'adjust';
-      mockPlacementMode = 'lights'; // adjustments only apply to light runs
       mockLastPoint = null;
-      mockSetInfo('Adjust mode: click on a blue handle and drag it to fine-tune your lines.');
+      mockSetInfo('Adjust mode: click a blue handle and drag to fine-tune your lines.');
       mockRedraw();
     });
   }
 
-  // Clear all light lines (but keep decorations)
+  // Clear all light lines (keep decorations)
   if (mockClearBtn) {
     mockClearBtn.addEventListener('click', function () {
       mockSegments = [];
@@ -1967,7 +2071,7 @@ window.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // Re-draw bulbs when style options change
+  // Re-draw when style options change
   function mockAttachRedrawControl(el) {
     if (!el) return;
     el.addEventListener('change', mockRedraw);
@@ -1980,7 +2084,7 @@ window.addEventListener('DOMContentLoaded', function () {
   mockAttachRedrawControl(mockBulbSizeSelect);
   mockAttachRedrawControl(mockShowWireCheckbox);
 
-  // Changing run type starts a fresh run (for light lines)
+  // Changing run type starts a fresh run
   if (mockRunTypeSelect) {
     mockRunTypeSelect.addEventListener('change', function () {
       mockLastPoint = null;
@@ -2002,7 +2106,7 @@ window.addEventListener('DOMContentLoaded', function () {
         mockLastPoint = null;
         mockMode = 'draw';
         mockDecorModeBtn.textContent = 'Back to drawing lights';
-        mockSetInfo('Decoration mode: click to place icons, drag to reposition.');
+        mockSetInfo('Decoration mode: click to place icons, click/drag to move, then resize/rotate.');
       } else {
         mockPlacementMode = 'lights';
         mockDecorModeBtn.textContent = 'Place decorations';
@@ -2014,8 +2118,52 @@ window.addEventListener('DOMContentLoaded', function () {
   if (mockDecorClearBtn) {
     mockDecorClearBtn.addEventListener('click', function () {
       mockDecorations = [];
+      mockSelectedDecorIndex = -1;
       mockRedraw();
       mockSetInfo('All decorations cleared.');
+    });
+  }
+
+  // Size + rotation buttons for selected decoration
+  function editSelectedDecoration(modifierFn) {
+    if (mockSelectedDecorIndex < 0 || mockSelectedDecorIndex >= mockDecorations.length) {
+      mockSetInfo('Click a decoration on the photo first, then use these buttons.');
+      return;
+    }
+    modifierFn(mockDecorations[mockSelectedDecorIndex]);
+    mockRedraw();
+  }
+
+  if (decorSmallerBtn) {
+    decorSmallerBtn.addEventListener('click', function () {
+      editSelectedDecoration(function (d) {
+        var s = d.scale || 1;
+        d.scale = Math.max(0.4, s * 0.8);
+      });
+    });
+  }
+  if (decorBiggerBtn) {
+    decorBiggerBtn.addEventListener('click', function () {
+      editSelectedDecoration(function (d) {
+        var s = d.scale || 1;
+        d.scale = Math.min(3, s * 1.25);
+      });
+    });
+  }
+  if (decorRotateLeftBtn) {
+    decorRotateLeftBtn.addEventListener('click', function () {
+      editSelectedDecoration(function (d) {
+        var r = d.rotation || 0;
+        d.rotation = r - Math.PI / 12; // -15°
+      });
+    });
+  }
+  if (decorRotateRightBtn) {
+    decorRotateRightBtn.addEventListener('click', function () {
+      editSelectedDecoration(function (d) {
+        var r = d.rotation || 0;
+        d.rotation = r + Math.PI / 12; // +15°
+      });
     });
   }
 
