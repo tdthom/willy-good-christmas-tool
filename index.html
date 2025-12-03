@@ -962,100 +962,132 @@ window.addEventListener('DOMContentLoaded', function () {
     decorBowCountInput.value = bow;
   }
 
-      // -----------------------------
-      // Proposal rendering
-      // -----------------------------
-      var proposalContent = document.getElementById('proposal-content');
-      var refreshProposalButton = document.getElementById('refresh-proposal');
-      var proposalMockupImg = document.getElementById('proposal-mockup-image');
-      var mockupCanvas = document.getElementById('mockup-canvas'); // Photo Mockup canvas
+        // -----------------------------
+  // Proposal rendering
+  // -----------------------------
+  var proposalContent = document.getElementById('proposal-content');
+  var refreshProposalButton = document.getElementById('refresh-proposal');
+  var proposalMockupImg = document.getElementById('proposal-mockup-image');
+  var mockupCanvas = document.getElementById('mockup-canvas'); // Photo Mockup canvas
 
-      function renderProposal() {
-        if (!proposalContent) {
-          console.warn('[Proposal] No proposal-content element found.');
-          return;
-        }
+  function renderProposal() {
+    if (!proposalContent) {
+      console.warn('[Proposal] No proposal-content element found.');
+      return;
+    }
 
-        var est = loadLastEstimate();
-        if (!est) {
-          proposalContent.innerHTML =
-            '<em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate estimate" first.</em>';
-          if (proposalMockupImg) {
-            proposalMockupImg.style.display = 'none';
-          }
-          return;
-        }
+    var est = loadLastEstimate();
+    if (!est) {
+      proposalContent.innerHTML =
+        '<em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate estimate" first.</em>';
+      if (proposalMockupImg) {
+        proposalMockupImg.style.display = 'none';
+      }
+      return;
+    }
 
-        var client = est.client || getCurrentClient();
-        var dateStr = '';
-        if (est.timestamp) {
-          try {
-            dateStr = new Date(est.timestamp).toLocaleDateString();
-          } catch (e) {
-            dateStr = '';
-          }
-        }
+    var client = est.client || getCurrentClient();
+    var dateStr = '';
+    if (est.timestamp) {
+      try {
+        dateStr = new Date(est.timestamp).toLocaleDateString();
+      } catch (e) {
+        dateStr = '';
+      }
+    }
 
-        var clientHtml = '';
-        if (client) {
-          clientHtml += '<div class="proposal-header">';
-          clientHtml += '<strong>' + (client.name || '') + '</strong><br>';
-          if (client.address) {
-            clientHtml += client.address + '<br>';
-          }
-          if (client.phone) {
-            clientHtml += 'Phone: ' + client.phone + '<br>';
-          }
-          if (client.email) {
-            clientHtml += 'Email: ' + client.email + '<br>';
-          }
-          if (client.preferred) {
-            clientHtml += 'Preferred install: ' + client.preferred + '<br>';
-          }
-          clientHtml += '</div>';
+    var clientHtml = '';
+    if (client) {
+      clientHtml += '<div class="proposal-header">';
+      clientHtml += '<strong>' + (client.name || '') + '</strong><br>';
+      if (client.address) {
+        clientHtml += client.address + '<br>';
+      }
+      if (client.phone) {
+        clientHtml += 'Phone: ' + client.phone + '<br>';
+      }
+      if (client.email) {
+        clientHtml += 'Email: ' + client.email + '<br>';
+      }
+      if (client.preferred) {
+        clientHtml += 'Preferred install: ' + client.preferred + '<br>';
+      }
+      clientHtml += '</div>';
+    } else {
+      clientHtml = '<p><em>No client selected.</em></p>';
+    }
+
+    var html = '';
+    html += '<div class="proposal-card-inner">';
+    html += '  <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">';
+    html += '    <img src="logo.png" alt="Company logo" class="company-logo">';
+    html += '    <div>';
+    html += '      <h3 style="margin:0;">Willy Good Christmas Lights</h3>';
+    html += '      <p style="margin:0; font-size:0.85rem;">Phone: 806.215.7047 • william@willygoodcleaning.com</p>';
+    html += '    </div>';
+    html += '  </div>';
+    html += '  <p><strong>Proposal date:</strong> ' + dateStr + '</p>';
+    html += clientHtml;
+    html += '  <h3>Christmas Light Installation &amp; Takedown</h3>';
+    html += '  <p><strong>Total feet:</strong> ' + est.totalFeet.toFixed(1) + ' ft (ridge, hip, eaves)</p>';
+    html += '  <ul>';
+    html += '    <li>Install: $' + est.installSubtotal.toFixed(2) +
+            ' (@ $' + est.rate.toFixed(2) + '/ft)</li>';
+    html += '    <li>Takedown: $' + est.takedownSubtotal.toFixed(2) +
+            ' (@ $' + est.takedownRate.toFixed(2) + '/ft)</li>';
+    html += '  </ul>';
+    html += '  <div class="proposal-totals">';
+    html += '    <p>Equipment and supplies (taxable): $' + est.equipmentSubtotal.toFixed(2) + '</p>';
+    html += '    <p>Sales tax (' + est.taxRatePercent.toFixed(2) +
+            '% on taxable base): $' + est.taxAmount.toFixed(2) + '</p>';
+    html += '    <p><strong>Total investment:</strong> $' +
+            est.customerTotalWithTax.toFixed(2) + '</p>';
+    html += '  </div>';
+    html += '  <p class="small-note" style="margin-top:1rem;">';
+    html += '    This proposal includes professional installation, season-long use, and scheduled takedown of lights. ';
+    html += '    Tax is calculated on equipment and materials only, not on labor.';
+    html += '  </p>';
+    html += '</div>';
+
+    proposalContent.innerHTML = html;
+
+    // Attach Photo Mockup canvas snapshot under the proposal
+    if (proposalMockupImg && mockupCanvas) {
+      try {
+        var dataUrl;
+
+        // If our mockup redraw function exists, temporarily switch to draw mode (no handles)
+        if (typeof mockRedraw === 'function' && typeof mockMode !== 'undefined') {
+          var prevMode = mockMode;
+          mockMode = 'draw';
+          mockRedraw(); // redraw without blue circles
+
+          dataUrl = mockupCanvas.toDataURL('image/png');
+
+          // Restore previous mode & view (so the user still sees adjust handles if they were on)
+          mockMode = prevMode;
+          mockRedraw();
         } else {
-          clientHtml = '<p><em>No client selected.</em></p>';
+          // Fallback: just capture whatever is on the canvas
+          dataUrl = mockupCanvas.toDataURL('image/png');
         }
 
-        var html = '';
-        html += '<div class="proposal-card-inner">';
-        html += '  <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">';
-        html += '    <img src="logo.png" alt="Company logo" class="company-logo">';
-        html += '    <div>';
-        html += '      <h3 style="margin:0;">Willy Good Christmas Lights</h3>';
-        html += '      <p style="margin:0; font-size:0.85rem;">Phone: 806.215.7047 • william@willygoodcleaning.com</p>';
-        html += '    </div>';
-        html += '  </div>';
-        html += '  <p><strong>Proposal date:</strong> ' + dateStr + '</p>';
-        html += clientHtml;
-        html += '  <h3>Christmas Light Installation &amp; Takedown</h3>';
-        html += '  <p><strong>Total feet:</strong> ' + est.totalFeet.toFixed(1) + ' ft (ridge, hip, eaves)</p>';
-        html += '  <ul>';
-        html += '    <li>Install: $' + est.installSubtotal.toFixed(2) +
-                ' (@ $' + est.rate.toFixed(2) + '/ft)</li>';
-        html += '    <li>Takedown: $' + est.takedownSubtotal.toFixed(2) +
-                ' (@ $' + est.takedownRate.toFixed(2) + '/ft)</li>';
+        proposalMockupImg.src = dataUrl;
+        proposalMockupImg.style.display = 'block';
+      } catch (e) {
+        console.warn('[Proposal] Could not capture mockup canvas', e);
+        proposalMockupImg.style.display = 'none';
+      }
+    }
+  } // ✅ close renderProposal()
 
-        if (est.decorSubtotal && est.decorSubtotal > 0) {
-          html += '    <li>Decoration add-ons: $' + est.decorSubtotal.toFixed(2) + '</li>';
-        }
+  // Attach click handler to "Refresh" button
+  if (refreshProposalButton) {
+    refreshProposalButton.addEventListener('click', renderProposal);
+  }
 
-        html += '  </ul>';
-
-        html += '  <div class="proposal-totals">';
-        html += '    <p>Equipment and supplies (taxable): $' + est.equipmentSubtotal.toFixed(2) + '</p>';
-        html += '    <p>Sales tax (' + est.taxRatePercent.toFixed(2) +
-                '% on taxable base): $' + est.taxAmount.toFixed(2) + '</p>';
-        html += '    <p><strong>Total investment:</strong> $' +
-                est.customerTotalWithTax.toFixed(2) + '</p>';
-        html += '  </div>';
-        html += '  <p class="small-note" style="margin-top:1rem;">';
-        html += '    This proposal includes professional installation, season-long use, and scheduled takedown of lights. ';
-        html += '    Tax is calculated on equipment and materials only, not on labor.';
-        html += '  </p>';
-        html += '</div>';
-
-        proposalContent.innerHTML = html;
+  // Initial render on page load
+  renderProposal();
 
         // Attach Photo Mockup canvas snapshot under the proposal
                 if (proposalMockupImg && mockupCanvas) {
