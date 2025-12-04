@@ -1531,11 +1531,11 @@ function syncMockupDecorCountsToEstimate() {
 
   // --- Helper functions: zoom + canvas coordinate mapping ---
 
-  // Apply CSS zoom to the mockup canvas
+    // Apply CSS zoom to the mockup canvas (no slider needed)
   function mockApplyZoom() {
     if (!mockCanvas) return;
 
-    // Make sure mockZoom is a positive number
+    // Ensure zoom has a safe value
     var z = (typeof mockZoom === 'number' && mockZoom > 0) ? mockZoom : 1;
 
     mockCanvas.style.transformOrigin = '0 0';
@@ -2117,17 +2117,6 @@ function syncMockupDecorCountsToEstimate() {
 
     // Use existing mockZoom if set; default to 1
     var z = (typeof mockZoom === 'number' && mockZoom > 0) ? mockZoom : 1;
-
-    // If we have a slider, keep everything in sync with it
-    if (mockZoomSlider) {
-      var sliderVal = parseFloat(mockZoomSlider.value);
-      if (!isNaN(sliderVal) && sliderVal > 0) {
-        z = sliderVal;
-        mockZoom = sliderVal;
-      } else {
-        mockZoomSlider.value = z;
-      }
-    }
 
     // Visually scale the canvas; keep drawing logic in canvas coordinates
     mockCanvas.style.transformOrigin = 'top left';
