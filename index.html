@@ -1513,6 +1513,12 @@ function syncMockupDecorCountsToEstimate() {
   var decorGarlandCountInput = document.getElementById('decor-garland-count');
   var decorBowCountInput     = document.getElementById('decor-bow-count');
 
+    // Size / rotate buttons for decorations
+  var decorSmallerBtn     = document.getElementById('decor-smaller');
+  var decorBiggerBtn      = document.getElementById('decor-bigger');
+  var decorRotateLeftBtn  = document.getElementById('decor-rotate-left');
+  var decorRotateRightBtn = document.getElementById('decor-rotate-right');
+
   // Core state
   var mockImage = null;
   var mockDrawParams = null;
@@ -1813,6 +1819,12 @@ function syncMockupDecorCountsToEstimate() {
 
       mockCtx.save();
       mockCtx.translate(deco.x, deco.y);
+
+      // NEW: apply rotation if present
+      var rotation = deco.rotation || 0;
+      if (rotation !== 0) {
+        mockCtx.rotate(rotation);
+      }
 
       if (deco.kind === 'wreath') {
         var outer = 18 * size;
@@ -2274,6 +2286,77 @@ function syncMockupDecorCountsToEstimate() {
       mockSetInfo('All decorations cleared.');
     });
   }
+  // Helper: get the currently selected decoration (if any)
+  function getSelectedDecoration() {
+    if (mockSelectedDecorId == null) {
+      mockSetInfo('Select a decoration in "Edit decorations" mode first.');
+      return null;
+    }
+    var deco = findDecorationById(mockSelectedDecorId);
+    if (!deco) {
+      mockSetInfo('Selected decoration no longer exists.');
+      return null;
+    }
+    return deco;
+  }
+
+  // Smaller / Bigger
+  if (decorSmallerBtn) {
+    decorSmallerBtn.addEventListener('click', function () {
+      var deco = getSelectedDecoration();
+      if (!deco) return;
+
+      var size = deco.size || 1;
+      size -= 0.15;          // step smaller
+      if (size < 0.4) size = 0.4;
+      deco.size = size;
+
+      mockRedraw();
+      mockSetInfo('Decoration made smaller.');
+    });
+  }
+
+  if (decorBiggerBtn) {
+    decorBiggerBtn.addEventListener('click', function () {
+      var deco = getSelectedDecoration();
+      if (!deco) return;
+
+      var size = deco.size || 1;
+      size += 0.15;          // step larger
+      if (size > 3.0) size = 3.0;
+      deco.size = size;
+
+      mockRedraw();
+      mockSetInfo('Decoration made bigger.');
+    });
+  }
+
+  // Rotate left / right (15° steps)
+  if (decorRotateLeftBtn) {
+    decorRotateLeftBtn.addEventListener('click', function () {
+      var deco = getSelectedDecoration();
+      if (!deco) return;
+
+      var current = deco.rotation || 0;
+      deco.rotation = current - Math.PI / 12;  // 15° left
+
+      mockRedraw();
+      mockSetInfo('Decoration rotated left.');
+    });
+  }
+
+  if (decorRotateRightBtn) {
+    decorRotateRightBtn.addEventListener('click', function () {
+      var deco = getSelectedDecoration();
+      if (!deco) return;
+
+      var current = deco.rotation || 0;
+      deco.rotation = current + Math.PI / 12;  // 15° right
+
+      mockRedraw();
+      mockSetInfo('Decoration rotated right.');
+    });
+  }
 
   // --- Zoom controls -----------------------------------------
 
@@ -2283,6 +2366,7 @@ function syncMockupDecorCountsToEstimate() {
       mockApplyZoom();
     });
   }
+  
   if (mockZoomOutBtn) {
     mockZoomOutBtn.addEventListener('click', function () {
       mockZoom = Math.max(mockZoom - 0.25, MOCK_ZOOM_MIN);
