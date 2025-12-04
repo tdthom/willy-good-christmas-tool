@@ -450,24 +450,25 @@
         <button id="mockup-adjust-mode">Adjust lines</button>
         <button id="mockup-clear">Clear all lines</button><br><br>
 
-         <h3 style="margin-top:0.5rem;">Decorations</h3>
-        <p class="small-note">
-          Switch to decoration mode, then click on the photo to place icons for wreaths, garland,
-          bows, tree-wrap lights, or net lights. Click a decoration to select it, drag to move it,
-          and use the buttons to resize or rotate.
-        </p>
+        <h3 style="margin-top:0.5rem;">Decorations</h3>
+<p class="small-note">
+  Choose a decoration, click <strong>Place decorations</strong>, then click on the photo to drop it.
+  Click a decoration to select it, drag to move it, drag the small corner handle to resize.
+  Press the Delete key or use "Delete selected" to remove one.
+</p>
 
-        <label for="mockup-decor-type"><strong>Decoration type:</strong></label><br>
-        <select id="mockup-decor-type" style="width:220px;">
-          <option value="wreath">Wreath</option>
-          <option value="garland">Garland</option>
-          <option value="bow">Bow</option>
-          <option value="treewrap">Tree wrap (mini lights)</option>
-          <option value="net">Net lights (bush/tree)</option>
-        </select><br><br>
+<label for="mockup-decor-type"><strong>Decoration type:</strong></label><br>
+<select id="mockup-decor-type" style="width:220px;">
+  <option value="wreath">Wreath (with lights)</option>
+  <option value="garland">Garland / column wrap</option>
+  <option value="bow">Bow</option>
+  <option value="tree-wrap">Tree wrap (mini lights)</option>
+  <option value="net">Net lights (bush)</option>
+</select><br><br>
 
-        <button id="mockup-decor-mode">Place decorations</button>
-        <button id="mockup-decor-clear">Clear decorations</button><br><br>
+<button id="mockup-decor-mode">Place decorations</button>
+<button id="mockup-decor-clear">Clear all decorations</button>
+<button id="mockup-decor-delete-selected">Delete selected</button><br><br>
 
         <div class="small-note" style="margin-bottom:4px;">
           With a decoration selected:
@@ -809,6 +810,37 @@ window.addEventListener('DOMContentLoaded', function () {
   var containerInput = document.getElementById('container-cost');
   var calcButton = document.getElementById('calc-estimate');
   var resultBox = document.getElementById('estimate-result');
+  // Decoration add-on inputs (Estimate tab)
+var decorWreathCountInput   = document.getElementById('decor-wreath-count');
+var decorWreathPriceInput   = document.getElementById('decor-wreath-price');
+var decorGarlandCountInput  = document.getElementById('decor-garland-count');
+var decorGarlandPriceInput  = document.getElementById('decor-garland-price');
+var decorBowCountInput      = document.getElementById('decor-bow-count');
+var decorBowPriceInput      = document.getElementById('decor-bow-price');
+
+// This array will be defined in the Photo Mockup section.
+// We guard in case it's not ready yet.
+var mockDecorations;
+
+// Keep Estimate decoration counts in sync with the icons on the photo.
+function syncMockupDecorCountsToEstimate() {
+  if (!mockDecorations) return;
+
+  var wreaths  = 0;
+  var garlands = 0;
+  var bows     = 0;
+
+  for (var i = 0; i < mockDecorations.length; i++) {
+    var kind = mockDecorations[i].type;
+    if (kind === 'wreath')      wreaths++;
+    else if (kind === 'garland') garlands++;
+    else if (kind === 'bow')     bows++;
+  }
+
+  if (decorWreathCountInput)  decorWreathCountInput.value  = wreaths;
+  if (decorGarlandCountInput) decorGarlandCountInput.value = garlands;
+  if (decorBowCountInput)     decorBowCountInput.value     = bows;
+}
 
   if (calcButton) {
     calcButton.addEventListener('click', function () {
@@ -818,7 +850,7 @@ window.addEventListener('DOMContentLoaded', function () {
       var rate = parseFloat(rateInput && rateInput.value) || 0;
       var takedownRate = parseFloat(takedownRateInput && takedownRateInput.value) || 0;
       var equipRate = parseFloat(equipRateInput && equipRateInput.value) || 0;
-      var taxRatePercent = parseFloat(taxRateInput && taxRateInput.value) || 0;
+     var taxRatePercent = parseFloat(taxRateInput && taxRateInput.value) || 0;
       var container = parseFloat(containerInput && containerInput.value) || 0;
 
       var totalFeet = ridge + hip + eaves;
@@ -828,11 +860,27 @@ window.addEventListener('DOMContentLoaded', function () {
       var eavesPrice = eaves * rate;
       var installSubtotal = ridgePrice + hipPrice + eavesPrice;
 
-      var takedownSubtotal = totalFeet * takedownRate;
-      var equipmentSubtotal = totalFeet * equipRate;
+      var takedownSubtotal   = totalFeet * takedownRate;
+      var equipmentSubtotal  = totalFeet * equipRate;
 
-      var customerSubtotalBeforeTax = installSubtotal + takedownSubtotal;
-      var taxableBase = equipmentSubtotal + container;
+      // --- Decoration add-ons ---
+      var wreathCount   = parseInt(decorWreathCountInput && decorWreathCountInput.value, 10) || 0;
+      var wreathEach    = parseFloat(decorWreathPriceInput && decorWreathPriceInput.value) || 0;
+      var garlandCount  = parseInt(decorGarlandCountInput && decorGarlandCountInput.value, 10) || 0;
+      var garlandEach   = parseFloat(decorGarlandPriceInput && decorGarlandPriceInput.value) || 0;
+      var bowCount      = parseInt(decorBowCountInput && decorBowCountInput.value, 10) || 0;
+      var bowEach       = parseFloat(decorBowPriceInput && decorBowPriceInput.value) || 0;
+
+      var wreathSubtotal   = wreathCount  * wreathEach;
+      var garlandSubtotal  = garlandCount * garlandEach;
+      var bowSubtotal      = bowCount     * bowEach;
+
+      var decorSubtotal = wreathSubtotal + garlandSubtotal + bowSubtotal;
+
+      // Decorations are taxable like equipment:
+      var customerSubtotalBeforeTax = installSubtotal + takedownSubtotal + decorSubtotal;
+      var taxableBase = equipmentSubtotal + container + decorSubtotal;
+
       var taxRate = taxRatePercent / 100;
       var taxAmount = taxableBase * taxRate;
       var customerTotalWithTax = customerSubtotalBeforeTax + taxAmount;
@@ -861,6 +909,13 @@ window.addEventListener('DOMContentLoaded', function () {
         customerSubtotalBeforeTax: customerSubtotalBeforeTax,
         customerTotalWithTax: customerTotalWithTax,
         internalTotalPreTax: internalTotalPreTax,
+        decorWreathCount: wreathCount,
+        decorWreathPrice: wreathEach,
+        decorGarlandCount: garlandCount,
+        decorGarlandPrice: garlandEach,
+        decorBowCount: bowCount,
+        decorBowPrice: bowEach,
+        decorSubtotal: decorSubtotal,
         client: client ? {
           name: client.name || '',
           address: client.address || '',
@@ -879,6 +934,8 @@ window.addEventListener('DOMContentLoaded', function () {
       html += '<hr>';
       html += '<p><strong>Install subtotal (labor + equipment):</strong> $' + installSubtotal.toFixed(2) + '</p>';
       html += '<p><strong>Takedown subtotal (assumed labor only):</strong> $' + takedownSubtotal.toFixed(2) + '</p>';
+      html += '<p><strong>Takedown subtotal (assumed labor only):</strong> $' + takedownSubtotal.toFixed(2) + '</p>';
+      html += '<p><strong>Decoration add-ons:</strong> $' + decorSubtotal.toFixed(2) + '</p>';
       html += '<p><strong>Equipment and supplies (per-foot total):</strong> $' + equipmentSubtotal.toFixed(2) + '</p>';
       html += '<p><strong>Taxable base (equipment + container):</strong> $' + taxableBase.toFixed(2) + '</p>';
       html += '<p><strong>Sales tax (' + taxRatePercent.toFixed(2) + '% on taxable base):</strong> $' + taxAmount.toFixed(2) + '</p>';
