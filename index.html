@@ -879,13 +879,11 @@ function syncMockupDecorCountsToEstimate() {
 
       var decorSubtotal = wreathSubtotal + garlandSubtotal + bowSubtotal;
       
-      // Keyboard delete support for decorations in Edit mode
+     // Allow Delete key to remove the selected decoration while in decor-edit mode
   window.addEventListener('keydown', function (evt) {
     if (evt.key === 'Delete' || evt.key === 'Backspace') {
       if (mockMode === 'decor-edit' && mockSelectedDecorId != null) {
         deleteSelectedDecoration();
-        // Prevent Backspace from accidentally navigating away in some browsers
-        evt.preventDefault();
       }
     }
   });
@@ -947,10 +945,10 @@ function syncMockupDecorCountsToEstimate() {
       html += '<hr>';
       html += '<p><strong>Install subtotal (labor + equipment):</strong> $' + installSubtotal.toFixed(2) + '</p>';
       html += '<p><strong>Takedown subtotal (assumed labor only):</strong> $' + takedownSubtotal.toFixed(2) + '</p>';
+      html += '<p><strong>Takedown subtotal (assumed labor only):</strong> $' + takedownSubtotal.toFixed(2) + '</p>';
       html += '<p><strong>Decoration add-ons:</strong> $' + decorSubtotal.toFixed(2) + '</p>';
       html += '<p><strong>Equipment and supplies (per-foot total):</strong> $' + equipmentSubtotal.toFixed(2) + '</p>';
-      html += '<p><strong>Taxable base (equipment + container + decorations):</strong> $' + taxableBase.toFixed(2) + '</p>';
-
+      html += '<p><strong>Taxable base (equipment + container):</strong> $' + taxableBase.toFixed(2) + '</p>';
       html += '<p><strong>Sales tax (' + taxRatePercent.toFixed(2) + '% on taxable base):</strong> $' + taxAmount.toFixed(2) + '</p>';
       html += '<p><strong>Customer total (install + takedown + tax):</strong> $' + customerTotalWithTax.toFixed(2) + '</p>';
       html += '<br>';
@@ -1478,7 +1476,7 @@ function syncMockupDecorCountsToEstimate() {
     });
   }
 
-  // -----------------------------
+    // -----------------------------
   // Photo Mockup (visual-only color designer with zoom + adjust + decorations)
   // -----------------------------
   var mockImageInput = document.getElementById('mockup-image-input');
@@ -1509,10 +1507,6 @@ function syncMockupDecorCountsToEstimate() {
   var mockDecorEditBtn      = document.getElementById('mockup-decor-edit');
   var mockDecorDeleteBtn    = document.getElementById('mockup-decor-delete');
   var mockDecorClearBtn     = document.getElementById('mockup-decor-clear');
-  var decorSmallerBtn       = document.getElementById('decor-smaller');
-  var decorBiggerBtn        = document.getElementById('decor-bigger');
-  var decorRotateLeftBtn    = document.getElementById('decor-rotate-left');
-  var decorRotateRightBtn   = document.getElementById('decor-rotate-right');
 
   // Estimate decoration inputs – auto-filled from mockup
   var decorWreathCountInput  = document.getElementById('decor-wreath-count');
@@ -1529,51 +1523,62 @@ function syncMockupDecorCountsToEstimate() {
   var MOCK_ZOOM_MIN = 0.5;
   var MOCK_ZOOM_MAX = 3;
 
-  // --- Helper functions: zoom + canvas coordinate mapping ---
-
-   // Apply CSS zoom to the mockup canvas (no slider text, just the scale)
-  function mockApplyZoom() {
-    if (!mockCanvas) return;
-
-    // Ensure mockZoom is a sane positive number
-    if (typeof mockZoom !== 'number' || !isFinite(mockZoom) || mockZoom <= 0) {
-      mockZoom = 1;
-    }
-
-    mockCanvas.style.transformOrigin = '0 0';
-    mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
-  }
-
-  // Convert mouse event coordinates to canvas coordinates
-  function mockCanvasPoint(evt) {
-    if (!mockCanvas) {
-      return { x: 0, y: 0 };
-    }
-
-    var rect = mockCanvas.getBoundingClientRect();
-    // rect.width/height already reflect CSS scale, so this keeps mapping correct
-    var scaleX = mockCanvas.width / rect.width;
-    var scaleY = mockCanvas.height / rect.height;
-
-    return {
-      x: (evt.clientX - rect.left) * scaleX,
-      y: (evt.clientY - rect.top) * scaleY
-    };
-  }
-
-    // Segment adjust state
+  // Segment adjust state
   var mockIsDraggingSegment = false;
   var mockDragSegmentIndex = -1;
   var mockDragSegmentEnd = null;       // 'from' | 'to'
 
- // Decorations state
-  var mockDecorations = [];            // [{id,x,y,kind,size,rotation}]
+  // Decorations state
+  var mockDecorations = [];            // [{id,x,y,kind,size}]
   var mockSelectedDecorId = null;
   var mockIsDraggingDecor = false;
   var mockIsResizingDecor = false;
   var mockDecorDragOffset = { x: 0, y: 0 };
   var mockResizeStartDist = 0;
   var mockNextDecorId = 1;
+
+  function mockSetInfo(text) {
+    if (mockInfo) mockInfo.textContent = text;
+  }
+
+  function mockApplyZoom() {
+    if (!mockCanvas) return;
+    mockCanvas.style.transformOrigin = '0 0';
+    mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
+  }
+
+  function mockDrawBase() {
+    if (!mockCtx || !mockCanvas) return;
+    mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
+    if (mockImage && mockDrawParams) {
+      mockCtx.drawImage(
+        mockImage,
+        mockDrawParams.x,
+        mockDrawParams.y,
+        mockDrawParams.w,
+        mockDrawParams.h
+      );
+    }
+  }
+
+  function mockCanvasPoint(evt) {
+    if (!mockCanvas) return { x: 0, y: 0 };
+    var rect = mockCanvas.getBoundingClientRect();
+    var scaleX = mockCanvas.width / rect.width;
+    var scaleY = mockCanvas.height / rect.height;
+    return {
+      x: (evt.clientX - rect.left) * scaleX,
+      y: (evt.clientY - rect.top) * scaleY
+    };
+  }
+
+  function mockPointDistance(a, b) {
+    var dx = a.x - b.x;
+    var dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // --- Decorations helpers ----------------------------------
 
   function getDecorationRadius(deco) {
     var base;
@@ -1591,15 +1596,9 @@ function syncMockupDecorCountsToEstimate() {
 
   function getDecorationHandlePosition(deco) {
     var r = getDecorationRadius(deco);
-    var angle = deco.rotation || 0;
-
-    // handle in local coordinates (top-right)
-    var localX = r * 0.7;
-    var localY = -r * 0.7;
-
     return {
-      x: deco.x + localX * Math.cos(angle) - localY * Math.sin(angle),
-      y: deco.y + localX * Math.sin(angle) + localY * Math.cos(angle)
+      x: deco.x + r * 0.7,
+      y: deco.y - r * 0.7
     };
   }
 
@@ -1612,20 +1611,18 @@ function syncMockupDecorCountsToEstimate() {
 
   function hitTestDecoration(pt) {
     var best = null;
-
     for (var i = 0; i < mockDecorations.length; i++) {
       var deco = mockDecorations[i];
       var center = { x: deco.x, y: deco.y };
       var r = getDecorationRadius(deco);
 
-      // First test handle (small square) – higher priority
+      // Handle first – smaller target but higher priority
       var handlePos = getDecorationHandlePosition(deco);
       var dHandle = mockPointDistance(pt, handlePos);
       if (dHandle <= 10) {
         return { deco: deco, mode: 'handle' };
       }
 
-      // Then test body (circle)
       var dCenter = mockPointDistance(pt, center);
       if (dCenter <= r) {
         if (!best || dCenter < best.dist) {
@@ -1633,7 +1630,6 @@ function syncMockupDecorCountsToEstimate() {
         }
       }
     }
-
     return best ? { deco: best.deco, mode: best.mode } : null;
   }
 
@@ -1662,8 +1658,7 @@ function syncMockupDecorCountsToEstimate() {
       x: pt.x,
       y: pt.y,
       kind: type,
-      size: 1,
-      rotation: 0
+      size: 1
     };
     mockDecorations.push(deco);
     mockSelectedDecorId = deco.id;
@@ -1689,41 +1684,8 @@ function syncMockupDecorCountsToEstimate() {
     mockSetInfo('Decoration deleted.');
   }
 
-  function requireSelectedDecoration(actionDescription) {
-    if (mockSelectedDecorId == null) {
-      mockSetInfo('Select a decoration in Edit mode before ' + actionDescription + '.');
-      return null;
-    }
-    var deco = findDecorationById(mockSelectedDecorId);
-    if (!deco) {
-      mockSetInfo('Selected decoration no longer exists.');
-      return null;
-    }
-    return deco;
-  }
-
-  function nudgeDecorationSize(delta) {
-    var deco = requireSelectedDecoration('changing its size');
-    if (!deco) return;
-    var size = deco.size || 1;
-    size += delta;
-    if (size < 0.4) size = 0.4;
-    if (size > 3.0) size = 3.0;
-    deco.size = size;
-    mockRedraw();
-    mockSetInfo('Decoration resized.');
-  }
-
-  function rotateDecorationDegrees(deltaDeg) {
-    var deco = requireSelectedDecoration('rotating it');
-    if (!deco) return;
-    var deltaRad = (deltaDeg * Math.PI) / 180;
-    deco.rotation = (deco.rotation || 0) + deltaRad;
-    mockRedraw();
-    mockSetInfo('Decoration rotated.');
-  }
-
   // --- Main redraw (lights + decorations) --------------------
+
   function mockRedraw() {
     if (!mockCtx || !mockCanvas) return;
     mockDrawBase();
@@ -1851,10 +1813,6 @@ function syncMockupDecorCountsToEstimate() {
 
       mockCtx.save();
       mockCtx.translate(deco.x, deco.y);
-      var rotation = deco.rotation || 0;
-      if (rotation !== 0) {
-        mockCtx.rotate(rotation);
-      }
 
       if (deco.kind === 'wreath') {
         var outer = 18 * size;
@@ -2030,115 +1988,8 @@ function syncMockupDecorCountsToEstimate() {
     }
   }
 
-  // --- Decorations buttons & keyboard ------------------------
+  // --- Load image into mockup canvas -------------------------
 
-  if (mockDecorPlaceBtn) {
-    mockDecorPlaceBtn.addEventListener('click', function () {
-      if (!mockImage) {
-        mockSetInfo('Upload a photo first.');
-        return;
-      }
-      mockMode = 'decor-add';
-      mockLastPoint = null;
-      mockSetInfo('Decoration placement mode: click on the photo to drop icons.');
-    });
-  }
-
-  if (mockDecorEditBtn) {
-    mockDecorEditBtn.addEventListener('click', function () {
-      if (!mockImage) {
-        mockSetInfo('Upload a photo first.');
-        return;
-      }
-      if (!mockDecorations.length) {
-        mockSetInfo('No decorations yet. Use "Place decorations" first.');
-        return;
-      }
-      mockMode = 'decor-edit';
-      mockLastPoint = null;
-      mockSetInfo('Edit decorations: click/drag to move, drag the cyan square to resize.');
-      mockRedraw();
-    });
-  }
-
-  if (mockDecorDeleteBtn) {
-    mockDecorDeleteBtn.addEventListener('click', deleteSelectedDecoration);
-  }
-
-  if (mockDecorClearBtn) {
-    mockDecorClearBtn.addEventListener('click', function () {
-      if (!mockDecorations.length) {
-        mockSetInfo('There are no decorations to clear.');
-        return;
-      }
-      mockDecorations = [];
-      mockSelectedDecorId = null;
-      mockSyncDecorationsToEstimate();
-      mockRedraw();
-      mockSetInfo('All decorations cleared.');
-    });
-  }
-
-  if (decorSmallerBtn) {
-    decorSmallerBtn.addEventListener('click', function () {
-      nudgeDecorationSize(-0.15);
-    });
-  }
-
-  if (decorBiggerBtn) {
-    decorBiggerBtn.addEventListener('click', function () {
-      nudgeDecorationSize(0.15);
-    });
-  }
-
-  if (decorRotateLeftBtn) {
-    decorRotateLeftBtn.addEventListener('click', function () {
-      rotateDecorationDegrees(-15);
-    });
-  }
-
-  if (decorRotateRightBtn) {
-    decorRotateRightBtn.addEventListener('click', function () {
-      rotateDecorationDegrees(15);
-    });
-  }
-
-  // Keyboard delete support for decorations in Edit mode
-  window.addEventListener('keydown', function (evt) {
-    if (evt.key === 'Delete' || evt.key === 'Backspace') {
-      if (mockMode === 'decor-edit' && mockSelectedDecorId != null) {
-        deleteSelectedDecoration();
-        evt.preventDefault();
-      }
-    }
-  });
-
-    // --- Helper functions for mockup zoom & coordinates --------
-  function mockApplyZoom() {
-    if (!mockCanvas) return;
-
-    // Use existing mockZoom if set; default to 1
-    var z = (typeof mockZoom === 'number' && mockZoom > 0) ? mockZoom : 1;
-
-    // Visually scale the canvas; keep drawing logic in canvas coordinates
-    mockCanvas.style.transformOrigin = 'top left';
-    mockCanvas.style.transform = 'scale(' + z + ')';
-
-     function mockCanvasPoint(evt) {
-    if (!mockCanvas) {
-      return { x: 0, y: 0 };
-    }
-
-    var rect = mockCanvas.getBoundingClientRect();
-    var z = (typeof mockZoom === 'number' && mockZoom > 0) ? mockZoom : 1;
-
-    return {
-      x: (evt.clientX - rect.left) / z,
-      y: (evt.clientY - rect.top) / z
-    };
-  }
-  
-    // --- Load image into mockup canvas -------------------------
   if (mockImageInput && mockCtx && mockCanvas) {
     mockImageInput.addEventListener('change', function (e) {
       var file = e.target.files && e.target.files[0];
@@ -2421,29 +2272,6 @@ function syncMockupDecorCountsToEstimate() {
       mockSyncDecorationsToEstimate();
       mockRedraw();
       mockSetInfo('All decorations cleared.');
-    });
-  }
-  if (decorSmallerBtn) {
-    decorSmallerBtn.addEventListener('click', function () {
-      nudgeDecorationSize(-0.15); // step smaller
-    });
-  }
-
-  if (decorBiggerBtn) {
-    decorBiggerBtn.addEventListener('click', function () {
-      nudgeDecorationSize(0.15); // step larger
-    });
-  }
-
-  if (decorRotateLeftBtn) {
-    decorRotateLeftBtn.addEventListener('click', function () {
-      rotateDecorationDegrees(-15); // rotate 15° left
-    });
-  }
-
-  if (decorRotateRightBtn) {
-    decorRotateRightBtn.addEventListener('click', function () {
-      rotateDecorationDegrees(15); // rotate 15° right
     });
   }
 
