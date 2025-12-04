@@ -1534,57 +1534,14 @@ function syncMockupDecorCountsToEstimate() {
   var mockDragSegmentIndex = -1;
   var mockDragSegmentEnd = null;       // 'from' | 'to'
 
-  // Decorations state
-  var mockDecorations = [];            // [{id,x,y,kind,size}]
+ // Decorations state
+  var mockDecorations = [];            // [{id,x,y,kind,size,rotation}]
   var mockSelectedDecorId = null;
   var mockIsDraggingDecor = false;
   var mockIsResizingDecor = false;
   var mockDecorDragOffset = { x: 0, y: 0 };
   var mockResizeStartDist = 0;
   var mockNextDecorId = 1;
-
-  function mockSetInfo(text) {
-    if (mockInfo) mockInfo.textContent = text;
-  }
-
-  function mockApplyZoom() {
-    if (!mockCanvas) return;
-    mockCanvas.style.transformOrigin = '0 0';
-    mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
-  }
-
-  function mockDrawBase() {
-    if (!mockCtx || !mockCanvas) return;
-    mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
-    if (mockImage && mockDrawParams) {
-      mockCtx.drawImage(
-        mockImage,
-        mockDrawParams.x,
-        mockDrawParams.y,
-        mockDrawParams.w,
-        mockDrawParams.h
-      );
-    }
-  }
-
-  function mockCanvasPoint(evt) {
-    if (!mockCanvas) return { x: 0, y: 0 };
-    var rect = mockCanvas.getBoundingClientRect();
-    var scaleX = mockCanvas.width / rect.width;
-    var scaleY = mockCanvas.height / rect.height;
-    return {
-      x: (evt.clientX - rect.left) * scaleX,
-      y: (evt.clientY - rect.top) * scaleY
-    };
-  }
-
-  function mockPointDistance(a, b) {
-    var dx = a.x - b.x;
-    var dy = a.y - b.y;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-
-  // --- Decorations helpers ----------------------------------
 
   function getDecorationRadius(deco) {
     var base;
@@ -1600,11 +1557,13 @@ function syncMockupDecorCountsToEstimate() {
     return base * size;
   }
 
-    function getDecorationHandlePosition(deco) {
+  function getDecorationHandlePosition(deco) {
     var r = getDecorationRadius(deco);
     var angle = deco.rotation || 0;
+
+    // handle in local coordinates (top-right)
     var localX = r * 0.7;
-    var localY = -r * 0.7; // top-right in local coords
+    var localY = -r * 0.7;
 
     return {
       x: deco.x + localX * Math.cos(angle) - localY * Math.sin(angle),
@@ -1621,18 +1580,20 @@ function syncMockupDecorCountsToEstimate() {
 
   function hitTestDecoration(pt) {
     var best = null;
+
     for (var i = 0; i < mockDecorations.length; i++) {
       var deco = mockDecorations[i];
       var center = { x: deco.x, y: deco.y };
       var r = getDecorationRadius(deco);
 
-      // Handle first – smaller target but higher priority
+      // First test handle (small square) – higher priority
       var handlePos = getDecorationHandlePosition(deco);
       var dHandle = mockPointDistance(pt, handlePos);
       if (dHandle <= 10) {
         return { deco: deco, mode: 'handle' };
       }
 
+      // Then test body (circle)
       var dCenter = mockPointDistance(pt, center);
       if (dCenter <= r) {
         if (!best || dCenter < best.dist) {
@@ -1640,6 +1601,7 @@ function syncMockupDecorCountsToEstimate() {
         }
       }
     }
+
     return best ? { deco: best.deco, mode: best.mode } : null;
   }
 
@@ -1661,7 +1623,7 @@ function syncMockupDecorCountsToEstimate() {
     decorBowCountInput.value     = bow;
   }
 
-    function addDecorationAtPoint(pt) {
+  function addDecorationAtPoint(pt) {
     var type = mockDecorTypeSelect ? mockDecorTypeSelect.value : 'wreath';
     var deco = {
       id: mockNextDecorId++,
@@ -1693,9 +1655,9 @@ function syncMockupDecorCountsToEstimate() {
     mockSyncDecorationsToEstimate();
     mockRedraw();
     mockSetInfo('Decoration deleted.');
-    }
-  
-    function requireSelectedDecoration(actionDescription) {
+  }
+
+  function requireSelectedDecoration(actionDescription) {
     if (mockSelectedDecorId == null) {
       mockSetInfo('Select a decoration in Edit mode before ' + actionDescription + '.');
       return null;
@@ -1851,7 +1813,7 @@ function syncMockupDecorCountsToEstimate() {
     }
 
     // 2) Draw decorations on top
-      for (var d = 0; d < mockDecorations.length; d++) {
+    for (var d = 0; d < mockDecorations.length; d++) {
       var deco = mockDecorations[d];
       var size = deco.size || 1;
 
@@ -1862,7 +1824,7 @@ function syncMockupDecorCountsToEstimate() {
         mockCtx.rotate(rotation);
       }
 
-        if (deco.kind === 'wreath') {
+      if (deco.kind === 'wreath') {
         var outer = 18 * size;
         var inner = 11 * size;
 
@@ -2036,8 +1998,90 @@ function syncMockupDecorCountsToEstimate() {
     }
   }
 
-  // --- Load image into mockup canvas -------------------------
+  // --- Decorations buttons & keyboard ------------------------
 
+  if (mockDecorPlaceBtn) {
+    mockDecorPlaceBtn.addEventListener('click', function () {
+      if (!mockImage) {
+        mockSetInfo('Upload a photo first.');
+        return;
+      }
+      mockMode = 'decor-add';
+      mockLastPoint = null;
+      mockSetInfo('Decoration placement mode: click on the photo to drop icons.');
+    });
+  }
+
+  if (mockDecorEditBtn) {
+    mockDecorEditBtn.addEventListener('click', function () {
+      if (!mockImage) {
+        mockSetInfo('Upload a photo first.');
+        return;
+      }
+      if (!mockDecorations.length) {
+        mockSetInfo('No decorations yet. Use "Place decorations" first.');
+        return;
+      }
+      mockMode = 'decor-edit';
+      mockLastPoint = null;
+      mockSetInfo('Edit decorations: click/drag to move, drag the cyan square to resize.');
+      mockRedraw();
+    });
+  }
+
+  if (mockDecorDeleteBtn) {
+    mockDecorDeleteBtn.addEventListener('click', deleteSelectedDecoration);
+  }
+
+  if (mockDecorClearBtn) {
+    mockDecorClearBtn.addEventListener('click', function () {
+      if (!mockDecorations.length) {
+        mockSetInfo('There are no decorations to clear.');
+        return;
+      }
+      mockDecorations = [];
+      mockSelectedDecorId = null;
+      mockSyncDecorationsToEstimate();
+      mockRedraw();
+      mockSetInfo('All decorations cleared.');
+    });
+  }
+
+  if (decorSmallerBtn) {
+    decorSmallerBtn.addEventListener('click', function () {
+      nudgeDecorationSize(-0.15);
+    });
+  }
+
+  if (decorBiggerBtn) {
+    decorBiggerBtn.addEventListener('click', function () {
+      nudgeDecorationSize(0.15);
+    });
+  }
+
+  if (decorRotateLeftBtn) {
+    decorRotateLeftBtn.addEventListener('click', function () {
+      rotateDecorationDegrees(-15);
+    });
+  }
+
+  if (decorRotateRightBtn) {
+    decorRotateRightBtn.addEventListener('click', function () {
+      rotateDecorationDegrees(15);
+    });
+  }
+
+  // Keyboard delete support for decorations in Edit mode
+  window.addEventListener('keydown', function (evt) {
+    if (evt.key === 'Delete' || evt.key === 'Backspace') {
+      if (mockMode === 'decor-edit' && mockSelectedDecorId != null) {
+        deleteSelectedDecoration();
+        evt.preventDefault();
+      }
+    }
+  });
+
+  // --- Load image into mockup canvas -------------------------
   if (mockImageInput && mockCtx && mockCanvas) {
     mockImageInput.addEventListener('change', function (e) {
       var file = e.target.files && e.target.files[0];
