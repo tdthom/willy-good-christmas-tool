@@ -451,24 +451,26 @@
         <button id="mockup-clear">Clear all lines</button><br><br>
 
         <h3 style="margin-top:0.5rem;">Decorations</h3>
-<p class="small-note">
-  Choose a decoration, click <strong>Place decorations</strong>, then click on the photo to drop it.
-  Click a decoration to select it, drag to move it, drag the small corner handle to resize.
-  Press the Delete key or use "Delete selected" to remove one.
-</p>
+        <p class="small-note">
+        Choose a decoration, click <strong>Place decorations</strong>, then click on the photo to drop it.
+        Click <strong>Edit decorations</strong> to move, resize, or delete.
+        </p>
 
-<label for="mockup-decor-type"><strong>Decoration type:</strong></label><br>
-<select id="mockup-decor-type" style="width:220px;">
-  <option value="wreath">Wreath (with lights)</option>
-  <option value="garland">Garland / column wrap</option>
-  <option value="bow">Bow</option>
-  <option value="tree-wrap">Tree wrap (mini lights)</option>
-  <option value="net">Net lights (bush)</option>
-</select><br><br>
+        <label for="mockup-decor-type"><strong>Decoration type:</strong></label><br>
+        <select id="mockup-decor-type" style="width:220px;">
+          <option value="wreath">Wreath (with lights)</option>
+          <option value="bow">Bow</option>
+          <option value="garland">Garland</option>
+          <option value="tree-wrap">Tree wrap (mini lights)</option>
+          <option value="net">Net lights / shrubs</option>
+          </select><br><br>
 
-<button id="mockup-decor-mode">Place decorations</button>
-<button id="mockup-decor-clear">Clear all decorations</button>
-<button id="mockup-decor-delete-selected">Delete selected</button><br><br>
+        <!-- These IDs MUST match the JS -->
+        <button id="mockup-decor-mode">Place decorations</button>
+        <button id="mockup-decor-edit">Edit decorations</button><br><br>
+
+        <button id="mockup-decor-delete">Delete selected</button>
+        <button id="mockup-decor-clear">Clear all decorations</button><br><br>
 
         <div class="small-note" style="margin-bottom:4px;">
           With a decoration selected:
@@ -876,6 +878,15 @@ function syncMockupDecorCountsToEstimate() {
       var bowSubtotal      = bowCount     * bowEach;
 
       var decorSubtotal = wreathSubtotal + garlandSubtotal + bowSubtotal;
+      
+     // Allow Delete key to remove the selected decoration while in decor-edit mode
+  window.addEventListener('keydown', function (evt) {
+    if (evt.key === 'Delete' || evt.key === 'Backspace') {
+      if (mockMode === 'decor-edit' && mockSelectedDecorId != null) {
+        deleteSelectedDecoration();
+      }
+    }
+  });
 
       // Decorations are taxable like equipment:
       var customerSubtotalBeforeTax = installSubtotal + takedownSubtotal + decorSubtotal;
