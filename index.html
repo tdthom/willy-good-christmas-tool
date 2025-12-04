@@ -1529,7 +1529,37 @@ function syncMockupDecorCountsToEstimate() {
   var MOCK_ZOOM_MIN = 0.5;
   var MOCK_ZOOM_MAX = 3;
 
-  // Segment adjust state
+  // --- Helper functions: zoom + canvas coordinate mapping ---
+
+  // Apply CSS zoom to the mockup canvas
+  function mockApplyZoom() {
+    if (!mockCanvas) return;
+
+    // Make sure mockZoom is a positive number
+    var z = (typeof mockZoom === 'number' && mockZoom > 0) ? mockZoom : 1;
+
+    mockCanvas.style.transformOrigin = '0 0';
+    mockCanvas.style.transform = 'scale(' + z + ')';
+  }
+
+  // Convert mouse event coordinates to canvas coordinates
+  function mockCanvasPoint(evt) {
+    if (!mockCanvas) {
+      return { x: 0, y: 0 };
+    }
+
+    var rect = mockCanvas.getBoundingClientRect();
+    // rect.width/height already reflect CSS scale, so this keeps mapping correct
+    var scaleX = mockCanvas.width / rect.width;
+    var scaleY = mockCanvas.height / rect.height;
+
+    return {
+      x: (evt.clientX - rect.left) * scaleX,
+      y: (evt.clientY - rect.top) * scaleY
+    };
+  }
+
+    // Segment adjust state
   var mockIsDraggingSegment = false;
   var mockDragSegmentIndex = -1;
   var mockDragSegmentEnd = null;       // 'from' | 'to'
@@ -2081,7 +2111,49 @@ function syncMockupDecorCountsToEstimate() {
     }
   });
 
-  // --- Load image into mockup canvas -------------------------
+    // --- Helper functions for mockup zoom & coordinates --------
+  function mockApplyZoom() {
+    if (!mockCanvas) return;
+
+    // Use existing mockZoom if set; default to 1
+    var z = (typeof mockZoom === 'number' && mockZoom > 0) ? mockZoom : 1;
+
+    // If we have a slider, keep everything in sync with it
+    if (mockZoomSlider) {
+      var sliderVal = parseFloat(mockZoomSlider.value);
+      if (!isNaN(sliderVal) && sliderVal > 0) {
+        z = sliderVal;
+        mockZoom = sliderVal;
+      } else {
+        mockZoomSlider.value = z;
+      }
+    }
+
+    // Visually scale the canvas; keep drawing logic in canvas coordinates
+    mockCanvas.style.transformOrigin = 'top left';
+    mockCanvas.style.transform = 'scale(' + z + ')';
+
+    // Update label like "100%"
+    if (mockZoomValue) {
+      mockZoomValue.textContent = Math.round(z * 100) + '%';
+    }
+  }
+
+  function mockCanvasPoint(evt) {
+    if (!mockCanvas) {
+      return { x: 0, y: 0 };
+    }
+
+    var rect = mockCanvas.getBoundingClientRect();
+    var z = (typeof mockZoom === 'number' && mockZoom > 0) ? mockZoom : 1;
+
+    return {
+      x: (evt.clientX - rect.left) / z,
+      y: (evt.clientY - rect.top) / z
+    };
+  }
+  
+    // --- Load image into mockup canvas -------------------------
   if (mockImageInput && mockCtx && mockCanvas) {
     mockImageInput.addEventListener('change', function (e) {
       var file = e.target.files && e.target.files[0];
