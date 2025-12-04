@@ -1531,15 +1531,17 @@ function syncMockupDecorCountsToEstimate() {
 
   // --- Helper functions: zoom + canvas coordinate mapping ---
 
-    // Apply CSS zoom to the mockup canvas (no slider needed)
+   // Apply CSS zoom to the mockup canvas (no slider text, just the scale)
   function mockApplyZoom() {
     if (!mockCanvas) return;
 
-    // Ensure zoom has a safe value
-    var z = (typeof mockZoom === 'number' && mockZoom > 0) ? mockZoom : 1;
+    // Ensure mockZoom is a sane positive number
+    if (typeof mockZoom !== 'number' || !isFinite(mockZoom) || mockZoom <= 0) {
+      mockZoom = 1;
+    }
 
     mockCanvas.style.transformOrigin = '0 0';
-    mockCanvas.style.transform = 'scale(' + z + ')';
+    mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
   }
 
   // Convert mouse event coordinates to canvas coordinates
@@ -2122,13 +2124,7 @@ function syncMockupDecorCountsToEstimate() {
     mockCanvas.style.transformOrigin = 'top left';
     mockCanvas.style.transform = 'scale(' + z + ')';
 
-    // Update label like "100%"
-    if (mockZoomValue) {
-      mockZoomValue.textContent = Math.round(z * 100) + '%';
-    }
-  }
-
-  function mockCanvasPoint(evt) {
+     function mockCanvasPoint(evt) {
     if (!mockCanvas) {
       return { x: 0, y: 0 };
     }
