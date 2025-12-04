@@ -533,7 +533,11 @@
 </section>
   
 <script>
-window.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function () {
+  'use strict';
+
+  // ... all your estimator + mockup code ...
+
   // -----------------------------
   // Navigation
   // -----------------------------
@@ -2592,9 +2596,10 @@ function syncMockupDecorCountsToEstimate() {
     });
   }
 
-  console.log('Willy Good Christmas Tool core script loaded.');
-});
+   console.log('Willy Good Christmas Tool core script loaded.');
+}); // <-- closes the DOMContentLoaded listener
 </script>
+
  
 </body>
 </html>
