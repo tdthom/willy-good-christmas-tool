@@ -1693,6 +1693,8 @@ function syncMockupDecorCountsToEstimate() {
     mockSyncDecorationsToEstimate();
     mockRedraw();
     mockSetInfo('Decoration deleted.');
+    }
+  
     function requireSelectedDecoration(actionDescription) {
     if (mockSelectedDecorId == null) {
       mockSetInfo('Select a decoration in Edit mode before ' + actionDescription + '.');
