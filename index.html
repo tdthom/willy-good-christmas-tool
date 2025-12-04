@@ -879,11 +879,13 @@ function syncMockupDecorCountsToEstimate() {
 
       var decorSubtotal = wreathSubtotal + garlandSubtotal + bowSubtotal;
       
-     // Allow Delete key to remove the selected decoration while in decor-edit mode
+      // Keyboard delete support for decorations in Edit mode
   window.addEventListener('keydown', function (evt) {
     if (evt.key === 'Delete' || evt.key === 'Backspace') {
       if (mockMode === 'decor-edit' && mockSelectedDecorId != null) {
         deleteSelectedDecoration();
+        // Prevent Backspace from accidentally navigating away in some browsers
+        evt.preventDefault();
       }
     }
   });
@@ -945,10 +947,10 @@ function syncMockupDecorCountsToEstimate() {
       html += '<hr>';
       html += '<p><strong>Install subtotal (labor + equipment):</strong> $' + installSubtotal.toFixed(2) + '</p>';
       html += '<p><strong>Takedown subtotal (assumed labor only):</strong> $' + takedownSubtotal.toFixed(2) + '</p>';
-      html += '<p><strong>Takedown subtotal (assumed labor only):</strong> $' + takedownSubtotal.toFixed(2) + '</p>';
       html += '<p><strong>Decoration add-ons:</strong> $' + decorSubtotal.toFixed(2) + '</p>';
       html += '<p><strong>Equipment and supplies (per-foot total):</strong> $' + equipmentSubtotal.toFixed(2) + '</p>';
-      html += '<p><strong>Taxable base (equipment + container):</strong> $' + taxableBase.toFixed(2) + '</p>';
+      html += '<p><strong>Taxable base (equipment + container + decorations):</strong> $' + taxableBase.toFixed(2) + '</p>';
+
       html += '<p><strong>Sales tax (' + taxRatePercent.toFixed(2) + '% on taxable base):</strong> $' + taxAmount.toFixed(2) + '</p>';
       html += '<p><strong>Customer total (install + takedown + tax):</strong> $' + customerTotalWithTax.toFixed(2) + '</p>';
       html += '<br>';
@@ -1476,7 +1478,7 @@ function syncMockupDecorCountsToEstimate() {
     });
   }
 
-    // -----------------------------
+  // -----------------------------
   // Photo Mockup (visual-only color designer with zoom + adjust + decorations)
   // -----------------------------
   var mockImageInput = document.getElementById('mockup-image-input');
@@ -1507,6 +1509,10 @@ function syncMockupDecorCountsToEstimate() {
   var mockDecorEditBtn      = document.getElementById('mockup-decor-edit');
   var mockDecorDeleteBtn    = document.getElementById('mockup-decor-delete');
   var mockDecorClearBtn     = document.getElementById('mockup-decor-clear');
+  var decorSmallerBtn       = document.getElementById('decor-smaller');
+  var decorBiggerBtn        = document.getElementById('decor-bigger');
+  var decorRotateLeftBtn    = document.getElementById('decor-rotate-left');
+  var decorRotateRightBtn   = document.getElementById('decor-rotate-right');
 
   // Estimate decoration inputs – auto-filled from mockup
   var decorWreathCountInput  = document.getElementById('decor-wreath-count');
@@ -1594,11 +1600,15 @@ function syncMockupDecorCountsToEstimate() {
     return base * size;
   }
 
-  function getDecorationHandlePosition(deco) {
+    function getDecorationHandlePosition(deco) {
     var r = getDecorationRadius(deco);
+    var angle = deco.rotation || 0;
+    var localX = r * 0.7;
+    var localY = -r * 0.7; // top-right in local coords
+
     return {
-      x: deco.x + r * 0.7,
-      y: deco.y - r * 0.7
+      x: deco.x + localX * Math.cos(angle) - localY * Math.sin(angle),
+      y: deco.y + localX * Math.sin(angle) + localY * Math.cos(angle)
     };
   }
 
@@ -1651,14 +1661,15 @@ function syncMockupDecorCountsToEstimate() {
     decorBowCountInput.value     = bow;
   }
 
-  function addDecorationAtPoint(pt) {
+    function addDecorationAtPoint(pt) {
     var type = mockDecorTypeSelect ? mockDecorTypeSelect.value : 'wreath';
     var deco = {
       id: mockNextDecorId++,
       x: pt.x,
       y: pt.y,
       kind: type,
-      size: 1
+      size: 1,
+      rotation: 0
     };
     mockDecorations.push(deco);
     mockSelectedDecorId = deco.id;
@@ -1682,10 +1693,41 @@ function syncMockupDecorCountsToEstimate() {
     mockSyncDecorationsToEstimate();
     mockRedraw();
     mockSetInfo('Decoration deleted.');
+    function requireSelectedDecoration(actionDescription) {
+    if (mockSelectedDecorId == null) {
+      mockSetInfo('Select a decoration in Edit mode before ' + actionDescription + '.');
+      return null;
+    }
+    var deco = findDecorationById(mockSelectedDecorId);
+    if (!deco) {
+      mockSetInfo('Selected decoration no longer exists.');
+      return null;
+    }
+    return deco;
+  }
+
+  function nudgeDecorationSize(delta) {
+    var deco = requireSelectedDecoration('changing its size');
+    if (!deco) return;
+    var size = deco.size || 1;
+    size += delta;
+    if (size < 0.4) size = 0.4;
+    if (size > 3.0) size = 3.0;
+    deco.size = size;
+    mockRedraw();
+    mockSetInfo('Decoration resized.');
+  }
+
+  function rotateDecorationDegrees(deltaDeg) {
+    var deco = requireSelectedDecoration('rotating it');
+    if (!deco) return;
+    var deltaRad = (deltaDeg * Math.PI) / 180;
+    deco.rotation = (deco.rotation || 0) + deltaRad;
+    mockRedraw();
+    mockSetInfo('Decoration rotated.');
   }
 
   // --- Main redraw (lights + decorations) --------------------
-
   function mockRedraw() {
     if (!mockCtx || !mockCanvas) return;
     mockDrawBase();
@@ -1807,14 +1849,18 @@ function syncMockupDecorCountsToEstimate() {
     }
 
     // 2) Draw decorations on top
-    for (var d = 0; d < mockDecorations.length; d++) {
+      for (var d = 0; d < mockDecorations.length; d++) {
       var deco = mockDecorations[d];
       var size = deco.size || 1;
 
       mockCtx.save();
       mockCtx.translate(deco.x, deco.y);
+      var rotation = deco.rotation || 0;
+      if (rotation !== 0) {
+        mockCtx.rotate(rotation);
+      }
 
-      if (deco.kind === 'wreath') {
+        if (deco.kind === 'wreath') {
         var outer = 18 * size;
         var inner = 11 * size;
 
@@ -2272,6 +2318,29 @@ function syncMockupDecorCountsToEstimate() {
       mockSyncDecorationsToEstimate();
       mockRedraw();
       mockSetInfo('All decorations cleared.');
+    });
+  }
+  if (decorSmallerBtn) {
+    decorSmallerBtn.addEventListener('click', function () {
+      nudgeDecorationSize(-0.15); // step smaller
+    });
+  }
+
+  if (decorBiggerBtn) {
+    decorBiggerBtn.addEventListener('click', function () {
+      nudgeDecorationSize(0.15); // step larger
+    });
+  }
+
+  if (decorRotateLeftBtn) {
+    decorRotateLeftBtn.addEventListener('click', function () {
+      rotateDecorationDegrees(-15); // rotate 15° left
+    });
+  }
+
+  if (decorRotateRightBtn) {
+    decorRotateRightBtn.addEventListener('click', function () {
+      rotateDecorationDegrees(15); // rotate 15° right
     });
   }
 
