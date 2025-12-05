@@ -816,6 +816,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var containerInput = document.getElementById('container-cost');
   var calcButton = document.getElementById('calc-estimate');
   var resultBox = document.getElementById('estimate-result');
+  
   // Decoration add-on inputs (Estimate tab)
 var decorWreathCountInput   = document.getElementById('decor-wreath-count');
 var decorWreathPriceInput   = document.getElementById('decor-wreath-price');
@@ -824,23 +825,6 @@ var decorGarlandPriceInput  = document.getElementById('decor-garland-price');
 var decorBowCountInput      = document.getElementById('decor-bow-count');
 var decorBowPriceInput      = document.getElementById('decor-bow-price');
 
-
-var mockDecorations;
-
-// Keep Estimate decoration counts in sync with the icons on the photo.
-function syncMockupDecorCountsToEstimate() {
-  if (!mockDecorations) return;
-
-  var wreaths  = 0;
-  var garlands = 0;
-  var bows     = 0;
-
-  for (var i = 0; i < mockDecorations.length; i++) {
-    var kind = mockDecorations[i].type;
-    if (kind === 'wreath')      wreaths++;
-    else if (kind === 'garland') garlands++;
-    else if (kind === 'bow')     bows++;
-  }
 
   if (decorWreathCountInput)  decorWreathCountInput.value  = wreaths;
   if (decorGarlandCountInput) decorGarlandCountInput.value = garlands;
