@@ -402,7 +402,7 @@
     <div style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start;">
 
       <!-- Controls column -->
-      <div style="min-width:250px; max-width:320px; max-height:80vh; overflow-y:auto;">
+      <div style="min-width:250px; max-width:320px; max-height: calc(100vh - 220px); overflow-y:auto;">
         <h3 style="margin-top:0;">Light style</h3>
 
         <label for="mockup-color-mode"><strong>Color pattern:</strong></label><br>
@@ -511,9 +511,21 @@
 <button id="mockup-zoom-in">Zoom in</button>
 <button id="mockup-zoom-out">Zoom out</button>
 <button id="mockup-print" style="margin-bottom:0.5rem;">
+
+<h3>Tree / shrub free-form lights</h3>
+<p class="small-note">
+  Click <strong>Trace tree / shrub lights</strong>, then click and drag over trees or shrubs.
+  The tool will drop mini bulbs along your trace. Release the mouse to stop, then trace again to add more.
+</p>
+
+<button id="mockup-tree-trace">Trace tree / shrub lights</button>
+<button id="mockup-tree-stop-trace">Stop tracing</button>
+<button id="mockup-tree-undo-trace">Undo last tree lights</button>
+<button id="mockup-tree-clear-trace">Clear all tree lights</button>
+<br><br>
+
   Print / Save this mockup as PDF
 </button>
-
       </div>
 
       <!-- Canvas column -->
@@ -1529,6 +1541,19 @@ var mockResizeStartDist = 0;
 var mockNextDecorId = 1;
 var mockCustomDecorImage = null;
 
+    // --- Tree / shrub free-form mini lights -----------------------
+  // Each trace is a freehand path; we render mini bulbs along the path.
+
+  var treeTraceMode = false;
+  var treeTraceDrawing = false;
+  var treeTraceCurrentPoints = []; // points for the stroke being drawn
+  var treeTraces = [];             // [{ points: [{x,y}, ...] }]
+
+  var treeTraceBtn      = document.getElementById('mockup-tree-trace');
+  var treeTraceStopBtn  = document.getElementById('mockup-tree-stop-trace');
+  var treeTraceUndoBtn  = document.getElementById('mockup-tree-undo-trace');
+  var treeTraceClearBtn = document.getElementById('mockup-tree-clear-trace');
+
     // Custom decoration image upload
   if (mockDecorImageInput) {
     mockDecorImageInput.addEventListener('change', function (e) {
@@ -1562,6 +1587,71 @@ var mockIsTreeTraceEnabled = false;
 var mockIsTreeTraceDrawing = false;
 var mockTreeTraceLastPoint = null;
 var MOCK_TREE_TRACE_STEP = 14; // px between mini-segments
+
+  function drawTreeTraces() {
+    if (!mockCtx || !mockCanvas) return;
+    if (!treeTraces.length && !(treeTraceDrawing && treeTraceCurrentPoints.length > 1)) return;
+
+    var spacing = 18;   // pixels between bulbs
+    var bulbR   = 3;    // bulb radius
+    var glowR   = 7;    // glow radius
+
+    // Helper to render bulbs along a polyline
+    function drawBulbsAlong(points) {
+      if (!points || points.length < 2) return;
+
+      var distSoFar = 0;
+      var nextAt = 0;
+
+      for (var j = 1; j < points.length; j++) {
+        var a = points[j - 1];
+        var b = points[j];
+        var dx = b.x - a.x;
+        var dy = b.y - a.y;
+        var segLen = Math.sqrt(dx * dx + dy * dy);
+        if (segLen <= 0) {
+          distSoFar += segLen;
+          continue;
+        }
+
+        while (nextAt <= distSoFar + segLen) {
+          var t = (nextAt - distSoFar) / segLen;
+          if (t < 0 || t > 1) break;
+
+          var x = a.x + dx * t;
+          var y = a.y + dy * t;
+
+          // glow
+          mockCtx.beginPath();
+          mockCtx.globalAlpha = 0.30;
+          mockCtx.fillStyle = '#fff7cc';
+          mockCtx.arc(x, y, glowR, 0, Math.PI * 2);
+          mockCtx.fill();
+          mockCtx.globalAlpha = 1;
+
+          // bulb core
+          mockCtx.beginPath();
+          mockCtx.fillStyle = '#ffffff';
+          mockCtx.arc(x, y, bulbR, 0, Math.PI * 2);
+          mockCtx.fill();
+
+          nextAt += spacing;
+        }
+
+        distSoFar += segLen;
+      }
+    }
+
+    // Permanent traces
+    for (var i = 0; i < treeTraces.length; i++) {
+      drawBulbsAlong(treeTraces[i].points);
+    }
+
+    // Current stroke preview (while dragging)
+    if (treeTraceDrawing && treeTraceCurrentPoints.length > 1) {
+      drawBulbsAlong(treeTraceCurrentPoints);
+    }
+  }
 
 function mockSetInfo(text) {
   if (mockInfo) mockInfo.textContent = text;
@@ -1835,6 +1925,9 @@ function mockRedraw() {
     }
   }
 
+  // 1.5) Draw tree / shrub free-form mini lights
+    drawTreeTraces();
+  
   // 2) Draw decorations on top
   for (var d = 0; d < mockDecorations.length; d++) {
     var deco = mockDecorations[d];
@@ -2261,6 +2354,10 @@ if (mockCanvas && mockCtx) {
     // Adjust and decor-edit are handled via mousedown/mousemove only
     if (mockMode === 'adjust' || mockMode === 'decor-edit') return;
 
+     // Tree tracing uses drag only, not discrete clicks
+      if (treeTraceMode) return;
+
+
     // While in tree-trace mode we draw via drag, ignore click
     if (mockIsTreeTraceEnabled) return;
 
@@ -2312,6 +2409,15 @@ if (mockCanvas && mockCtx) {
 
   mockCanvas.addEventListener('mousedown', function (evt) {
     if (!mockImage) return;
+
+       if (treeTraceMode) {
+        if (!mockImage) return;
+        var startPt = mockCanvasPoint(evt);
+        treeTraceDrawing = true;
+        treeTraceCurrentPoints = [startPt];
+        return;
+      }
+
     var pt = mockCanvasPoint(evt);
 
         if (mockMode === 'trace-tree') {
@@ -2382,6 +2488,14 @@ if (mockCanvas && mockCtx) {
   // mousemove: update drag
   mockCanvas.addEventListener('mousemove', function (evt) {
     if (!mockImage) return;
+    
+    if (treeTraceMode && treeTraceDrawing) {
+    var ptTrace = mockCanvasPoint(evt);
+    treeTraceCurrentPoints.push(ptTrace);
+    mockRedraw(); // show bulbs as you drag
+    return;
+  }
+    
     var pt = mockCanvasPoint(evt);
 
     // Tree trace drawing
@@ -2443,6 +2557,18 @@ if (mockCanvas && mockCtx) {
       mockTreeTraceLastPoint = null;
       mockSetInfo('Tree trace stroke finished.');
     }
+
+          // Finish any active tree trace stroke
+      if (treeTraceMode && treeTraceDrawing) {
+        treeTraceDrawing = false;
+        if (treeTraceCurrentPoints.length > 1) {
+          treeTraces.push({ points: treeTraceCurrentPoints.slice() });
+          mockSetInfo('Tree / shrub mini lights added. Use Undo or Clear to adjust.');
+        }
+        treeTraceCurrentPoints = [];
+        mockRedraw();
+        return;
+      }
 
         function mockStopDrag() {
       if (mockIsTracingTree) {
@@ -2572,6 +2698,57 @@ if (mockDecorClearBtn) {
     mockSetInfo('All decorations cleared.');
   });
 }
+
+    // --- Tree / shrub free-form lights buttons -------------------
+
+  if (treeTraceBtn) {
+    treeTraceBtn.addEventListener('click', function () {
+      if (!mockImage) {
+        mockSetInfo('Upload a photo first.');
+        return;
+      }
+      treeTraceMode = true;
+      treeTraceDrawing = false;
+      treeTraceCurrentPoints = [];
+      mockMode = 'draw';  // disable adjust/decor edit while tracing
+      mockSetInfo('Tree trace mode: click and drag over branches/bushes to drop mini lights.');
+    });
+  }
+
+  if (treeTraceStopBtn) {
+    treeTraceStopBtn.addEventListener('click', function () {
+      treeTraceMode = false;
+      treeTraceDrawing = false;
+      treeTraceCurrentPoints = [];
+      mockSetInfo('Tree trace stopped. You can still see and undo/clear existing tree lights.');
+    });
+  }
+
+  if (treeTraceUndoBtn) {
+    treeTraceUndoBtn.addEventListener('click', function () {
+      if (!treeTraces.length) {
+        mockSetInfo('No tree lights to undo.');
+        return;
+      }
+      treeTraces.pop();
+      mockRedraw();
+      mockSetInfo('Last tree light trace removed.');
+    });
+  }
+
+  if (treeTraceClearBtn) {
+    treeTraceClearBtn.addEventListener('click', function () {
+      if (!treeTraces.length) {
+        mockSetInfo('No tree lights to clear.');
+        return;
+      }
+      treeTraces = [];
+      treeTraceCurrentPoints = [];
+      mockRedraw();
+      mockSetInfo('All tree / shrub lights cleared.');
+    });
+  }
+
   // --- Tree / shrub tracing buttons --------------------------
 
   if (treeTraceBtn) {
