@@ -1505,31 +1505,29 @@ document.addEventListener('DOMContentLoaded', function () {
   var mockDecorImageInput   = document.getElementById('mockup-decor-image');
   var mockCustomDecorImage  = null;
 
-  // Core state
-  var mockImage = null;
-  var mockDrawParams = null;
-  var mockSegments = [];               // light runs [{from:{x,y}, to:{x,y}, type}]
-  var mockLastPoint = null;
-  var mockMode = 'draw';               // 'draw', 'adjust', 'decor-add', 'decor-edit', 'tree-trace'
-  var mockZoom = 1;
-  var MOCK_ZOOM_MIN = 0.5;
-  var MOCK_ZOOM_MAX = 3;
+ // Core state
+var mockImage = null;
+var mockDrawParams = null;
+var mockSegments = [];               // light runs [{from:{x,y}, to:{x,y}, type}]
+var mockLastPoint = null;
+var mockMode = 'draw';               // 'draw', 'adjust', 'decor-add', 'decor-edit'
+var mockZoom = 1;
+var MOCK_ZOOM_MIN = 0.5;
+var MOCK_ZOOM_MAX = 3;
 
-  // Segment adjust state
-  var mockIsDraggingSegment = false;
-  var mockDragSegmentIndex = -1;
-  var mockDragSegmentEnd = null;       // 'from' | 'to'
+// Segment adjust state
+var mockIsDraggingSegment = false;
+var mockDragSegmentIndex = -1;
+var mockDragSegmentEnd = null;       // 'from' | 'to'
 
-  // Decorations state
-  if (!Array.isArray(mockDecorations)) {
-    mockDecorations = [];
-  }
-  var mockSelectedDecorId = null;
-  var mockIsDraggingDecor = false;
-  var mockIsResizingDecor = false;
-  var mockDecorDragOffset = { x: 0, y: 0 };
-  var mockResizeStartDist = 0;
-  var mockNextDecorId = 1;
+// Decorations state
+var mockDecorations = [];            // [{id,x,y,kind,size,rotation?}]
+var mockSelectedDecorId = null;
+var mockIsDraggingDecor = false;
+var mockIsResizingDecor = false;
+var mockDecorDragOffset = { x: 0, y: 0 };
+var mockResizeStartDist = 0;
+var mockNextDecorId = 1;
 
   // Tree / shrub free-form trace state
   var mockTreeTracing = false;
