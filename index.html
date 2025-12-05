@@ -536,8 +536,6 @@
 document.addEventListener('DOMContentLoaded', function () {
   'use strict';
 
-  // ... all your estimator + mockup code ...
-
   // -----------------------------
   // Navigation
   // -----------------------------
@@ -826,8 +824,7 @@ var decorGarlandPriceInput  = document.getElementById('decor-garland-price');
 var decorBowCountInput      = document.getElementById('decor-bow-count');
 var decorBowPriceInput      = document.getElementById('decor-bow-price');
 
-// This array will be defined in the Photo Mockup section.
-// We guard in case it's not ready yet.
+
 var mockDecorations;
 
 // Keep Estimate decoration counts in sync with the icons on the photo.
@@ -972,8 +969,7 @@ function syncMockupDecorCountsToEstimate() {
   var refreshProposalButton = document.getElementById('refresh-proposal');
   var proposalMockupImg = document.getElementById('proposal-mockup-image');
 
-  // We'll define mockCanvas and mockRedraw in the Photo Mockup section,
-  // but they live in the same scope so we can safely reference them here.
+ 
   var mockCanvas; // will be assigned later
 
   function renderProposal() {
@@ -1078,8 +1074,7 @@ function syncMockupDecorCountsToEstimate() {
     refreshProposalButton.addEventListener('click', renderProposal);
   }
 
-  // Do an initial render (will show "no estimate" message if nothing yet)
-  renderProposal();
+   renderProposal();
 
   // -----------------------------
   // Roof Measure with Undo + Adjust
@@ -2580,7 +2575,7 @@ function syncMockupDecorCountsToEstimate() {
     });
   }
 
-  // Print / save mockup via browser print dialog (no adjust handles)
+   // Print / save mockup via browser print dialog (no adjust handles)
   if (mockPrintBtn) {
     mockPrintBtn.addEventListener('click', function () {
       if (!mockCanvas) {
@@ -2596,10 +2591,9 @@ function syncMockupDecorCountsToEstimate() {
     });
   }
 
-   console.log('Willy Good Christmas Tool core script loaded.');
-    
+  console.log('Willy Good Christmas Tool core script loaded.');
+});
 </script>
-
  
 </body>
 </html>
