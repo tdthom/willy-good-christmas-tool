@@ -399,9 +399,10 @@
 
     <input type="file" id="mockup-image-input" accept="image/*"><br><br>
 
-    <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start;">
+    <div style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start;">
+
       <!-- Controls column -->
-      <div style="min-width:250px; max-width:320px;">
+      <div style="min-width:250px; max-width:320px; max-height:80vh; overflow-y:auto;">
         <h3 style="margin-top:0;">Light style</h3>
 
         <label for="mockup-color-mode"><strong>Color pattern:</strong></label><br>
@@ -459,6 +460,16 @@
 <button id="mockup-trace-stop">Stop tracing</button>
 <br><br>
 
+    <h3>Tree / shrub free-form lights</h3>
+<p class="small-note">
+  Click <strong>Trace tree / shrub lights</strong>, then click and drag over the tree or shrub.
+  The tool will drop mini bulbs along your path. Release the mouse to stop.
+</p>
+<button id="mockup-trace-tree">Trace tree / shrub lights</button>
+<button id="mockup-stop-trace">Stop tracing</button>
+<button id="mockup-clear-trace">Clear traced lights</button>
+<br><br>
+
 <h3 style="margin-top:0.5rem;">Decorations</h3>
 <p class="small-note">
   Choose a decoration, click <strong>Place decorations</strong>, then click on the photo to drop it.
@@ -475,6 +486,13 @@
   <option value="star">Star / tree topper</option>
   <option value="mini-tree">Mini yard tree</option>
 </select><br><br>
+
+<label for="mockup-decor-image"><strong>Custom decoration image:</strong></label><br>
+<input type="file" id="mockup-decor-image" accept="image/*" style="width:220px;"><br>
+<span class="small-note">
+  Upload a small PNG/JPG, then choose "Custom uploaded image" above and place it on the photo.
+</span>
+<br><br>
 
 <button id="mockup-decor-mode">Place decorations</button>
 <button id="mockup-decor-edit">Edit decorations</button><br><br>
@@ -1464,6 +1482,12 @@ var mockDecorPlaceBtn     = document.getElementById('mockup-decor-mode');
 var mockDecorEditBtn      = document.getElementById('mockup-decor-edit');
 var mockDecorDeleteBtn    = document.getElementById('mockup-decor-delete');
 var mockDecorClearBtn     = document.getElementById('mockup-decor-clear');
+var mockDecorImageInput = document.getElementById('mockup-decor-image');
+
+  // Tree / shrub tracing UI
+  var treeTraceBtn      = document.getElementById('mockup-trace-tree');
+  var treeTraceStopBtn  = document.getElementById('mockup-stop-trace');
+  var treeTraceClearBtn = document.getElementById('mockup-clear-trace');
 
 // Decoration size / rotation buttons
 var decorSmallerBtn     = document.getElementById('decor-smaller');
@@ -1503,6 +1527,35 @@ var mockIsResizingDecor = false;
 var mockDecorDragOffset = { x: 0, y: 0 };
 var mockResizeStartDist = 0;
 var mockNextDecorId = 1;
+var mockCustomDecorImage = null;
+
+    // Custom decoration image upload
+  if (mockDecorImageInput) {
+    mockDecorImageInput.addEventListener('change', function (e) {
+      var file = e.target.files && e.target.files[0];
+      if (!file) {
+        mockCustomDecorImage = null;
+        return;
+      }
+
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        var img = new Image();
+        img.onload = function () {
+          mockCustomDecorImage = img;
+          mockSetInfo('Custom decoration image loaded. Select "Custom uploaded image" and click on the photo to place it.');
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Tree / shrub free-form mini lights
+  var mockIsTracingTree = false;
+  var mockTreeLastPoint = null;
+  var mockTreeBulbs = [];        // [{x,y}]
+  var TREE_TRACE_SPACING = 16;   // px between bulbs
 
 // Tree-trace state
 var mockIsTreeTraceEnabled = false;
@@ -2036,6 +2089,27 @@ function mockRedraw() {
       mockCtx.lineWidth = 1.1 * size;
       mockCtx.stroke();
 
+     } else if (deco.kind === 'custom-image') {
+      var baseWImg = 80 * size;
+      var baseHImg = 80 * size;
+
+      if (mockCustomDecorImage) {
+        var imgW = mockCustomDecorImage.width;
+        var imgH = mockCustomDecorImage.height;
+        var scaleImg = Math.min(baseWImg / imgW, baseHImg / imgH);
+        var drawW = imgW * scaleImg;
+        var drawH = imgH * scaleImg;
+        mockCtx.drawImage(mockCustomDecorImage, -drawW / 2, -drawH / 2, drawW, drawH);
+        
+      } else {
+        // fallback if no custom image is loaded
+        mockCtx.fillStyle = 'rgba(255,255,255,0.9)';
+        mockCtx.strokeStyle = '#444444';
+        mockCtx.lineWidth = 1.5;
+        mockCtx.fillRect(-baseWImg / 2, -baseHImg / 2, baseWImg, baseHImg);
+        mockCtx.strokeRect(-baseWImg / 2, -baseHImg / 2, baseWImg, baseHImg);
+      }
+
     } else if (deco.kind === 'mini-tree') {
       var treeH = 50 * size;
       var baseW = 30 * size;
@@ -2128,13 +2202,15 @@ if (mockImageInput && mockCtx && mockCanvas) {
         var offsetX = (cw - drawW) / 2;
         var offsetY = (ch - drawH) / 2;
 
-        mockDrawParams = { x: offsetX, y: offsetY, w: drawW, h: drawH };
-        mockSegments = [];
-        mockDecorations = [];
-        mockSelectedDecorId = null;
-        mockLastPoint = null;
-        mockMode = 'draw';
-        mockZoom = 1;
+          mockDrawParams = { x: offsetX, y: offsetY, w: drawW, h: drawH };
+          mockSegments = [];
+          mockDecorations = [];
+          mockTreeBulbs = [];
+          mockSelectedDecorId = null;
+          mockLastPoint = null;
+          mockMode = 'draw';
+          mockZoom = 1;
+
         mockApplyZoom();
         mockDrawBase();
         mockSyncDecorationsToEstimate();
@@ -2147,6 +2223,31 @@ if (mockImageInput && mockCtx && mockCanvas) {
     reader.readAsDataURL(file);
   });
 }
+    // 1b) Tree / shrub free-form bulbs
+    if (mockTreeBulbs.length) {
+      for (var tb = 0; tb < mockTreeBulbs.length; tb++) {
+        var p = mockTreeBulbs[tb];
+
+        mockCtx.save();
+        mockCtx.translate(p.x, p.y);
+
+        // soft warm glow
+        mockCtx.beginPath();
+        mockCtx.globalAlpha = 0.28;
+        mockCtx.fillStyle = '#fff7cc';
+        mockCtx.arc(0, 0, 5, 0, Math.PI * 2);
+        mockCtx.fill();
+        mockCtx.globalAlpha = 1;
+
+        // mini bulb core
+        mockCtx.beginPath();
+        mockCtx.fillStyle = '#ffffff';
+        mockCtx.arc(0, 0, 2.2, 0, Math.PI * 2);
+        mockCtx.fill();
+
+        mockCtx.restore();
+      }
+    }
 
 // --- Canvas interactions (click / drag) --------------------
 
@@ -2154,6 +2255,8 @@ if (mockCanvas && mockCtx) {
   // Click: draw runs or add decorations
   mockCanvas.addEventListener('click', function (evt) {
     if (!mockImage) return;
+    
+    if (mockMode === 'trace-tree') return;
 
     // Adjust and decor-edit are handled via mousedown/mousemove only
     if (mockMode === 'adjust' || mockMode === 'decor-edit') return;
@@ -2180,9 +2283,44 @@ if (mockCanvas && mockCtx) {
   });
 
   // mousedown: segment adjust OR decoration drag/resize OR start tree trace
+        // free-form tree / shrub tracing
+      if (mockMode === 'trace-tree' && mockIsTracingTree) {
+        if (!mockTreeLastPoint) {
+          mockTreeLastPoint = pt;
+          mockTreeBulbs.push({ x: pt.x, y: pt.y });
+          mockRedraw();
+          return;
+        }
+
+        var last = mockTreeLastPoint;
+        var dist = mockPointDistance(pt, last);
+
+        if (dist >= TREE_TRACE_SPACING) {
+          // if the user moved quickly, add multiple bulbs along the line
+          var steps = Math.max(1, Math.floor(dist / TREE_TRACE_SPACING));
+          for (var s = 1; s <= steps; s++) {
+            var t = s / steps;
+            var bx = last.x + (pt.x - last.x) * t;
+            var by = last.y + (pt.y - last.y) * t;
+            mockTreeBulbs.push({ x: bx, y: by });
+          }
+          mockTreeLastPoint = pt;
+          mockRedraw();
+        }
+        return;
+      }
+
   mockCanvas.addEventListener('mousedown', function (evt) {
     if (!mockImage) return;
     var pt = mockCanvasPoint(evt);
+
+        if (mockMode === 'trace-tree') {
+        mockIsTracingTree = true;
+        mockTreeLastPoint = pt;
+        mockTreeBulbs.push({ x: pt.x, y: pt.y });
+        mockRedraw();
+        return;
+      }
 
     // Tree trace drag
     if (mockIsTreeTraceEnabled) {
@@ -2305,6 +2443,13 @@ if (mockCanvas && mockCtx) {
       mockTreeTraceLastPoint = null;
       mockSetInfo('Tree trace stroke finished.');
     }
+
+        function mockStopDrag() {
+      if (mockIsTracingTree) {
+        mockIsTracingTree = false;
+        mockTreeLastPoint = null;
+      }
+
     if (mockIsDraggingSegment) {
       mockIsDraggingSegment = false;
       mockDragSegmentIndex = -1;
@@ -2427,6 +2572,42 @@ if (mockDecorClearBtn) {
     mockSetInfo('All decorations cleared.');
   });
 }
+  // --- Tree / shrub tracing buttons --------------------------
+
+  if (treeTraceBtn) {
+    treeTraceBtn.addEventListener('click', function () {
+      if (!mockImage) {
+        mockSetInfo('Upload a photo first.');
+        return;
+      }
+      mockMode = 'trace-tree';
+      mockIsTracingTree = false;
+      mockTreeLastPoint = null;
+      mockSetInfo('Trace mode: click and drag over trees or shrubs to paint mini lights. Release to stop.');
+    });
+  }
+
+  if (treeTraceStopBtn) {
+    treeTraceStopBtn.addEventListener('click', function () {
+      mockIsTracingTree = false;
+      mockTreeLastPoint = null;
+      if (mockMode === 'trace-tree') {
+        mockSetInfo('Stopped tracing. Click again to keep tracing or "Clear traced lights" to remove them.');
+      }
+    });
+  }
+
+  if (treeTraceClearBtn) {
+    treeTraceClearBtn.addEventListener('click', function () {
+      if (!mockTreeBulbs.length) {
+        mockSetInfo('There are no traced mini lights to clear.');
+        return;
+      }
+      mockTreeBulbs = [];
+      mockRedraw();
+      mockSetInfo('All traced tree / shrub mini lights cleared.');
+    });
+  }
 
 // helper to get selected decoration
 function getSelectedDecoration() {
