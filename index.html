@@ -490,15 +490,16 @@
 
 <h3>Tree / shrub free-form lights</h3>
 <p class="small-note">
-  Click <strong>Trace tree / shrub lights</strong>, then click and drag over trees or shrubs.
-  The tool will drop mini bulbs along your path. Release the mouse to stop, then
-  trace again to add more.
+  Click <strong>Trace tree / shrub lights</strong>, then click and drag over the tree or shrub.
+  The tool will drop mini bulbs along your path. Release the mouse to stop.
+  Click again to add more. Use Undo / Clear to remove.
 </p>
 
-<button id="tree-trace-btn">Trace tree / shrub lights</button>
-<button id="tree-stop-btn">Stop tracing</button>
-<button id="tree-undo-btn">Undo last tree lights</button>
-<button id="tree-clear-btn">Clear all tree lights</button>
+<button id="tree-trace-start">Trace tree / shrub lights</button>
+<button id="tree-trace-stop">Stop tracing</button><br><br>
+
+<button id="tree-trace-undo">Undo last tree lights</button>
+<button id="tree-trace-clear">Clear all tree lights</button>
 
 <p class="small-note">
   Decoration added: mini-tree lights. Switch to "Edit decorations" mode to move or resize.
@@ -1481,10 +1482,17 @@ document.addEventListener('DOMContentLoaded', function () {
   var decorRotateLeftBtn  = document.getElementById('decor-rotate-left');
   var decorRotateRightBtn = document.getElementById('decor-rotate-right');
 
-  // Tree / shrub trace buttons
-  var mockTreeTraceBtn      = document.getElementById('mockup-tree-trace');
-  var mockTreeTraceStopBtn  = document.getElementById('mockup-tree-trace-stop');
-  var mockTreeTraceClearBtn = document.getElementById('mockup-tree-trace-clear');
+ // --- Tree / shrub free-form controls ---
+var treeTraceStartBtn = document.getElementById('tree-trace-start');
+var treeTraceStopBtn  = document.getElementById('tree-trace-stop');
+var treeTraceUndoBtn  = document.getElementById('tree-trace-undo');
+var treeTraceClearBtn = document.getElementById('tree-trace-clear');
+
+// Each trace is { points: [ {x,y}, ... ] }
+var treeFreeformTraces = [];
+var isTreeTracing      = false;
+var isTreeMouseDown    = false;
+var currentTreeTrace   = null;
 
   // Custom decoration image upload
   var mockDecorImageInput   = document.getElementById('mockup-decor-image');
@@ -1518,6 +1526,61 @@ var mockNextDecorId = 1;
   var mockTreeTracing = false;
   var mockCurrentTrace = [];         // [{x,y},...]
   var mockTreeTraces = [];           // array of traces
+
+  if (treeTraceStartBtn) {
+  treeTraceStartBtn.addEventListener('click', function () {
+    if (!mockImage) {
+      mockSetInfo('Upload a photo first, then trace trees/shrubs.');
+      return;
+    }
+    isTreeTracing    = true;
+    isTreeMouseDown  = false;
+    currentTreeTrace = null;
+
+    // Make sure we’re not showing adjust handles while tracing
+    mockMode = 'draw';
+    mockLastPoint = null;
+
+    mockSetInfo('Tree/shrub trace ON: click and drag over the tree. Release to stop.');
+  });
+}
+
+if (treeTraceStopBtn) {
+  treeTraceStopBtn.addEventListener('click', function () {
+    isTreeTracing    = false;
+    isTreeMouseDown  = false;
+    currentTreeTrace = null;
+    mockSetInfo('Tree/shrub trace OFF.');
+  });
+}
+
+if (treeTraceUndoBtn) {
+  treeTraceUndoBtn.addEventListener('click', function () {
+    if (!treeFreeformTraces.length) {
+      mockSetInfo('No tree lights to undo.');
+      return;
+    }
+    treeFreeformTraces.pop();
+    currentTreeTrace = null;
+    isTreeMouseDown  = false;
+    mockRedraw();
+    mockSetInfo('Last tree/shrub trace removed.');
+  });
+}
+
+if (treeTraceClearBtn) {
+  treeTraceClearBtn.addEventListener('click', function () {
+    if (!treeFreeformTraces.length) {
+      mockSetInfo('No tree lights to clear.');
+      return;
+    }
+    treeFreeformTraces = [];
+    currentTreeTrace   = null;
+    isTreeMouseDown    = false;
+    mockRedraw();
+    mockSetInfo('All tree/shrub lights cleared.');
+  });
+}
 
   // --- Helpers -----------------------------------------------
 
@@ -1854,6 +1917,33 @@ var mockNextDecorId = 1;
 
     // 2) Tree / shrub trace lights
     drawTreeTraces();
+
+   // --- Tree / shrub free-form mini lights (no background) ---
+  for (var t = 0; t < treeFreeformTraces.length; t++) {
+    var trace = treeFreeformTraces[t];
+    var pts   = trace.points;
+    if (!pts || !pts.length) continue;
+
+    for (var i = 0; i < pts.length; i++) {
+      var p = pts[i];
+
+      // soft warm glow
+      mockCtx.save();
+      mockCtx.beginPath();
+      mockCtx.globalAlpha = 0.30;
+      mockCtx.fillStyle = '#fff7d0';
+      mockCtx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+      mockCtx.fill();
+
+      // bright mini bulb core
+      mockCtx.globalAlpha = 1;
+      mockCtx.beginPath();
+      mockCtx.fillStyle = '#ffffff';
+      mockCtx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+      mockCtx.fill();
+      mockCtx.restore();
+    }
+  }
 
     // 3) Draw decorations on top
     for (var d = 0; d < mockDecorations.length; d++) {
@@ -2275,8 +2365,7 @@ var mockNextDecorId = 1;
   // --- Canvas interactions (click / drag) --------------------
 
   if (mockCanvas && mockCtx) {
-    // Click: draw runs or add decorations
-    mockCanvas.addEventListener('click', function (evt) {
+      mockCanvas.addEventListener('click', function (evt) {
       if (!mockImage) return;
 
       // Adjust and decor-edit and tree-trace are handled via mousedown/mousemove
@@ -2301,16 +2390,22 @@ var mockNextDecorId = 1;
     });
 
     // mousedown: segment adjust OR decoration drag/resize OR tree trace start
-    mockCanvas.addEventListener('mousedown', function (evt) {
-      if (!mockImage) return;
-      var pt = mockCanvasPoint(evt);
+   mockCanvas.addEventListener('mousedown', function (evt) {
+  if (!mockImage) return;
 
-      // Tree trace
-      if (mockMode === 'tree-trace') {
-        mockTreeTracing = true;
-        mockCurrentTrace = [pt];
-        return;
-      }
+  // --- Tree / shrub free-form: start a new trace on mousedown ---
+  if (isTreeTracing) {
+    var pt = mockCanvasPoint(evt);
+    currentTreeTrace = { points: [pt] };
+    treeFreeformTraces.push(currentTreeTrace);
+    isTreeMouseDown = true;
+    mockRedraw();
+    // We don’t want this click to start a normal segment/decor drag,
+    // so return early.
+    return;
+  }
+
+  // ... keep the rest of your existing mousedown logic below ...
 
       mockIsDraggingSegment = false;
       mockIsDraggingDecor = false;
@@ -2363,18 +2458,25 @@ var mockNextDecorId = 1;
     });
 
     // mousemove: update drag / trace
-    mockCanvas.addEventListener('mousemove', function (evt) {
-      if (!mockImage) return;
-      var pt = mockCanvasPoint(evt);
+   mockCanvas.addEventListener('mousemove', function (evt) {
+  if (!mockImage) return;
 
-      if (mockMode === 'tree-trace' && mockTreeTracing) {
-        var last = mockCurrentTrace[mockCurrentTrace.length - 1];
-        if (!last || mockPointDistance(last, pt) > 4) {
-          mockCurrentTrace.push(pt);
-          mockRedraw();
-        }
-        return;
-      }
+  // --- Tree / shrub free-form: add points along drag path ---
+  if (isTreeTracing && isTreeMouseDown && currentTreeTrace) {
+    var pt  = mockCanvasPoint(evt);
+    var pts = currentTreeTrace.points;
+    var last = pts.length ? pts[pts.length - 1] : null;
+
+    // Only add if we’ve moved a bit, so we don’t spam too many bulbs
+    if (!last || mockPointDistance(pt, last) > 6) {
+      pts.push(pt);
+      mockRedraw();
+    }
+    // Don’t run segment / decoration drag logic when tracing
+    return;
+  }
+
+  // ... keep your existing segment/decoration drag logic below ...
 
       if (mockMode === 'adjust' && mockIsDraggingSegment) {
         var seg = mockSegments[mockDragSegmentIndex];
@@ -2410,25 +2512,26 @@ var mockNextDecorId = 1;
       }
     });
 
-    function mockStopDrag() {
-      // finish any tree trace
-      if (mockTreeTracing || mockCurrentTrace.length > 1) {
-        finishCurrentTreeTrace();
-        mockRedraw();
-      }
+   function mockStopDrag() {
+  // --- Stop tree tracing on mouseup/mouseleave ---
+  if (isTreeMouseDown) {
+    isTreeMouseDown  = false;
+    currentTreeTrace = null;
+  }
 
-      if (mockIsDraggingSegment) {
-        mockIsDraggingSegment = false;
-        mockDragSegmentIndex = -1;
-        mockDragSegmentEnd = null;
-        mockSetInfo('Light run endpoint adjusted.');
-      }
-      if (mockIsDraggingDecor || mockIsResizingDecor) {
-        mockIsDraggingDecor = false;
-        mockIsResizingDecor = false;
-        mockSetInfo('Decoration updated.');
-      }
-    }
+  // existing code that stops segment/decoration drags...
+  if (mockIsDraggingSegment) {
+    mockIsDraggingSegment = false;
+    mockDragSegmentIndex  = -1;
+    mockDragSegmentEnd    = null;
+    mockSetInfo('Light run endpoint adjusted.');
+  }
+  if (mockIsDraggingDecor || mockIsResizingDecor) {
+    mockIsDraggingDecor = false;
+    mockIsResizingDecor = false;
+    mockSetInfo('Decoration updated.');
+  }
+}
 
     mockCanvas.addEventListener('mouseup', mockStopDrag);
     mockCanvas.addEventListener('mouseleave', mockStopDrag);
