@@ -450,6 +450,15 @@
         <button id="mockup-adjust-mode">Adjust lines</button>
         <button id="mockup-clear">Clear all lines</button><br><br>
 
+        <h3 style="margin-top:0.5rem;">Tree / shrub free-form lights</h3>
+        <p class="small-note">
+        Click <strong>Trace tree / shrub lights</strong>, then click and drag over trees or shrubs.
+        The tool will drop mini bulbs along your path. Release the mouse to stop, then trace again to add more.
+        </p>
+        <button id="mockup-tree-paint">Trace tree / shrub lights</button>
+        <button id="mockup-tree-paint-stop">Stop tracing</button>
+        <br><br>
+
         <h3 style="margin-top:0.5rem;">Decorations</h3>
         <p class="small-note">
         Choose a decoration, click <strong>Place decorations</strong>, then click on the photo to drop it.
@@ -475,6 +484,13 @@
   <option value="santa">Santa silhouette</option>
   <option value="reindeer">Reindeer silhouette</option>
 </select><br><br>
+
+      <label for="mockup-decor-image-input"><strong>Upload custom decoration (PNG/JPG)</strong></label><br>
+      <input type="file" id="mockup-decor-image-input" accept="image/*">
+      <p class="small-note">
+        After upload, use <strong>Edit decorations</strong> to move, resize, and rotate your custom image.
+      </p>
+      <br>
 
         <!-- These IDs MUST match the JS -->
         <button id="mockup-decor-mode">Place decorations</button>
@@ -1491,6 +1507,37 @@ document.addEventListener('DOMContentLoaded', function () {
   var mockDecorEditBtn      = document.getElementById('mockup-decor-edit');
   var mockDecorDeleteBtn    = document.getElementById('mockup-decor-delete');
   var mockDecorClearBtn     = document.getElementById('mockup-decor-clear');
+  var mockDecorImageInput   = document.getElementById('mockup-decor-image-input');
+
+  if (mockDecorImageInput) {
+  mockDecorImageInput.addEventListener('change', function (e) {
+    if (!mockCanvas) return;
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var img = new Image();
+      img.onload = function () {
+        var deco = {
+          id: mockNextDecorId++,
+          x: mockCanvas.width / 2,
+          y: mockCanvas.height / 2,
+          kind: 'image',
+          size: 1,
+          rotation: 0,
+          image: img
+        };
+        mockDecorations.push(deco);
+        mockSelectedDecorId = deco.id;
+        mockRedraw();
+        mockSetInfo('Custom decoration added. Use "Edit decorations" to move, resize, or rotate.');
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
   // Estimate decoration inputs – auto-filled from mockup
   // (re-using the same elements from Estimate tab)
@@ -1511,6 +1558,11 @@ document.addEventListener('DOMContentLoaded', function () {
   var mockZoom = 1;
   var MOCK_ZOOM_MIN = 0.5;
   var MOCK_ZOOM_MAX = 3;
+
+  // Free-form tree / shrub lights (painted bulbs)
+  var mockTreePaintPoints = [];        // [{x,y}]
+  var mockIsTreePainting = false;
+  var mockTreePaintSpacing = 10;       // pixels between bulbs while dragging
 
   // Segment adjust state
   var mockIsDraggingSegment = false;
@@ -1534,6 +1586,29 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!mockCanvas) return;
     mockCanvas.style.transformOrigin = '0 0';
     mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
+  }
+  
+  } else if (deco.kind === 'image' && deco.image) {
+    var imgW = deco.image.width;
+    var imgH = deco.image.height;
+
+    // keep image roughly within 100–140px box, scaled by deco.size
+    var maxDim = 100 * (deco.size || 1);
+    var scale = Math.min(maxDim / imgW, maxDim / imgH);
+    var drawW = imgW * scale;
+    var drawH = imgH * scale;
+
+    // draw image centered at (0,0) in transformed space
+    mockCtx.globalAlpha = 0.98;
+    mockCtx.drawImage(deco.image, -drawW / 2, -drawH / 2, drawW, drawH);
+    mockCtx.globalAlpha = 1;
+
+  } else {
+    // generic dot fallback
+    mockCtx.beginPath();
+    mockCtx.fillStyle = '#ff00ff';
+    mockCtx.arc(0, 0, 6 * size, 0, Math.PI * 2);
+    mockCtx.fill();
   }
 
   function mockDrawBase() {
@@ -2546,7 +2621,38 @@ for (var d = 0; d < mockDecorations.length; d++) {
       mockRedraw();
     });
 
+      // 1b) Free-form tree / shrub bulbs
+  for (var p = 0; p < mockTreePaintPoints.length; p++) {
+    var ptBulb = mockTreePaintPoints[p];
+    mockDrawMiniBulb(ptBulb.x, ptBulb.y, 1);
+  }
+
     // mousedown: segment adjust OR decoration drag/resize
+    mockCanvas.addEventListener('mousedown', function (evt) {
+    if (!mockImage) return;
+    var pt = mockCanvasPoint(evt);
+
+    mockIsDraggingSegment = false;
+    mockIsDraggingDecor = false;
+    mockIsResizingDecor = false;
+
+  // NEW: start tree / shrub painting
+  if (mockMode === 'tree-paint') {
+    mockIsTreePainting = true;
+    mockLastPoint = pt;
+    mockTreePaintPoints.push({ x: pt.x, y: pt.y });
+    mockDrawBase();
+    mockRedraw();        // will include new points
+    return;
+  }
+
+  if (mockMode === 'adjust') {
+    // ... existing segment hit-testing ...
+  } else if (mockMode === 'decor-edit') {
+    // ... existing decoration edit logic ...
+  }
+});
+
     mockCanvas.addEventListener('mousedown', function (evt) {
       if (!mockImage) return;
       var pt = mockCanvasPoint(evt);
@@ -2640,20 +2746,59 @@ for (var d = 0; d < mockDecorations.length; d++) {
       }
     });
 
-    function mockStopDrag() {
-      if (mockIsDraggingSegment) {
-        mockIsDraggingSegment = false;
-        mockDragSegmentIndex = -1;
-        mockDragSegmentEnd = null;
-        mockSetInfo('Light run endpoint adjusted.');
-      }
-      if (mockIsDraggingDecor || mockIsResizingDecor) {
-        mockIsDraggingDecor = false;
-        mockIsResizingDecor = false;
-        mockSetInfo('Decoration updated.');
+    mockCanvas.addEventListener('mousemove', function (evt) {
+  if (!mockImage) return;
+  var pt = mockCanvasPoint(evt);
+
+  // NEW: free-form tree / shrub lights
+  if (mockMode === 'tree-paint' && mockIsTreePainting) {
+    if (!mockLastPoint) {
+      mockLastPoint = pt;
+      mockTreePaintPoints.push({ x: pt.x, y: pt.y });
+    } else {
+      var dx = pt.x - mockLastPoint.x;
+      var dy = pt.y - mockLastPoint.y;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist >= mockTreePaintSpacing) {
+        mockTreePaintPoints.push({ x: pt.x, y: pt.y });
+        mockLastPoint = pt;
       }
     }
+    mockRedraw();
+    return;
+  }
 
+  // existing logic for segment adjust
+  if (mockMode === 'adjust' && mockIsDraggingSegment) {
+    // ... as before ...
+  }
+
+  // existing logic for decoration drag/resize
+  if (mockMode === 'decor-edit' &&
+      (mockIsDraggingDecor || mockIsResizingDecor) &&
+      mockSelectedDecorId != null) {
+    // ... as before ...
+  }
+});
+
+   function mockStopDrag() {
+  if (mockIsDraggingSegment) {
+    mockIsDraggingSegment = false;
+    mockDragSegmentIndex = -1;
+    mockDragSegmentEnd = null;
+    mockSetInfo('Light run endpoint adjusted.');
+  }
+  if (mockIsDraggingDecor || mockIsResizingDecor) {
+    mockIsDraggingDecor = false;
+    mockIsResizingDecor = false;
+    mockSetInfo('Decoration updated.');
+  }
+  if (mockIsTreePainting) {
+    mockIsTreePainting = false;
+    mockLastPoint = null;
+    mockSetInfo('Finished tree / shrub trace. Click and drag again to add more lights.');
+  }
+}
     mockCanvas.addEventListener('mouseup', mockStopDrag);
     mockCanvas.addEventListener('mouseleave', mockStopDrag);
   }
@@ -2848,6 +2993,33 @@ if (mockDecorDuplicateBtn) {
     });
   }
 
+  var mockTreePaintBtn      = document.getElementById('mockup-tree-paint');
+  var mockTreePaintStopBtn  = document.getElementById('mockup-tree-paint-stop');
+
+if (mockTreePaintBtn) {
+  mockTreePaintBtn.addEventListener('click', function () {
+    if (!mockImage) {
+      mockSetInfo('Upload a photo first.');
+      return;
+    }
+    mockMode = 'tree-paint';
+    mockIsTreePainting = false;
+    mockLastPoint = null;
+    mockSetInfo('Tree / shrub tracing mode: click and drag over the tree to drop mini bulbs.');
+  });
+}
+
+if (mockTreePaintStopBtn) {
+  mockTreePaintStopBtn.addEventListener('click', function () {
+    if (mockMode === 'tree-paint') {
+      mockMode = 'draw';
+      mockIsTreePainting = false;
+      mockLastPoint = null;
+      mockSetInfo('Stopped tree / shrub tracing. Back to normal draw mode.');
+    }
+  });
+}
+
   if (mockAdjustBtn) {
     mockAdjustBtn.addEventListener('click', function () {
       if (!mockImage) {
@@ -2858,6 +3030,27 @@ if (mockDecorDuplicateBtn) {
         mockSetInfo('Draw some runs first, then adjust.');
         return;
       }
+      function mockDrawMiniBulb(x, y, sizeFactor) {
+  if (!mockCtx) return;
+
+  var size = (sizeFactor || 1);
+  var bulbRadius = 3.2 * size;
+  var glowRadius = 6.0 * size;
+
+  // soft warm glow
+  mockCtx.beginPath();
+  mockCtx.globalAlpha = 0.32;
+  mockCtx.fillStyle = '#fff7cc';     // warm white
+  mockCtx.arc(x, y, glowRadius, 0, Math.PI * 2);
+  mockCtx.fill();
+  mockCtx.globalAlpha = 1;
+
+  // bright core
+  mockCtx.beginPath();
+  mockCtx.fillStyle = '#fffff5';
+  mockCtx.arc(x, y, bulbRadius, 0, Math.PI * 2);
+  mockCtx.fill();
+}
       mockMode = 'adjust';
       mockLastPoint = null;
       mockSetInfo('Adjust mode: drag the cyan end points to fine-tune your runs.');
