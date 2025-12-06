@@ -1116,7 +1116,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // -----------------------------
+// -----------------------------
 // Photo Mockup (visual-only color designer with zoom + adjust + decorations + tree trace)
 // -----------------------------
 var mockImageInput = document.getElementById('mockup-image-input');
@@ -1160,9 +1160,19 @@ var decorRotateLeftBtn  = document.getElementById('decor-rotate-left');
 var decorRotateRightBtn = document.getElementById('decor-rotate-right');
 
 // Tree / shrub trace buttons
-var treeTraceBtn      = document.getElementById('tree-trace-button');
-var treeTraceUndoBtn  = document.getElementById('tree-trace-undo');
-var treeTraceClearBtn = document.getElementById('tree-trace-clear');
+var treeTraceBtn   = document.getElementById('tree-trace-button');
+var treeTraceUndo  = document.getElementById('tree-trace-undo');
+var treeTraceClear = document.getElementById('tree-trace-clear');
+
+if (treeTraceBtn) {
+  treeTraceBtn.addEventListener('click', function () {
+    mockMode = 'tree-trace';
+    treeTraceMode = true;
+    treeTraceCurrent = [];
+    treeTraceDrawing = false;
+    mockSetInfo('Tree / shrub trace: click and drag around the tree/shrub, release to finish.');
+  });
+}
 
 // Core state
 var mockImage = null;
@@ -1191,7 +1201,8 @@ var mockNextDecorId = 1;
 // Tree / shrub free-form trace state
 var treeTraceMode    = false;
 var treeTraceCurrent = [];           // [{x,y},...]
-var treeTraceShapes  = [];           // array of polygons
+var treeTraceShapes  = []; // array of polygons
+var treeTraceDrawing = false; // true only while the mouse is held down in tree-trace mode
 
 function mockSetInfo(text) {
   if (mockInfo) mockInfo.textContent = text;
@@ -1665,89 +1676,36 @@ function mockRedraw() {
         mockCtx.fill();
       }
 
-    } else if (deco.kind === 'tree-wrap') {
-      var trunkH = 45 * size;
-      var trunkW = 10 * size;
-      mockCtx.fillStyle = '#8b5a2b';
-      mockCtx.fillRect(-trunkW / 2, 5 * size, trunkW, trunkH);
+      } else if (deco.kind === 'tree-wrap') {
+      // Lights-only "wrapped tree" cluster – no trunk/canopy shape.
+      var clusterR = 35 * size;
+      var ringSteps = 5;    // number of rings
+      var bulbsPerRing = 20;
 
-      var canopyR = 24 * size;
-      mockCtx.beginPath();
-      mockCtx.fillStyle = '#0b3d0b';
-      if (mockCtx.ellipse) {
-        mockCtx.ellipse(0, -trunkH * 0.15, canopyR * 1.1, canopyR, 0, 0, Math.PI * 2);
-      } else {
-        mockCtx.arc(0, -trunkH * 0.15, canopyR, 0, Math.PI * 2);
-      }
-      mockCtx.fill();
+      for (var ring = 1; ring <= ringSteps; ring++) {
+        var rRing = (clusterR * ring) / ringSteps;
+        for (var b = 0; b < bulbsPerRing; b++) {
+          var a = (2 * Math.PI * b) / bulbsPerRing;
+          var bx = Math.cos(a) * rRing * 0.75;
+          var by = Math.sin(a) * rRing;
 
-      var lights = 26;
-      for (var rI = 0; rI < lights; rI++) {
-        var tL = rI / (lights - 1);
-        var ang = tL * 4 * Math.PI;
-        var rL = canopyR * 0.3 + tL * canopyR * 0.7;
-        var xT = Math.cos(ang) * rL * 0.7;
-        var yT = -trunkH * 0.15 + (tL - 0.5) * canopyR * 1.2;
-
-        mockCtx.beginPath();
-        mockCtx.globalAlpha = 0.28;
-        mockCtx.fillStyle = '#fff7cc';
-        mockCtx.arc(xT, yT, 5 * size, 0, Math.PI * 2);
-        mockCtx.fill();
-        mockCtx.globalAlpha = 1;
-
-        mockCtx.beginPath();
-        mockCtx.fillStyle = '#ffffee';
-        mockCtx.arc(xT, yT, 2 * size, 0, Math.PI * 2);
-        mockCtx.fill();
-      }
-
-    } else if (deco.kind === 'net') {
-      var wN = 70 * size;
-      var hN = 45 * size;
-
-      mockCtx.beginPath();
-      mockCtx.fillStyle = '#0b3d0b';
-      if (mockCtx.ellipse) {
-        mockCtx.ellipse(0, 0, wN / 2, hN / 2, 0, 0, Math.PI * 2);
-      } else {
-        mockCtx.arc(0, 0, Math.max(wN, hN) / 2, 0, Math.PI * 2);
-      }
-      mockCtx.fill();
-
-      mockCtx.beginPath();
-      mockCtx.strokeStyle = 'rgba(255,255,255,0.15)';
-      mockCtx.lineWidth = 1.2 * size;
-      if (mockCtx.ellipse) {
-        mockCtx.ellipse(0, 0, wN / 2, hN / 2, 0, 0, Math.PI * 2);
-      } else {
-        mockCtx.arc(0, 0, Math.max(wN, hN) / 2, 0, Math.PI * 2);
-      }
-      mockCtx.stroke();
-
-      var rows = 4;
-      var cols = 7;
-      for (var rN = 0; rN < rows; rN++) {
-        for (var cN = 0; cN < cols; cN++) {
-          var xN = -wN / 2 + (wN * cN) / (cols - 1);
-          var yN = -hN / 2 + (hN * rN) / (rows - 1);
-          xN += (rN % 2 === 0 ? 1 : -1) * 1.5 * size;
-
+          // glow
           mockCtx.beginPath();
-          mockCtx.globalAlpha = 0.28;
-          mockCtx.fillStyle = '#fff7cc';
-          mockCtx.arc(xN, yN, 5 * size, 0, Math.PI * 2);
+          mockCtx.globalAlpha = 0.30;
+          mockCtx.fillStyle = warmGlow;
+          mockCtx.arc(bx, by, 5 * size, 0, Math.PI * 2);
           mockCtx.fill();
-          mockCtx.globalAlpha = 1;
 
+          // core
           mockCtx.beginPath();
-          mockCtx.fillStyle = '#fffff5';
-          mockCtx.arc(xN, yN, 2 * size, 0, Math.PI * 2);
+          mockCtx.globalAlpha = 1;
+          mockCtx.fillStyle = warmCore;
+          mockCtx.arc(bx, by, 2.2 * size, 0, Math.PI * 2);
           mockCtx.fill();
         }
       }
 
-    } else if (deco.kind === 'star') {
+      } else if (deco.kind === 'star') {
       var outerR = 20 * size;
       var innerR = outerR * 0.45;
 
@@ -1777,46 +1735,35 @@ function mockRedraw() {
       mockCtx.lineWidth = 1.1 * size;
       mockCtx.stroke();
 
-    } else if (deco.kind === 'mini-tree') {
-      var treeH = 50 * size;
-      var baseW = 30 * size;
+       } else if (deco.kind === 'net') {
+      // Lights-only shrub / net cluster – no green shrub shape.
+      var wN = 80 * size;
+      var hN = 50 * size;
+      var rows = 5;
+      var cols = 10;
 
-      mockCtx.beginPath();
-      mockCtx.fillStyle = '#0b3d0b';
-      mockCtx.moveTo(-baseW / 2, 15 * size);
-      mockCtx.lineTo(0, -treeH / 2);
-      mockCtx.lineTo(baseW / 2, 15 * size);
-      mockCtx.closePath();
-      mockCtx.fill();
+      for (var rN = 0; rN < rows; rN++) {
+        for (var cN = 0; cN < cols; cN++) {
+          var xN = -wN / 2 + (wN * cN) / (cols - 1);
+          var yN = -hN / 2 + (hN * rN) / (rows - 1);
 
-      mockCtx.beginPath();
-      mockCtx.moveTo(-baseW * 0.35, -5 * size);
-      mockCtx.lineTo(0, -treeH * 0.9);
-      mockCtx.lineTo(baseW * 0.35, -5 * size);
-      mockCtx.closePath();
-      mockCtx.fill();
+          // rounded / organic feel – small vertical jitter
+          yN += (cN % 2 === 0 ? 1 : -1) * 2 * size;
 
-      mockCtx.fillStyle = '#8b5a2b';
-      mockCtx.fillRect(-4 * size, 15 * size, 8 * size, 12 * size);
+          // glow
+          mockCtx.beginPath();
+          mockCtx.globalAlpha = 0.30;
+          mockCtx.fillStyle = warmGlow;
+          mockCtx.arc(xN, yN, 4.5 * size, 0, Math.PI * 2);
+          mockCtx.fill();
 
-      var bulbsT = 20;
-      for (var bt = 0; bt < bulbsT; bt++) {
-        var tT = bt / (bulbsT - 1);
-        var yB = 10 * size - tT * (treeH * 0.9);
-        var halfW = (baseW / 2) * (0.3 + 0.7 * (1 - tT));
-        var xB = (bt % 2 === 0 ? -1 : 1) * halfW * 0.6;
-
-        mockCtx.beginPath();
-        mockCtx.globalAlpha = 0.3;
-        mockCtx.fillStyle = '#fff7cc';
-        mockCtx.arc(xB, yB, 4.5 * size, 0, Math.PI * 2);
-        mockCtx.fill();
-        mockCtx.globalAlpha = 1;
-
-        mockCtx.beginPath();
-        mockCtx.fillStyle = '#ffffff';
-        mockCtx.arc(xB, yB, 2 * size, 0, Math.PI * 2);
-        mockCtx.fill();
+          // core
+          mockCtx.beginPath();
+          mockCtx.globalAlpha = 1;
+          mockCtx.fillStyle = warmCore;
+          mockCtx.arc(xN, yN, 2 * size, 0, Math.PI * 2);
+          mockCtx.fill();
+        }
       }
 
     } else {
@@ -1916,12 +1863,19 @@ if (mockCanvas && mockCtx) {
     if (!mockImage) return;
 
     var pt = mockCanvasPoint(evt);
-
-    // Tree trace mode: clicking adds vertices only
-    if (treeTraceMode) {
+    // --- Tree / shrub free-form trace: collect stroke points ---
+    if (mockMode === 'tree-trace' && treeTraceDrawing) {
       treeTraceCurrent.push(pt);
       mockRedraw();
       return;
+    }
+
+     // --- Tree / shrub free-form trace: start drag ---
+    if (mockMode === 'tree-trace') {
+      treeTraceDrawing = true;
+      treeTraceCurrent = [pt];   // start new path
+      mockRedraw();
+      return; // do not fall through to other modes
     }
 
     // Adjust and decor-edit are handled via mousedown/mousemove only
@@ -1968,6 +1922,14 @@ if (mockCanvas && mockCtx) {
     if (!mockImage) return;
     if (treeTraceMode) return; // no drag in tree trace mode
     var pt = mockCanvasPoint(evt);
+    
+    // --- Tree / shrub free-form trace: start drag ---
+    if (mockMode === 'tree-trace') {
+      treeTraceDrawing = true;
+      treeTraceCurrent = [pt];   // start new path
+      mockRedraw();
+      return; // do not fall through to other modes
+    }
 
     mockIsDraggingSegment = false;
     mockIsDraggingDecor = false;
@@ -2023,7 +1985,14 @@ if (mockCanvas && mockCtx) {
   mockCanvas.addEventListener('mousemove', function (evt) {
     if (!mockImage) return;
     var pt = mockCanvasPoint(evt);
-
+    
+    // --- Tree / shrub free-form trace: collect stroke points ---
+    if (mockMode === 'tree-trace' && treeTraceDrawing) {
+      treeTraceCurrent.push(pt);
+      mockRedraw();
+      return;
+    }
+   
     if (mockMode === 'adjust' && mockIsDraggingSegment) {
       var seg = mockSegments[mockDragSegmentIndex];
       if (!seg) return;
@@ -2073,8 +2042,34 @@ if (mockCanvas && mockCtx) {
   }
 
   mockCanvas.addEventListener('mouseup', mockStopDrag);
+  mockCanvas.addEventListener('mouseup', function () {
+    if (mockMode === 'tree-trace' && treeTraceDrawing) {
+      treeTraceDrawing = false;
+
+      // if the user actually dragged a bit, save the shape
+      if (treeTraceCurrent && treeTraceCurrent.length > 5) {
+        treeTraceShapes.push(treeTraceCurrent.slice());
+      }
+
+      treeTraceCurrent = [];
+      mockRedraw();
+      return;
+    }
+
+    // existing code for stopping segment/decoration drags follows...
+  });
+
   mockCanvas.addEventListener('mouseleave', mockStopDrag);
-}
+  mockCanvas.addEventListener('mouseleave', function () {
+    if (mockMode === 'tree-trace' && treeTraceDrawing) {
+      treeTraceDrawing = false;
+      treeTraceCurrent = [];
+      mockRedraw();
+      return;
+    }
+
+    // existing segment/decoration drag stop code...
+  });
 
 // --- Undo / new run / adjust / clear for light runs --------
 
