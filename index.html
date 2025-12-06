@@ -2218,6 +2218,179 @@ document.addEventListener('DOMContentLoaded', function () {
       mockRedraw();
     });
   }
+  // ============================================================
+  // Tree / shrub free-form mini-lights + Print fix
+  // ============================================================
+
+  // Buttons in the "Tree / shrub free-form lights" section
+  var mockTreeTraceBtn = document.getElementById('mock-tree-trace');
+  var mockTreeStopBtn  = document.getElementById('mock-tree-stop');
+  var mockTreeUndoBtn  = document.getElementById('mock-tree-undo');
+  var mockTreeClearBtn = document.getElementById('mock-tree-clear');
+
+  // Internal state for tree tracing
+  var treeTraceActive   = false;
+  var treeTraceDrawing  = false;
+  var treeTraces        = [];   // each trace: [{x,y}, {x,y}, ...]
+  var treeCurrentTrace  = null;
+
+  // Draw all tree traces as dense nets of mini bulbs
+  function drawTreeTraces() {
+    if (!mockCtx || !mockCanvas || !treeTraces.length) return;
+
+    mockCtx.save();
+
+    for (var i = 0; i < treeTraces.length; i++) {
+      var trace = treeTraces[i];
+      if (!trace || trace.length < 2) continue;
+
+      var step = 10; // pixels between bulbs
+
+      for (var j = 0; j < trace.length - 1; j++) {
+        var p1 = trace[j];
+        var p2 = trace[j + 1];
+
+        var dx = p2.x - p1.x;
+        var dy = p2.y - p1.y;
+        var len = Math.sqrt(dx * dx + dy * dy);
+        if (len === 0) continue;
+
+        var bulbs = Math.max(1, Math.round(len / step));
+
+        for (var b = 0; b <= bulbs; b++) {
+          var t = bulbs === 0 ? 0 : b / bulbs;
+          var x = p1.x + dx * t;
+          var y = p1.y + dy * t;
+
+          // soft glow
+          mockCtx.beginPath();
+          mockCtx.globalAlpha = 0.25;
+          mockCtx.fillStyle = '#fff7cc';
+          mockCtx.arc(x, y, 5, 0, Math.PI * 2);
+          mockCtx.fill();
+
+          // bright core
+          mockCtx.beginPath();
+          mockCtx.globalAlpha = 1;
+          mockCtx.fillStyle = '#ffffff';
+          mockCtx.arc(x, y, 2.3, 0, Math.PI * 2);
+          mockCtx.fill();
+        }
+      }
+    }
+
+    mockCtx.restore();
+  }
+
+  // Wrap the existing mockRedraw so tree lights are always drawn on top
+  if (typeof mockRedraw === 'function') {
+    var _origMockRedraw = mockRedraw;
+    mockRedraw = function () {
+      _origMockRedraw();
+      drawTreeTraces();
+    };
+  }
+
+  // Canvas interactions for tree tracing
+  if (mockCanvas) {
+    // Start a new trace on mousedown
+    mockCanvas.addEventListener('mousedown', function (evt) {
+      if (!treeTraceActive || !mockImage) return;
+
+      var pt = mockCanvasPoint(evt);
+
+      treeTraceDrawing = true;
+      treeCurrentTrace = [pt];
+      treeTraces.push(treeCurrentTrace);
+
+      mockRedraw();
+    });
+
+    // Add points as you drag
+    mockCanvas.addEventListener('mousemove', function (evt) {
+      if (!treeTraceActive || !treeTraceDrawing || !treeCurrentTrace) return;
+
+      var pt = mockCanvasPoint(evt);
+      var last = treeCurrentTrace[treeCurrentTrace.length - 1];
+      if (!last) return;
+
+      var dx = pt.x - last.x;
+      var dy = pt.y - last.y;
+      if (dx * dx + dy * dy < 16) {
+        // too close; skip to keep array smaller
+        return;
+      }
+
+      treeCurrentTrace.push(pt);
+      mockRedraw();
+    });
+
+    // Stop tracing on mouseup anywhere
+    window.addEventListener('mouseup', function () {
+      if (!treeTraceActive) return;
+      treeTraceDrawing = false;
+      treeCurrentTrace = null;
+    });
+  }
+
+  // Button wiring for tree / shrub controls
+  if (mockTreeTraceBtn) {
+    mockTreeTraceBtn.addEventListener('click', function () {
+      if (!mockImage) {
+        mockSetInfo('Upload a photo first, then drag over the tree or shrub to drop mini bulbs.');
+        return;
+      }
+      treeTraceActive = true;
+      mockSetInfo('Tree / shrub trace: click and drag over foliage to drop a net of mini bulbs.');
+    });
+  }
+
+  if (mockTreeStopBtn) {
+    mockTreeStopBtn.addEventListener('click', function () {
+      treeTraceActive = false;
+      treeTraceDrawing = false;
+      treeCurrentTrace = null;
+      mockSetInfo('Tree tracing stopped. Click "Trace tree / shrub lights" to start again.');
+    });
+  }
+
+  if (mockTreeUndoBtn) {
+    mockTreeUndoBtn.addEventListener('click', function () {
+      if (!treeTraces.length) {
+        mockSetInfo('No tree lights to undo.');
+        return;
+      }
+      treeTraces.pop();
+      treeCurrentTrace = null;
+      mockRedraw();
+      mockSetInfo('Last traced tree / shrub lights removed.');
+    });
+  }
+
+  if (mockTreeClearBtn) {
+    mockTreeClearBtn.addEventListener('click', function () {
+      if (!treeTraces.length) {
+        mockSetInfo('There are no tree lights to clear.');
+        return;
+      }
+      treeTraces = [];
+      treeCurrentTrace = null;
+      treeTraceDrawing = false;
+      mockRedraw();
+      mockSetInfo('All tree / shrub lights cleared.');
+    });
+  }
+
+  // Make sure the Print / Save button always works
+  var mockPrintBtn = document.getElementById('mockup-print');
+  if (mockPrintBtn) {
+    mockPrintBtn.addEventListener('click', function () {
+      if (typeof mockRedraw === 'function') {
+        mockRedraw();  // ensure latest decorations + tree lights are visible
+      }
+      window.print();
+    });
+  }
 
   console.log('Willy Good Christmas Tool script loaded (clean version).');
 });
