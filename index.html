@@ -1166,11 +1166,31 @@ var treeTraceClear = document.getElementById('tree-trace-clear');
 
 if (treeTraceBtn) {
   treeTraceBtn.addEventListener('click', function () {
-    mockMode = 'tree-trace';
-    treeTraceMode = true;
+    treeTraceMode    = true;
+    treeTracingDrag  = false;
     treeTraceCurrent = [];
-    treeTraceDrawing = false;
-    mockSetInfo('Tree / shrub trace: click and drag around the tree/shrub, release to finish.');
+    _lastTracePoint  = null;
+    mockSetInfo('Tree/shrub trace: click and drag around the tree, then release.');
+  });
+}
+
+if (treeTraceUndo) {
+  treeTraceUndo.addEventListener('click', function () {
+    if (!treeTraceShapes.length) return;
+    treeTraceShapes.pop();
+    mockSetInfo('Last tree/shrub lights removed.');
+    mockRedraw();
+  });
+}
+
+if (treeTraceClear) {
+  treeTraceClear.addEventListener('click', function () {
+    treeTraceShapes  = [];
+    treeTraceCurrent = [];
+    treeTracingDrag  = false;
+    _lastTracePoint  = null;
+    mockSetInfo('All tree/shrub lights cleared.');
+    mockRedraw();
   });
 }
 
@@ -1199,10 +1219,12 @@ var mockResizeStartDist = 0;
 var mockNextDecorId = 1;
 
 // Tree / shrub free-form trace state
-var treeTraceMode    = false;
-var treeTraceCurrent = [];           // [{x,y},...]
-var treeTraceShapes  = []; // array of polygons
-var treeTraceDrawing = false; // true only while the mouse is held down in tree-trace mode
+var treeTraceMode    = false;  // are we in trace mode?
+var treeTraceCurrent = [];     // current freehand path
+var treeTraceShapes  = [];     // finished shapes
+var treeTracingDrag  = false;  // mouse is currently down while tracing
+var treeTraceSpacingPixels = 6; // how often to capture a point while dragging
+var _lastTracePoint = null;
 
 function mockSetInfo(text) {
   if (mockInfo) mockInfo.textContent = text;
@@ -1355,13 +1377,12 @@ function deleteSelectedDecoration() {
 }
 
 // --- Tree trace helpers -----------------------------------
-
-// small dense bulbs like mini-lights around a tree
-var treeGlowColor  = 'rgba(255, 244, 213, 0.28)';
-var treeCoreColor  = '#fff8e1';
-var treeSpacing    = 10;  // smaller = more bulbs
-var treeGlowR      = 3;   // glow radius
-var treeCoreR      = 1.5; // core radius
+// smaller, denser tree / shrub bulbs
+var warmGlow   = 'rgba(255, 244, 213, 0.35)';
+var warmCore   = '#fffdf5';
+var treeSpacing = 10;   // was 18 – tighter grid
+var treeGlowR   = 4;    // glow radius
+var treeCoreR   = 2;    // bulb core radius
 
 function pointInPolygon(pt, poly) {
   var x = pt.x, y = pt.y;
@@ -1377,17 +1398,55 @@ function pointInPolygon(pt, poly) {
 }
 
 function drawTreeShapeBulbs(poly) {
-  if (!mockCtx || poly.length < 3) return;
+  if (!poly || poly.length < 3 || !mockCtx) return;
 
+  // bounding box
   var minX = poly[0].x, maxX = poly[0].x;
   var minY = poly[0].y, maxY = poly[0].y;
-  for (var p = 1; p < poly.length; p++) {
-    var px = poly[p].x, py = poly[p].y;
+  for (var i = 1; i < poly.length; i++) {
+    var px = poly[i].x, py = poly[i].y;
     if (px < minX) minX = px;
     if (px > maxX) maxX = px;
     if (py < minY) minY = py;
     if (py > maxY) maxY = py;
   }
+
+  // jittered grid of bulbs inside polygon
+  for (var y = minY; y <= maxY; y += treeSpacing) {
+    for (var x = minX; x <= maxX; x += treeSpacing) {
+      var jitterX = x + (Math.random() - 0.5) * (treeSpacing * 0.6);
+      var jitterY = y + (Math.random() - 0.5) * (treeSpacing * 0.6);
+      var pt = { x: jitterX, y: jitterY };
+
+      if (!pointInPolygon(pt, poly)) continue;
+
+      // glow
+      mockCtx.beginPath();
+      mockCtx.globalAlpha = 1;
+      mockCtx.fillStyle = warmGlow;
+      mockCtx.arc(jitterX, jitterY, treeGlowR, 0, Math.PI * 2);
+      mockCtx.fill();
+
+      // core
+      mockCtx.beginPath();
+      mockCtx.fillStyle = warmCore;
+      mockCtx.arc(jitterX, jitterY, treeCoreR, 0, Math.PI * 2);
+      mockCtx.fill();
+    }
+  }
+
+  // faint outline of traced area for feedback
+  mockCtx.beginPath();
+  mockCtx.strokeStyle = 'rgba(255,255,255,0.15)';
+  mockCtx.lineWidth = 1;
+  for (var j = 0; j < poly.length; j++) {
+    var p = poly[j];
+    if (j === 0) mockCtx.moveTo(p.x, p.y);
+    else mockCtx.lineTo(p.x, p.y);
+  }
+  mockCtx.closePath();
+  mockCtx.stroke();
+}
 
   for (var y = minY; y <= maxY; y += treeSpacing) {
     for (var x = minX; x <= maxX; x += treeSpacing) {
@@ -1792,24 +1851,23 @@ function mockRedraw() {
     mockCtx.restore();
   }
 
-  // 3) Draw finished tree-trace shapes
-  for (var sIdx = 0; sIdx < treeTraceShapes.length; sIdx++) {
-    drawTreeShapeBulbs(treeTraceShapes[sIdx]);
-  }
+// draw finished traced trees/shrubs
+for (var s = 0; s < treeTraceShapes.length; s++) {
+  drawTreeShapeBulbs(treeTraceShapes[s]);
+}
 
-  // 4) Draw in-progress tree outline
-  if (treeTraceMode && treeTraceCurrent.length > 1) {
-    mockCtx.beginPath();
-    mockCtx.strokeStyle = '#ff00ff';
-    mockCtx.setLineDash([4, 3]);
-    for (var i3 = 0; i3 < treeTraceCurrent.length; i3++) {
-      var pt3 = treeTraceCurrent[i3];
-      if (i3 === 0) mockCtx.moveTo(pt3.x, pt3.y);
-      else mockCtx.lineTo(pt3.x, pt3.y);
-    }
-    mockCtx.stroke();
-    mockCtx.setLineDash([]);
+// live outline while dragging
+if (treeTraceMode && treeTraceCurrent.length > 1) {
+  mockCtx.beginPath();
+  mockCtx.strokeStyle = '#ff00ff';
+  mockCtx.setLineDash([4, 3]);
+  for (var i3 = 0; i3 < treeTraceCurrent.length; i3++) {
+    var pt3 = treeTraceCurrent[i3];
+    if (i3 === 0) mockCtx.moveTo(pt3.x, pt3.y);
+    else mockCtx.lineTo(pt3.x, pt3.y);
   }
+  mockCtx.setLineDash([]);
+  mockCtx.stroke();
 }
 
 // --- Load image into mockup canvas -------------------------
@@ -1918,18 +1976,21 @@ if (mockCanvas && mockCtx) {
   });
 
   // mousedown: segment adjust OR decoration drag/resize
-  mockCanvas.addEventListener('mousedown', function (evt) {
-    if (!mockImage) return;
-    if (treeTraceMode) return; // no drag in tree trace mode
-    var pt = mockCanvasPoint(evt);
-    
-    // --- Tree / shrub free-form trace: start drag ---
-    if (mockMode === 'tree-trace') {
-      treeTraceDrawing = true;
-      treeTraceCurrent = [pt];   // start new path
-      mockRedraw();
-      return; // do not fall through to other modes
-    }
+ mockCanvas.addEventListener('mousedown', function (evt) {
+  if (!mockImage) return;
+
+  var pt = mockCanvasPoint(evt);
+
+  // --- tree/shrub free-form start ---
+  if (treeTraceMode) {
+    treeTracingDrag  = true;
+    treeTraceCurrent = [pt];
+    _lastTracePoint  = pt;
+    return; // don’t start a normal light run
+  }
+
+  // ... existing mousedown logic for adjust/decorations/light runs ...
+});
 
     mockIsDraggingSegment = false;
     mockIsDraggingDecor = false;
@@ -1987,19 +2048,24 @@ if (mockCanvas && mockCtx) {
     var pt = mockCanvasPoint(evt);
     
     // --- Tree / shrub free-form trace: collect stroke points ---
-    if (mockMode === 'tree-trace' && treeTraceDrawing) {
+    mockCanvas.addEventListener('mousemove', function (evt) {
+  if (!mockImage) return;
+
+  var pt = mockCanvasPoint(evt);
+
+  // --- tree/shrub free-form drawing ---
+  if (treeTraceMode && treeTracingDrag) {
+    if (!_lastTracePoint ||
+        Math.hypot(pt.x - _lastTracePoint.x, pt.y - _lastTracePoint.y) >= treeTraceSpacingPixels) {
       treeTraceCurrent.push(pt);
-      mockRedraw();
-      return;
+      _lastTracePoint = pt;
+      mockRedraw(); // to show the magenta outline while drawing
     }
-   
-    if (mockMode === 'adjust' && mockIsDraggingSegment) {
-      var seg = mockSegments[mockDragSegmentIndex];
-      if (!seg) return;
-      seg[mockDragSegmentEnd] = pt;
-      mockRedraw();
-      return;
-    }
+    return;
+  }
+
+  // ... existing adjust / decor drag logic ...
+});
 
     if (mockMode === 'decor-edit' &&
         (mockIsDraggingDecor || mockIsResizingDecor) &&
@@ -2041,7 +2107,6 @@ if (mockCanvas && mockCtx) {
     }
   }
 
-  mockCanvas.addEventListener('mouseup', mockStopDrag);
   mockCanvas.addEventListener('mouseup', function () {
     if (mockMode === 'tree-trace' && treeTraceDrawing) {
       treeTraceDrawing = false;
@@ -2058,15 +2123,26 @@ if (mockCanvas && mockCtx) {
 
     // existing code for stopping segment/decoration drags follows...
   });
+function finishTreeTraceIfAny() {
+  if (treeTraceMode && treeTracingDrag) {
+    treeTracingDrag = false;
 
-  mockCanvas.addEventListener('mouseleave', mockStopDrag);
-  mockCanvas.addEventListener('mouseleave', function () {
-    if (mockMode === 'tree-trace' && treeTraceDrawing) {
-      treeTraceDrawing = false;
-      treeTraceCurrent = [];
-      mockRedraw();
-      return;
+    if (treeTraceCurrent.length > 8) {
+      // close the shape and save
+      treeTraceShapes.push(treeTraceCurrent.slice());
+      mockSetInfo('Tree/shrub lights added. Click trace again to draw another.');
+    } else {
+      mockSetInfo('Trace too short – try drawing around the full tree/shrub.');
     }
+
+    treeTraceCurrent = [];
+    _lastTracePoint  = null;
+    mockRedraw();
+  }
+}
+
+mockCanvas.addEventListener('mouseup', finishTreeTraceIfAny);
+mockCanvas.addEventListener('mouseleave', finishTreeTraceIfAny);
 
     // existing segment/decoration drag stop code...
   });
@@ -2379,19 +2455,7 @@ document.addEventListener('keydown', function (evt) {
 
   // --- Redraw on style changes -------------------------------
 
-  function mockAttachRedrawControl(el) {
-    if (!el) return;
-    el.addEventListener('change', mockRedraw);
-  }
-  mockAttachRedrawControl(mockColorModeSelect);
-  mockAttachRedrawControl(mockColor1Input);
-  mockAttachRedrawControl(mockColor2Input);
-  mockAttachRedrawControl(mockColor3Input);
-  mockAttachRedrawControl(mockBulbSpacingSelect);
-  mockAttachRedrawControl(mockBulbSizeSelect);
-  mockAttachRedrawControl(mockShowWireCheckbox);
-
-  if (mockRunTypeSelect) {
+    if (mockRunTypeSelect) {
     mockRunTypeSelect.addEventListener('change', function () {
       mockLastPoint = null;
       mockMode = 'draw';
