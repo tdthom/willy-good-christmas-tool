@@ -484,24 +484,24 @@
         <button id="decor-rotate-left">Rotate ⟲</button>
         <button id="decor-rotate-right">Rotate ⟳</button><br><br>
 
-        <!-- Free-form tree / shrub trace -->
-        <h3>Tree / shrub free-form lights</h3>
-        <p class="small-note">
+      <!-- Free-form tree / shrub trace -->
+      <h3>Tree / shrub free-form lights</h3>
+      <p class="small-note">
         Click <strong>Tree / shrub free-form trace</strong>, then click around the shape of the tree or shrub.
         Double-click to finish. Mini bulbs will fill inside the traced area.
-        </p>
+      </p>
 
-        <button id="tree-trace-button">Tree / shrub free-form trace</button>
-        <button id="tree-trace-undo">Undo last tree lights</button>
-        <button id="tree-trace-clear">Clear all tree lights</button>
-        <br><br>
+      <button id="tree-trace-button" type="button">Tree / shrub free-form trace</button>
+      <button id="tree-trace-undo" type="button">Undo last tree lights</button>
+      <button id="tree-trace-clear" type="button">Clear all tree lights</button>
+      <br><br>
 
-        <button id="mockup-zoom-in">Zoom in</button>
-        <button id="mockup-zoom-out">Zoom out</button>
-        <button id="mockup-print">Print / Save this mockup as PDF</button>
-
-      </button>
-      </div>
+      <!-- View / export controls -->
+      <h3 style="margin-top:0.5rem;">View / export</h3>
+      <button id="mockup-zoom-in" type="button">Zoom in</button>
+      <button id="mockup-zoom-out" type="button">Zoom out</button>
+      <button id="mockup-print" type="button">Print / Save this mockup as PDF</button>
+    </div> <!-- end left controls column -->
 
       <!-- Canvas column -->
       <div style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff;">
@@ -1188,10 +1188,10 @@ document.addEventListener('DOMContentLoaded', function () {
   var mockResizeStartDist = 0;
   var mockNextDecorId = 1;
 
-  // Tree / shrub free-form trace state
-  var treeTraceMode    = false;   // true while we are tracing
-  var treeTraceCurrent = [];      // in-progress polygon [{x,y}]
-  var treeTraceShapes  = [];      // finished polygons [ [{x,y},..], [...] ]
+   // --- Tree / shrub free-form trace state -------------------
+  var treeTraceShapes = [];      // finished polygons [{points:[{x,y},...] }]
+  var treeTraceCurrent = [];     // points of the shape being drawn
+  var treeTraceMode = false;     // true while user is tracing
 
   function mockSetInfo(text) {
     if (mockInfo) mockInfo.textContent = text;
@@ -1232,6 +1232,21 @@ document.addEventListener('DOMContentLoaded', function () {
     var dx = a.x - b.x;
     var dy = a.y - b.y;
     return Math.sqrt(dx * dx + dy * dy);
+  }
+
+    // Hit-test: is a point inside a polygon? (for tree/shrub bulbs)
+  function pointInPolygon(pt, poly) {
+    var x = pt.x, y = pt.y;
+    var inside = false;
+    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      var xi = poly[i].x, yi = poly[i].y;
+      var xj = poly[j].x, yj = poly[j].y;
+
+      var intersect = ((yi > y) !== (yj > y)) &&
+        (x < ((xj - xi) * (y - yi)) / (yj - yi + 0.000001) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
   }
 
   // --- Decorations helpers ----------------------------------
@@ -1457,20 +1472,31 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
-    // 2) Draw decorations (unchanged from your last version)
-    //   ... (YOUR existing decoration drawing code goes here – keep as-is)
-    //   For brevity, I’m not re-pasting the entire wreath/bow/garland/tree-wrap/net/star/mini-tree
-    //   drawing block. Leave that block exactly how you currently have it.
+     function mockRedraw() {
+    if (!mockCtx || !mockCanvas) return;
+    mockDrawBase();
+    if (!mockImage) return;
+
+    // 1) Draw light runs  (you already have this block – leave it)
+
+    // 2) Draw decorations  (your existing decoration code – KEEP it)
+    for (var d = 0; d < mockDecorations.length; d++) {
+      var deco = mockDecorations[d];
+      // >>> all your existing wreath / bow / garland / tree-wrap / net / star / mini-tree
+      // drawing code goes here, exactly as it was before <<<
+    }
 
     // 3) Draw tree trace shapes (mini bulbs only inside traced area)
     var warmGlow = 'rgba(255, 244, 213, 0.30)';
     var warmCore = '#fff8e1';
-    var treeSpacing = 18;
-    var treeGlowR = 6;
-    var treeCoreR = 3;
+    var treeSpacing = 14;   // tighter spacing = more bulbs
+    var treeGlowR   = 5;    // glow radius
+    var treeCoreR   = 2.3;  // very small bulb core
 
     function drawTreeShapeBulbs(poly) {
       if (poly.length < 3) return;
+
+      // bounding box
       var minX = poly[0].x, maxX = poly[0].x;
       var minY = poly[0].y, maxY = poly[0].y;
       for (var p = 1; p < poly.length; p++) {
@@ -1481,6 +1507,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (py > maxY) maxY = py;
       }
 
+      // grid of tiny warm-white bulbs inside polygon
       for (var y = minY; y <= maxY; y += treeSpacing) {
         for (var x = minX; x <= maxX; x += treeSpacing) {
           var pt = { x: x, y: y };
@@ -1488,8 +1515,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
           // glow
           mockCtx.beginPath();
-          mockCtx.globalAlpha = 1;
           mockCtx.fillStyle = warmGlow;
+          mockCtx.globalAlpha = 1;
           mockCtx.arc(x, y, treeGlowR, 0, Math.PI * 2);
           mockCtx.fill();
 
@@ -1501,9 +1528,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       }
 
-      // faint outline
+      // soft outline of traced shape
       mockCtx.beginPath();
-      mockCtx.strokeStyle = 'rgba(255,255,255,0.20)';
+      mockCtx.strokeStyle = 'rgba(255,255,255,0.18)';
       mockCtx.lineWidth = 1;
       for (var i2 = 0; i2 < poly.length; i2++) {
         var pt2 = poly[i2];
@@ -1514,12 +1541,12 @@ document.addEventListener('DOMContentLoaded', function () {
       mockCtx.stroke();
     }
 
-    // finished shapes
+    // draw all finished shapes
     for (var s = 0; s < treeTraceShapes.length; s++) {
       drawTreeShapeBulbs(treeTraceShapes[s]);
     }
 
-    // in-progress outline
+    // in-progress outline while tracing
     if (treeTraceMode && treeTraceCurrent.length > 1) {
       mockCtx.beginPath();
       mockCtx.strokeStyle = '#ff00ff';
@@ -1586,22 +1613,25 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!mockImage) return;
       var pt = mockCanvasPoint(evt);
 
-      // 1) Tree trace mode has first priority
-      if (treeTraceMode) {
-        if (evt.detail === 2 && treeTraceCurrent.length >= 3) {
-          // double-click: finish shape
-          treeTraceShapes.push(treeTraceCurrent.slice());
-          treeTraceCurrent = [];
-          treeTraceMode = false;
-          mockSetInfo('Tree lights added. Click "Tree / shrub free-form trace" again to trace another.');
-          mockRedraw();
-        } else {
-          // normal click: add vertex
-          treeTraceCurrent.push(pt);
-          mockRedraw();
-        }
+         // Tree/shrub trace mode takes over simple clicks
+    if (treeTraceMode) {
+      var pt = mockCanvasPoint(evt);
+
+      // double-click = finish
+      if (evt.detail === 2 && treeTraceCurrent.length >= 3) {
+        treeTraceShapes.push(treeTraceCurrent.slice());
+        treeTraceCurrent = [];
+        treeTraceMode = false;
+        mockSetInfo('Tree/shrub lights added. Click trace again to add another.');
+        mockRedraw();
         return;
       }
+
+      // single click = add a vertex
+      treeTraceCurrent.push(pt);
+      mockRedraw();
+      return;
+    }
 
       // 2) If adjusting segments or decorations, clicks are ignored (drag handles instead)
       if (mockMode === 'adjust' || mockMode === 'decor-edit') return;
@@ -1935,8 +1965,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // --- Tree trace buttons ------------------------------------
-
+    // Start tree / shrub tracing
   if (treeTraceBtn) {
     treeTraceBtn.addEventListener('click', function () {
       if (!mockImage) {
@@ -1945,34 +1974,30 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       treeTraceMode = true;
       treeTraceCurrent = [];
-      mockMode = 'draw'; // keep other modes off while tracing
-      mockSetInfo('Tree trace: click around the tree/shrub outline, double-click to finish.');
-      mockRedraw();
+      mockSetInfo('Tree/shrub trace: click around the outline, double-click to finish.');
     });
   }
 
-  if (treeTraceUndoBtn) {
-    treeTraceUndoBtn.addEventListener('click', function () {
-      if (treeTraceCurrent.length > 0) {
-        treeTraceCurrent = [];
-        mockSetInfo('Current trace cancelled.');
-      } else if (treeTraceShapes.length > 0) {
-        treeTraceShapes.pop();
-        mockSetInfo('Last tree lights removed.');
-      } else {
+  // Undo last finished tree shape
+  if (treeTraceUndo) {
+    treeTraceUndo.addEventListener('click', function () {
+      if (!treeTraceShapes.length) {
         mockSetInfo('No tree lights to undo.');
+        return;
       }
+      treeTraceShapes.pop();
       mockRedraw();
+      mockSetInfo('Last tree lights removed.');
     });
   }
 
-  if (treeTraceClearBtn) {
-    treeTraceClearBtn.addEventListener('click', function () {
-      treeTraceCurrent = [];
+  // Clear all tree shapes
+  if (treeTraceClear) {
+    treeTraceClear.addEventListener('click', function () {
       treeTraceShapes = [];
-      treeTraceMode = false;
-      mockSetInfo('All tree/shrub lights cleared.');
+      treeTraceCurrent = [];
       mockRedraw();
+      mockSetInfo('All tree/shrub lights cleared.');
     });
   }
 
