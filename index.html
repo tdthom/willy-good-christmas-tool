@@ -476,17 +476,26 @@
 <button id="mockup-decor-delete">Delete selected</button>
 <button id="mockup-decor-clear">Clear all decorations</button><br><br>
 
+<button id="mockup-zoom-in">Zoom in</button>
+<button id="mockup-zoom-out">Zoom out</button>
+<button id="mockup-print" style="margin-bottom:0.5rem;">
+
 <div class="small-note" style="margin-bottom:4px;">
-  With a decoration selected:
+ With a decoration selected:
 </div>
 <button id="decor-smaller">Smaller</button>
 <button id="decor-bigger">Bigger</button>
 <button id="decor-rotate-left">Rotate ⟲</button>
 <button id="decor-rotate-right">Rotate ⟳</button><br><br>
 
+<!-- NEW: Tree / shrub free-form trace -->
+<button id="mockup-tree-trace">Tree / shrub free-form trace</button><br><br>
+
 <button id="mockup-zoom-in">Zoom in</button>
 <button id="mockup-zoom-out">Zoom out</button>
 <button id="mockup-print" style="margin-bottom:0.5rem;">
+  Print / Save this mockup as PDF
+</button>
 
 <h3>Tree / shrub free-form lights</h3>
 <p class="small-note">
@@ -1121,566 +1130,711 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // ------------------------------------------------------------------
-  // PHOTO MOCKUP – DECORATIONS + TREE/SHRUB FREE-FORM LIGHTS
-  // ------------------------------------------------------------------
-  var mockImageInput = document.getElementById('mockup-image-input');
-  var mockCtx = mockCanvas ? mockCanvas.getContext('2d') : null;
-  var mockInfo = document.getElementById('mockup-info');
+  // -----------------------------
+// Photo Mockup (visual-only color designer with zoom + adjust + decorations + tree trace)
+// -----------------------------
+var mockImageInput = document.getElementById('mockup-image-input');
+mockCanvas = document.getElementById('mockup-canvas'); // shared with Proposal
+var mockCtx = mockCanvas ? mockCanvas.getContext('2d') : null;
 
-  var mockColorModeSelect = document.getElementById('mockup-color-mode');
-  var mockColor1Input = document.getElementById('mockup-color1');
-  var mockColor2Input = document.getElementById('mockup-color2');
-  var mockColor3Input = document.getElementById('mockup-color3');
-  var mockBulbSpacingSelect = document.getElementById('mockup-bulb-spacing');
-  var mockBulbSizeSelect = document.getElementById('mockup-bulb-size');
-  var mockRunTypeSelect = document.getElementById('mockup-run-type');
-  var mockShowWireCheckbox = document.getElementById('mockup-show-wire');
+var mockInfo = document.getElementById('mockup-info');
+var mockColorModeSelect = document.getElementById('mockup-color-mode');
+var mockColor1Input = document.getElementById('mockup-color1');
+var mockColor2Input = document.getElementById('mockup-color2');
+var mockColor3Input = document.getElementById('mockup-color3');
+var mockBulbSpacingSelect = document.getElementById('mockup-bulb-spacing');
+var mockBulbSizeSelect = document.getElementById('mockup-bulb-size');
+var mockRunTypeSelect = document.getElementById('mockup-run-type');
+var mockShowWireCheckbox = document.getElementById('mockup-show-wire');
 
-  var mockUndoBtn = document.getElementById('mockup-undo');
-  var mockNewRunBtn = document.getElementById('mockup-new-run');
-  var mockAdjustBtn = document.getElementById('mockup-adjust-mode');
-  var mockClearBtn = document.getElementById('mockup-clear');
-  var mockZoomInBtn = document.getElementById('mockup-zoom-in');
-  var mockZoomOutBtn = document.getElementById('mockup-zoom-out');
-  var mockPrintBtn = document.getElementById('mockup-print');
+var mockUndoBtn = document.getElementById('mockup-undo');
+var mockNewRunBtn = document.getElementById('mockup-new-run');
+var mockAdjustBtn = document.getElementById('mockup-adjust-mode');
+var mockClearBtn = document.getElementById('mockup-clear');
+var mockZoomInBtn = document.getElementById('mockup-zoom-in');
+var mockZoomOutBtn = document.getElementById('mockup-zoom-out');
+var mockPrintBtn = document.getElementById('mockup-print');
 
-  // Decorations
-  var mockDecorTypeSelect = document.getElementById('mockup-decor-type');
-  var mockDecorPlaceBtn = document.getElementById('mockup-decor-mode');
-  var mockDecorEditBtn = document.getElementById('mockup-decor-edit');
-  var mockDecorDeleteBtn = document.getElementById('mockup-decor-delete');
-  var mockDecorClearBtn = document.getElementById('mockup-decor-clear');
+// Decorations UI
+var mockDecorTypeSelect   = document.getElementById('mockup-decor-type');
+var mockDecorPlaceBtn     = document.getElementById('mockup-decor-mode');
+var mockDecorEditBtn      = document.getElementById('mockup-decor-edit');
+var mockDecorDeleteBtn    = document.getElementById('mockup-decor-delete');
+var mockDecorClearBtn     = document.getElementById('mockup-decor-clear');
 
-  var decorSmallerBtn = document.getElementById('decor-smaller');
-  var decorBiggerBtn = document.getElementById('decor-bigger');
-  var decorRotateLeftBtn = document.getElementById('decor-rotate-left');
-  var decorRotateRightBtn = document.getElementById('decor-rotate-right');
+// Estimate decoration inputs – auto-filled from mockup
+var decorWreathCountInput  = document.getElementById('decor-wreath-count');
+var decorGarlandCountInput = document.getElementById('decor-garland-count');
+var decorBowCountInput     = document.getElementById('decor-bow-count');
 
-  // Tree / shrub free-form lights
-  var treeTraceBtn = document.getElementById('tree-trace-lights') ||
-                     document.getElementById('trace-tree-shrub') ||
-                     document.getElementById('mock-tree-trace');
-  var treeStopBtn = document.getElementById('tree-stop-trace') ||
-                    document.getElementById('stop-tracing-trees');
-  var treeUndoBtn = document.getElementById('tree-undo-last') ||
-                    document.getElementById('undo-tree-lights');
-  var treeClearBtn = document.getElementById('tree-clear-all') ||
-                     document.getElementById('clear-tree-lights');
+// Size / rotate buttons for decorations
+var decorSmallerBtn     = document.getElementById('decor-smaller');
+var decorBiggerBtn      = document.getElementById('decor-bigger');
+var decorRotateLeftBtn  = document.getElementById('decor-rotate-left');
+var decorRotateRightBtn = document.getElementById('decor-rotate-right');
 
-  var customDecorFileInput = document.getElementById('mockup-decor-custom-file');
+// Tree trace button
+var mockTreeTraceBtn    = document.getElementById('mockup-tree-trace');
 
-  // State
-  var mockImage = null;
-  var mockDrawParams = null;
-  var mockSegments = [];     // standard roof/ground lines
-  var mockLastPoint = null;
-  var mockMode = 'draw';     // 'draw', 'adjust', 'decor-add', 'decor-edit', 'tree-trace'
-  var mockZoom = 1;
-  var MOCK_ZOOM_MIN = 0.5;
-  var MOCK_ZOOM_MAX = 3;
+// Core state
+var mockImage = null;
+var mockDrawParams = null;
+var mockSegments = [];               // light runs [{from:{x,y}, to:{x,y}, type}]
+var mockLastPoint = null;
+var mockMode = 'draw';               // 'draw', 'adjust', 'decor-add', 'decor-edit', 'tree-trace'
+var mockZoom = 1;
+var MOCK_ZOOM_MIN = 0.5;
+var MOCK_ZOOM_MAX = 3;
 
-  var mockDecorations = [];  // {id,x,y,kind,size,rotation,image?}
-  var mockNextDecorId = 1;
-  var mockSelectedDecorId = null;
-  var mockIsDraggingDecor = false;
-  var mockIsResizingDecor = false;
-  var mockDecorDragOffset = { x: 0, y: 0 };
-  var mockResizeStartDist = 0;
+// Segment adjust state
+var mockIsDraggingSegment = false;
+var mockDragSegmentIndex = -1;
+var mockDragSegmentEnd = null;       // 'from' | 'to'
 
-  var mockIsDraggingSegment = false;
-  var mockDragSegmentIndex = -1;
-  var mockDragSegmentEnd = null;
+// Decorations state
+var mockDecorations = [];            // [{id,x,y,kind,size,rotation}]
+var mockSelectedDecorId = null;
+var mockIsDraggingDecor = false;
+var mockIsResizingDecor = false;
+var mockDecorDragOffset = { x: 0, y: 0 };
+var mockResizeStartDist = 0;
+var mockNextDecorId = 1;
 
-  // Tree traces: each trace is array of points [{x,y},...]
-  var treeTraces = [];
-  var isTracingTree = false;
-  var currentTreeTrace = [];
+// Tree trace state (free-form mini lights)
+var mockTreeTraces = [];             // [{points:[{x,y}, ...]}]
+var mockIsTracingTree = false;
+var mockCurrentTrace = null;
 
-  function mockSetInfo(text) {
-    if (mockInfo) mockInfo.textContent = text;
+function mockSetInfo(text) {
+  if (mockInfo) mockInfo.textContent = text;
+}
+
+function mockApplyZoom() {
+  if (!mockCanvas) return;
+  mockCanvas.style.transformOrigin = '0 0';
+  mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
+}
+
+function mockDrawBase() {
+  if (!mockCtx || !mockCanvas) return;
+  mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
+  if (mockImage && mockDrawParams) {
+    mockCtx.drawImage(
+      mockImage,
+      mockDrawParams.x,
+      mockDrawParams.y,
+      mockDrawParams.w,
+      mockDrawParams.h
+    );
   }
+}
 
-  function mockApplyZoom() {
-    if (!mockCanvas) return;
-    mockCanvas.style.transformOrigin = '0 0';
-    mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
+function mockCanvasPoint(evt) {
+  if (!mockCanvas) return { x: 0, y: 0 };
+  var rect = mockCanvas.getBoundingClientRect();
+  var scaleX = mockCanvas.width / rect.width;
+  var scaleY = mockCanvas.height / rect.height;
+  return {
+    x: (evt.clientX - rect.left) * scaleX,
+    y: (evt.clientY - rect.top) * scaleY
+  };
+}
+
+function mockPointDistance(a, b) {
+  var dx = a.x - b.x;
+  var dy = a.y - b.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+// --- Decorations helpers ----------------------------------
+
+function getDecorationRadius(deco) {
+  var base;
+  switch (deco.kind) {
+    case 'wreath':    base = 22; break;
+    case 'bow':       base = 18; break;
+    case 'garland':   base = 30; break;
+    case 'tree-wrap': base = 32; break;
+    case 'net':       base = 28; break;
+    case 'star':      base = 22; break;
+    case 'mini-tree': base = 26; break;
+    default:          base = 20; break;
   }
+  var size = deco.size || 1;
+  return base * size;
+}
 
-  function mockDrawBase() {
-    if (!mockCtx || !mockCanvas) return;
-    mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
-    if (mockImage && mockDrawParams) {
-      mockCtx.drawImage(
-        mockImage,
-        mockDrawParams.x,
-        mockDrawParams.y,
-        mockDrawParams.w,
-        mockDrawParams.h
-      );
-    }
+function getDecorationHandlePosition(deco) {
+  var r = getDecorationRadius(deco);
+  return {
+    x: deco.x + r * 0.7,
+    y: deco.y - r * 0.7
+  };
+}
+
+function findDecorationById(id) {
+  for (var i = 0; i < mockDecorations.length; i++) {
+    if (mockDecorations[i].id === id) return mockDecorations[i];
   }
+  return null;
+}
 
-  function mockCanvasPoint(evt) {
-    var rect = mockCanvas.getBoundingClientRect();
-    var sx = mockCanvas.width / rect.width;
-    var sy = mockCanvas.height / rect.height;
-    return {
-      x: (evt.clientX - rect.left) * sx,
-      y: (evt.clientY - rect.top) * sy
-    };
-  }
-  function mockPointDist(a, b) {
-    var dx = a.x - b.x, dy = a.y - b.y;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-
-  function drawBulb(ctx, x, y, angle, color, sizeFactor) {
-    sizeFactor = sizeFactor || 1;
-    var baseSize = 3.2 * sizeFactor;
-    var bulbHeight = baseSize * 2.4;
-    var glowRadius = bulbHeight * 0.9;
-
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle || 0);
-
-    ctx.beginPath();
-    ctx.globalAlpha = 0.22;
-    ctx.fillStyle = color;
-    ctx.arc(0, 0, glowRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
-    ctx.beginPath();
-    ctx.moveTo(0, -bulbHeight / 2);
-    ctx.quadraticCurveTo(baseSize, 0, 0, bulbHeight / 2);
-    ctx.quadraticCurveTo(-baseSize, 0, 0, -bulbHeight / 2);
-    ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.strokeStyle = '#f5f5f5';
-    ctx.lineWidth = 0.8;
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#444';
-    ctx.fillRect(-baseSize * 0.6, bulbHeight / 2, baseSize * 1.2, baseSize * 0.6);
-
-    ctx.restore();
-  }
-
-  function getBulbSpacingPx() {
-    var spacingInches = 12;
-    if (mockBulbSpacingSelect) {
-      var sval = parseFloat(mockBulbSpacingSelect.value);
-      if (!isNaN(sval) && sval > 0) spacingInches = sval;
-    }
-    // approximate: 22px for 12", 28px for 15" – linear-ish
-    return spacingInches === 15 ? 28 : 22;
-  }
-  function getBulbSizeFactor() {
-    var base = 1;
-    if (!mockBulbSizeSelect) return base;
-    var v = mockBulbSizeSelect.value;
-    if (v === 'small') base = 0.7;
-    else if (v === 'large') base = 1.3;
-    return base;
-  }
-  function getBulbColor(index) {
-    var mode = mockColorModeSelect ? mockColorModeSelect.value : 'single';
-    var c1 = (mockColor1Input && mockColor1Input.value) || '#ffffff';
-    var c2 = (mockColor2Input && mockColor2Input.value) || '#ff0000';
-    var c3 = (mockColor3Input && mockColor3Input.value) || '#00ff00';
-
-    if (mode === 'single') return c1;
-    if (mode === 'two')   return (index % 2 === 0) ? c1 : c2;
-    // three-color
-    var idx = index % 3;
-    return idx === 0 ? c1 : (idx === 1 ? c2 : c3);
-  }
-
-  function drawWireSegment(from, to, type) {
-    if (!mockCtx) return;
-    var showWire = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
-    if (!showWire) return;
-
-    var wireColor = '#555';
-    if (type === 'ground') wireColor = '#3a7a3a';
-    else if (type === 'tree') wireColor = '#8b5a2b';
-
-    mockCtx.beginPath();
-    mockCtx.strokeStyle = wireColor;
-    mockCtx.lineWidth = 1.2;
-    mockCtx.moveTo(from.x, from.y);
-    mockCtx.lineTo(to.x, to.y);
-    mockCtx.stroke();
-  }
-
-  function drawLightSegments() {
-    if (!mockCtx || !mockSegments.length) return;
-    var spacingPx = getBulbSpacingPx();
-    var sizeFactor = getBulbSizeFactor();
-
-    mockSegments.forEach(function (seg) {
-      var from = seg.from, to = seg.to;
-      var dx = to.x - from.x, dy = to.y - from.y;
-      var length = Math.sqrt(dx * dx + dy * dy);
-      if (!length) return;
-      var angle = Math.atan2(dy, dx);
-
-      drawWireSegment(from, to, seg.type);
-
-      var count = Math.max(1, Math.round(length / spacingPx));
-      for (var i = 0; i <= count; i++) {
-        var t = count === 0 ? 0 : i / count;
-        var x = from.x + dx * t;
-        var y = from.y + dy * t;
-        var color = getBulbColor(i);
-        drawBulb(mockCtx, x, y, angle, color, sizeFactor);
-      }
-
-      if (mockMode === 'adjust') {
-        mockCtx.beginPath();
-        mockCtx.fillStyle = '#00ffff';
-        mockCtx.arc(from.x, from.y, 3, 0, Math.PI * 2);
-        mockCtx.fill();
-        mockCtx.beginPath();
-        mockCtx.arc(to.x, to.y, 3, 0, Math.PI * 2);
-        mockCtx.fill();
-      }
-    });
-  }
-
-  function getDecorationRadius(deco) {
-    var base;
-    switch (deco.kind) {
-      case 'wreath':     base = 22; break;
-      case 'bow':        base = 18; break;
-      case 'garland':    base = 30; break;
-      case 'tree-wrap':  base = 32; break;
-      case 'net':        base = 28; break;
-      case 'star':       base = 22; break;
-      case 'mini-tree':  base = 26; break;
-      default:           base = 20; break;
-    }
-    return base * (deco.size || 1);
-  }
-  function getDecorationHandlePosition(deco) {
+function hitTestDecoration(pt) {
+  var best = null;
+  for (var i = 0; i < mockDecorations.length; i++) {
+    var deco = mockDecorations[i];
+    var center = { x: deco.x, y: deco.y };
     var r = getDecorationRadius(deco);
-    return { x: deco.x + r * 0.7, y: deco.y - r * 0.7 };
+
+    // Handle first – smaller target but higher priority
+    var handlePos = getDecorationHandlePosition(deco);
+    var dHandle = mockPointDistance(pt, handlePos);
+    if (dHandle <= 10) {
+      return { deco: deco, mode: 'handle' };
+    }
+
+    var dCenter = mockPointDistance(pt, center);
+    if (dCenter <= r) {
+      if (!best || dCenter < best.dist) {
+        best = { deco: deco, mode: 'center', dist: dCenter };
+      }
+    }
+  }
+  return best ? { deco: best.deco, mode: best.mode } : null;
+}
+
+function mockSyncDecorationsToEstimate() {
+  if (!decorWreathCountInput ||
+      !decorGarlandCountInput ||
+      !decorBowCountInput) return;
+
+  var wreath = 0, garland = 0, bow = 0;
+  for (var i = 0; i < mockDecorations.length; i++) {
+    var k = mockDecorations[i].kind;
+    if (k === 'wreath')  wreath++;
+    else if (k === 'garland') garland++;
+    else if (k === 'bow') bow++;
   }
 
-  function hitTestDecoration(pt) {
-    var best = null;
-    mockDecorations.forEach(function (deco) {
-      var r = getDecorationRadius(deco);
-      var center = { x: deco.x, y: deco.y };
+  decorWreathCountInput.value  = wreath;
+  decorGarlandCountInput.value = garland;
+  decorBowCountInput.value     = bow;
+}
 
-      var handlePos = getDecorationHandlePosition(deco);
-      var dh = mockPointDist(pt, handlePos);
-      if (dh <= 10) {
-        best = { deco: deco, mode: 'handle' };
-        return;
+function addDecorationAtPoint(pt) {
+  var type = mockDecorTypeSelect ? mockDecorTypeSelect.value : 'wreath';
+  var deco = {
+    id: mockNextDecorId++,
+    x: pt.x,
+    y: pt.y,
+    kind: type,
+    size: 1,
+    rotation: 0
+  };
+  mockDecorations.push(deco);
+  mockSelectedDecorId = deco.id;
+  mockSyncDecorationsToEstimate();
+  mockRedraw();
+  mockSetInfo(
+    'Decoration added: ' + type +
+    '. Switch to "Edit decorations" to move or resize.'
+  );
+}
+
+function deleteSelectedDecoration() {
+  if (mockSelectedDecorId == null) {
+    mockSetInfo('Select a decoration in Edit mode before deleting.');
+    return;
+  }
+  mockDecorations = mockDecorations.filter(function (d) {
+    return d.id !== mockSelectedDecorId;
+  });
+  mockSelectedDecorId = null;
+  mockSyncDecorationsToEstimate();
+  mockRedraw();
+  mockSetInfo('Decoration deleted.');
+}
+
+// --- Main redraw (lights + tree trace + decorations) -------
+
+function mockRedraw() {
+  if (!mockCtx || !mockCanvas) return;
+  mockDrawBase();
+  if (!mockImage) return;
+
+  // 1) Draw roof/ground/tree/other runs
+  var mode = mockColorModeSelect ? mockColorModeSelect.value : 'single';
+  var c1 = (mockColor1Input && mockColor1Input.value) || '#ffffff';
+  var c2 = (mockColor2Input && mockColor2Input.value) || '#ff0000';
+  var c3 = (mockColor3Input && mockColor3Input.value) || '#00ff00';
+
+  var spacingInches = 12;
+  if (mockBulbSpacingSelect) {
+    var sval = parseFloat(mockBulbSpacingSelect.value);
+    if (!isNaN(sval) && sval > 0) spacingInches = sval;
+  }
+  var spacingPx = spacingInches === 15 ? 28 : 22;
+
+  var baseSize = 3.2;
+  if (mockBulbSizeSelect) {
+    var sizeVal = mockBulbSizeSelect.value;
+    if (sizeVal === 'small') baseSize = 2.2;
+    else if (sizeVal === 'large') baseSize = 4.2;
+  }
+  var bulbHeight = baseSize * 2.4;
+  var glowRadius = bulbHeight * 0.9;
+  var showWire = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
+
+  for (var i = 0; i < mockSegments.length; i++) {
+    var seg = mockSegments[i];
+    var from = seg.from;
+    var to = seg.to;
+    var dx = to.x - from.x;
+    var dy = to.y - from.y;
+    var lengthPx = Math.sqrt(dx * dx + dy * dy);
+    if (lengthPx === 0) continue;
+    var angle = Math.atan2(dy, dx);
+
+    // Wire
+    if (showWire) {
+      var wireColor = '#555555';
+      if (seg.type === 'ground') wireColor = '#3a7a3a';
+      else if (seg.type === 'tree') wireColor = '#8b5a2b';
+
+      mockCtx.beginPath();
+      mockCtx.strokeStyle = wireColor;
+      mockCtx.lineWidth = 1.2;
+      mockCtx.moveTo(from.x, from.y);
+      mockCtx.lineTo(to.x, to.y);
+      mockCtx.stroke();
+    }
+
+    // Bulbs
+    var count = Math.max(1, Math.round(lengthPx / spacingPx));
+    for (var b = 0; b <= count; b++) {
+      var t = count === 0 ? 0 : b / count;
+      var x = from.x + dx * t;
+      var y = from.y + dy * t;
+
+      var color = c1;
+      if (mode === 'two') {
+        color = (b % 2 === 0) ? c1 : c2;
+      } else if (mode === 'three') {
+        var idx = b % 3;
+        color = idx === 0 ? c1 : (idx === 1 ? c2 : c3);
       }
-      var d = mockPointDist(pt, center);
-      if (d <= r && (!best || d < best.dist)) {
-        best = { deco: deco, mode: 'center', dist: d };
-      }
-    });
-    return best ? { deco: best.deco, mode: best.mode } : null;
+
+      mockCtx.save();
+      mockCtx.translate(x, y);
+      mockCtx.rotate(angle);
+
+      // glow
+      mockCtx.beginPath();
+      mockCtx.globalAlpha = 0.22;
+      mockCtx.fillStyle = color;
+      mockCtx.arc(0, 0, glowRadius, 0, Math.PI * 2, false);
+      mockCtx.fill();
+      mockCtx.globalAlpha = 1;
+
+      // bulb body
+      mockCtx.beginPath();
+      mockCtx.moveTo(0, -bulbHeight / 2);
+      mockCtx.quadraticCurveTo(baseSize, 0, 0, bulbHeight / 2);
+      mockCtx.quadraticCurveTo(-baseSize, 0, 0, -bulbHeight / 2);
+      mockCtx.closePath();
+      mockCtx.fillStyle = color;
+      mockCtx.strokeStyle = '#f5f5f5';
+      mockCtx.lineWidth = 0.8;
+      mockCtx.fill();
+      mockCtx.stroke();
+
+      // socket
+      mockCtx.fillStyle = '#444444';
+      mockCtx.fillRect(
+        -baseSize * 0.6,
+        bulbHeight / 2,
+        baseSize * 1.2,
+        baseSize * 0.6
+      );
+
+      mockCtx.restore();
+    }
+
+    // Segment adjust handles
+    if (mockMode === 'adjust') {
+      mockCtx.beginPath();
+      mockCtx.fillStyle = '#00ffff';
+      mockCtx.strokeStyle = '#004b80';
+      mockCtx.lineWidth = 1;
+      mockCtx.arc(from.x, from.y, 3, 0, Math.PI * 2);
+      mockCtx.fill();
+      mockCtx.stroke();
+
+      mockCtx.beginPath();
+      mockCtx.arc(to.x, to.y, 3, 0, Math.PI * 2);
+      mockCtx.fill();
+      mockCtx.stroke();
+    }
   }
 
-  function drawStandardDecoration(deco) {
+  // 2) Draw tree trace lights (mini bulbs only, no wire)
+  if (mockTreeTraces.length && mockCtx) {
+    var miniGlow = 7;
+    var miniRadius = 2.2;
+
+    for (var tIdx = 0; tIdx < mockTreeTraces.length; tIdx++) {
+      var path = mockTreeTraces[tIdx];
+      if (!path || !path.points || path.points.length === 0) continue;
+
+      for (var pIdx = 0; pIdx < path.points.length; pIdx++) {
+        var pt = path.points[pIdx];
+
+        // glow
+        mockCtx.beginPath();
+        mockCtx.globalAlpha = 0.35;
+        mockCtx.fillStyle = '#fff7cc';
+        mockCtx.arc(pt.x, pt.y, miniGlow, 0, Math.PI * 2);
+        mockCtx.fill();
+        mockCtx.globalAlpha = 1;
+
+        // bulb core
+        mockCtx.beginPath();
+        mockCtx.fillStyle = '#ffffee';
+        mockCtx.arc(pt.x, pt.y, miniRadius, 0, Math.PI * 2);
+        mockCtx.fill();
+      }
+    }
+  }
+
+  // 3) Draw decorations on top
+  for (var d = 0; d < mockDecorations.length; d++) {
+    var deco = mockDecorations[d];
     var size = deco.size || 1;
+
     mockCtx.save();
     mockCtx.translate(deco.x, deco.y);
-    if (deco.rotation) mockCtx.rotate(deco.rotation);
+    var rotation = deco.rotation || 0;
+    if (rotation !== 0) {
+      mockCtx.rotate(rotation);
+    }
 
-    // If custom image
-    if (deco.image && deco.image.complete) {
-      var r = getDecorationRadius(deco);
-      var w = r * 2, h = r * 2;
-      mockCtx.drawImage(deco.image, -w / 2, -h / 2, w, h);
-    } else {
-      // vector styles
-      if (deco.kind === 'wreath') {
-        var outer = 18 * size;
-        var inner = 11 * size;
+    if (deco.kind === 'wreath') {
+      var outer = 18 * size;
+      var inner = 11 * size;
 
+      // wreath ring
+      mockCtx.beginPath();
+      mockCtx.strokeStyle = '#0f4d1b';
+      mockCtx.lineWidth = 7 * size;
+      mockCtx.arc(0, 0, outer, 0, Math.PI * 2);
+      mockCtx.stroke();
+
+      // soft inner shadow
+      mockCtx.beginPath();
+      mockCtx.strokeStyle = 'rgba(0,0,0,0.18)';
+      mockCtx.lineWidth = 4 * size;
+      mockCtx.arc(0, 0, inner, 0, Math.PI * 2);
+      mockCtx.stroke();
+
+      // bulbs around the wreath
+      var bulbs = 12;
+      for (var k = 0; k < bulbs; k++) {
+        var a = (2 * Math.PI * k) / bulbs;
+        var bx = Math.cos(a) * outer;
+        var by = Math.sin(a) * outer;
+
+        // glow
         mockCtx.beginPath();
-        mockCtx.strokeStyle = '#0f4d1b';
-        mockCtx.lineWidth = 7 * size;
-        mockCtx.arc(0, 0, outer, 0, Math.PI * 2);
-        mockCtx.stroke();
-
-        mockCtx.beginPath();
-        mockCtx.strokeStyle = 'rgba(0,0,0,0.18)';
-        mockCtx.lineWidth = 4 * size;
-        mockCtx.arc(0, 0, inner, 0, Math.PI * 2);
-        mockCtx.stroke();
-
-        var bulbs = 12;
-        for (var k = 0; k < bulbs; k++) {
-          var a = (2 * Math.PI * k) / bulbs;
-          var bx = Math.cos(a) * outer;
-          var by = Math.sin(a) * outer;
-
-          mockCtx.beginPath();
-          mockCtx.globalAlpha = 0.35;
-          mockCtx.fillStyle = (k % 3 === 0) ? '#ff6666'
-                           : (k % 3 === 1) ? '#ffff88'
-                           : '#66ccff';
-          mockCtx.arc(bx, by, 4.5 * size, 0, Math.PI * 2);
-          mockCtx.fill();
-          mockCtx.globalAlpha = 1;
-
-          mockCtx.beginPath();
-          mockCtx.fillStyle = '#ffffff';
-          mockCtx.arc(bx, by, 2.2 * size, 0, Math.PI * 2);
-          mockCtx.fill();
-        }
-
-        mockCtx.fillStyle = '#c21807';
-        mockCtx.beginPath();
-        mockCtx.moveTo(0, inner);
-        mockCtx.lineTo(-10 * size, inner + 12 * size);
-        mockCtx.lineTo(0, inner + 5 * size);
-        mockCtx.lineTo(10 * size, inner + 12 * size);
-        mockCtx.closePath();
+        mockCtx.globalAlpha = 0.35;
+        mockCtx.fillStyle = (k % 3 === 0) ? '#ff6666'
+                         : (k % 3 === 1) ? '#ffff88'
+                         : '#66ccff';
+        mockCtx.arc(bx, by, 4.5 * size, 0, Math.PI * 2);
         mockCtx.fill();
+        mockCtx.globalAlpha = 1;
 
+        // core bulb
         mockCtx.beginPath();
-        mockCtx.fillStyle = '#e53935';
-        mockCtx.arc(0, inner + 4 * size, 3.5 * size, 0, Math.PI * 2);
+        mockCtx.fillStyle = '#ffffff';
+        mockCtx.arc(bx, by, 2.2 * size, 0, Math.PI * 2);
         mockCtx.fill();
+      }
 
-      } else if (deco.kind === 'bow') {
-        var rB = 14 * size;
-        mockCtx.fillStyle = '#c21807';
+      // bow at bottom
+      mockCtx.fillStyle = '#c21807';
+      mockCtx.beginPath();
+      mockCtx.moveTo(0, inner);
+      mockCtx.lineTo(-10 * size, inner + 12 * size);
+      mockCtx.lineTo(0, inner + 5 * size);
+      mockCtx.lineTo(10 * size, inner + 12 * size);
+      mockCtx.closePath();
+      mockCtx.fill();
 
+      // knot
+      mockCtx.beginPath();
+      mockCtx.fillStyle = '#e53935';
+      mockCtx.arc(0, inner + 4 * size, 3.5 * size, 0, Math.PI * 2);
+      mockCtx.fill();
+
+    } else if (deco.kind === 'bow') {
+      var r = 14 * size;
+
+      mockCtx.fillStyle = '#c21807';
+
+      // left loop
+      mockCtx.beginPath();
+      mockCtx.moveTo(0, 0);
+      mockCtx.quadraticCurveTo(-r, -r, -r, 0);
+      mockCtx.quadraticCurveTo(-r, r, 0, 0);
+      mockCtx.fill();
+
+      // right loop
+      mockCtx.beginPath();
+      mockCtx.moveTo(0, 0);
+      mockCtx.quadraticCurveTo(r, -r, r, 0);
+      mockCtx.quadraticCurveTo(r, r, 0, 0);
+      mockCtx.fill();
+
+      // tails
+      mockCtx.beginPath();
+      mockCtx.moveTo(-4 * size, 4 * size);
+      mockCtx.lineTo(-2 * size, 18 * size);
+      mockCtx.lineTo(0, 8 * size);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+      mockCtx.beginPath();
+      mockCtx.moveTo(4 * size, 4 * size);
+      mockCtx.lineTo(2 * size, 18 * size);
+      mockCtx.lineTo(0, 8 * size);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+      // center knot
+      mockCtx.beginPath();
+      mockCtx.fillStyle = '#e53935';
+      mockCtx.arc(0, 0, 3 * size, 0, Math.PI * 2);
+      mockCtx.fill();
+
+    } else if (deco.kind === 'garland') {
+      var width = 60 * size;
+      var height = 20 * size;
+
+      mockCtx.strokeStyle = '#0f4d1b';
+      mockCtx.lineWidth = 4.5 * size;
+      mockCtx.beginPath();
+      mockCtx.moveTo(-width / 2, -height / 2);
+      mockCtx.quadraticCurveTo(0, height * 1.2, width / 2, -height / 2);
+      mockCtx.stroke();
+
+      // bulbs along garland
+      var bulbsG = 10;
+      for (var g = 0; g <= bulbsG; g++) {
+        var tG = g / bulbsG;
+        var xG = -width / 2 + width * tG;
+        var yG = -height / 2 + (Math.sin(Math.PI * tG) * height * 1.3);
+
+        // glow
         mockCtx.beginPath();
-        mockCtx.moveTo(0, 0);
-        mockCtx.quadraticCurveTo(-rB, -rB, -rB, 0);
-        mockCtx.quadraticCurveTo(-rB, rB, 0, 0);
+        mockCtx.globalAlpha = 0.32;
+        mockCtx.fillStyle = (g % 3 === 0) ? '#ff6666'
+                         : (g % 3 === 1) ? '#ffff88'
+                         : '#66ccff';
+        mockCtx.arc(xG, yG, 4.5 * size, 0, Math.PI * 2);
         mockCtx.fill();
+        mockCtx.globalAlpha = 1;
 
+        // bulb core
         mockCtx.beginPath();
-        mockCtx.moveTo(0, 0);
-        mockCtx.quadraticCurveTo(rB, -rB, rB, 0);
-        mockCtx.quadraticCurveTo(rB, rB, 0, 0);
+        mockCtx.fillStyle = '#ffffff';
+        mockCtx.arc(xG, yG, 2 * size, 0, Math.PI * 2);
         mockCtx.fill();
+      }
 
+    } else if (deco.kind === 'tree-wrap') {
+      // trunk
+      var trunkH = 45 * size;
+      var trunkW = 10 * size;
+      mockCtx.fillStyle = '#8b5a2b';
+      mockCtx.fillRect(-trunkW / 2, 5 * size, trunkW, trunkH);
+
+      // round canopy
+      var canopyR = 24 * size;
+      mockCtx.beginPath();
+      mockCtx.fillStyle = '#0b3d0b';
+      if (mockCtx.ellipse) {
+        mockCtx.ellipse(0, -trunkH * 0.15, canopyR * 1.1, canopyR, 0, 0, Math.PI * 2);
+      } else {
+        mockCtx.arc(0, -trunkH * 0.15, canopyR, 0, Math.PI * 2);
+      }
+      mockCtx.fill();
+
+      // spiral mini lights
+      var lights = 26;
+      for (var rI = 0; rI < lights; rI++) {
+        var tL = rI / (lights - 1);
+        var ang = tL * 4 * Math.PI;
+        var rL = canopyR * 0.3 + tL * canopyR * 0.7;
+        var xT = Math.cos(ang) * rL * 0.7;
+        var yT = -trunkH * 0.15 + (tL - 0.5) * canopyR * 1.2;
+
+        // glow
         mockCtx.beginPath();
-        mockCtx.moveTo(-4 * size, 4 * size);
-        mockCtx.lineTo(-2 * size, 18 * size);
-        mockCtx.lineTo(0, 8 * size);
-        mockCtx.closePath();
+        mockCtx.globalAlpha = 0.28;
+        mockCtx.fillStyle = '#fff7cc';
+        mockCtx.arc(xT, yT, 5 * size, 0, Math.PI * 2);
         mockCtx.fill();
+        mockCtx.globalAlpha = 1;
 
+        // bulb core
         mockCtx.beginPath();
-        mockCtx.moveTo(4 * size, 4 * size);
-        mockCtx.lineTo(2 * size, 18 * size);
-        mockCtx.lineTo(0, 8 * size);
-        mockCtx.closePath();
+        mockCtx.fillStyle = '#ffffee';
+        mockCtx.arc(xT, yT, 2 * size, 0, Math.PI * 2);
         mockCtx.fill();
+      }
 
-        mockCtx.beginPath();
-        mockCtx.fillStyle = '#e53935';
-        mockCtx.arc(0, 0, 3 * size, 0, Math.PI * 2);
-        mockCtx.fill();
+    } else if (deco.kind === 'net') {
+      // shrub / net lights
+      var wN = 70 * size;
+      var hN = 45 * size;
 
-      } else if (deco.kind === 'garland') {
-        var width = 60 * size;
-        var height = 20 * size;
+      // dark shrub body
+      mockCtx.beginPath();
+      mockCtx.fillStyle = '#0b3d0b';
+      if (mockCtx.ellipse) {
+        mockCtx.ellipse(0, 0, wN / 2, hN / 2, 0, 0, Math.PI * 2);
+      } else {
+        mockCtx.arc(0, 0, Math.max(wN, hN) / 2, 0, Math.PI * 2);
+      }
+      mockCtx.fill();
 
-        mockCtx.strokeStyle = '#0f4d1b';
-        mockCtx.lineWidth = 4.5 * size;
-        mockCtx.beginPath();
-        mockCtx.moveTo(-width / 2, -height / 2);
-        mockCtx.quadraticCurveTo(0, height * 1.2, width / 2, -height / 2);
-        mockCtx.stroke();
+      // faint outline
+      mockCtx.beginPath();
+      mockCtx.strokeStyle = 'rgba(255,255,255,0.15)';
+      mockCtx.lineWidth = 1.2 * size;
+      if (mockCtx.ellipse) {
+        mockCtx.ellipse(0, 0, wN / 2, hN / 2, 0, 0, Math.PI * 2);
+      } else {
+        mockCtx.arc(0, 0, Math.max(wN, hN) / 2, 0, Math.PI * 2);
+      }
+      mockCtx.stroke();
 
-        var bulbsG = 10;
-        for (var g = 0; g <= bulbsG; g++) {
-          var tG = g / bulbsG;
-          var xG = -width / 2 + width * tG;
-          var yG = -height / 2 + (Math.sin(Math.PI * tG) * height * 1.3);
+      // bulbs laid out in a soft grid
+      var rows = 4;
+      var cols = 7;
+      for (var rN = 0; rN < rows; rN++) {
+        for (var cN = 0; cN < cols; cN++) {
+          var xN = -wN / 2 + (wN * cN) / (cols - 1);
+          var yN = -hN / 2 + (hN * rN) / (rows - 1);
 
-          mockCtx.beginPath();
-          mockCtx.globalAlpha = 0.32;
-          mockCtx.fillStyle = (g % 3 === 0) ? '#ff6666'
-                           : (g % 3 === 1) ? '#ffff88'
-                           : '#66ccff';
-          mockCtx.arc(xG, yG, 4.5 * size, 0, Math.PI * 2);
-          mockCtx.fill();
-          mockCtx.globalAlpha = 1;
+          // slight offset so it feels more organic
+          xN += (rN % 2 === 0 ? 1 : -1) * 1.5 * size;
 
-          mockCtx.beginPath();
-          mockCtx.fillStyle = '#ffffff';
-          mockCtx.arc(xG, yG, 2 * size, 0, Math.PI * 2);
-          mockCtx.fill();
-        }
-
-      } else if (deco.kind === 'tree-wrap') {
-        var trunkH = 45 * size;
-        var trunkW = 10 * size;
-        mockCtx.fillStyle = '#8b5a2b';
-        mockCtx.fillRect(-trunkW / 2, 5 * size, trunkW, trunkH);
-
-        var canopyR = 24 * size;
-        mockCtx.beginPath();
-        mockCtx.fillStyle = '#0b3d0b';
-        if (mockCtx.ellipse) {
-          mockCtx.ellipse(0, -trunkH * 0.15, canopyR * 1.1, canopyR, 0, 0, Math.PI * 2);
-        } else {
-          mockCtx.arc(0, -trunkH * 0.15, canopyR, 0, Math.PI * 2);
-        }
-        mockCtx.fill();
-
-        var lights = 26;
-        for (var rI = 0; rI < lights; rI++) {
-          var tL = rI / (lights - 1);
-          var ang = tL * 4 * Math.PI;
-          var rL = canopyR * 0.3 + tL * canopyR * 0.7;
-          var xT = Math.cos(ang) * rL * 0.7;
-          var yT = -trunkH * 0.15 + (tL - 0.5) * canopyR * 1.2;
-
+          // glow
           mockCtx.beginPath();
           mockCtx.globalAlpha = 0.28;
           mockCtx.fillStyle = '#fff7cc';
-          mockCtx.arc(xT, yT, 5 * size, 0, Math.PI * 2);
+          mockCtx.arc(xN, yN, 5 * size, 0, Math.PI * 2);
           mockCtx.fill();
           mockCtx.globalAlpha = 1;
 
+          // bulb
           mockCtx.beginPath();
-          mockCtx.fillStyle = '#ffffee';
-          mockCtx.arc(xT, yT, 2 * size, 0, Math.PI * 2);
+          mockCtx.fillStyle = '#fffff5';
+          mockCtx.arc(xN, yN, 2 * size, 0, Math.PI * 2);
           mockCtx.fill();
         }
+      }
 
-      } else if (deco.kind === 'net') {
-        var wN = 70 * size;
-        var hN = 45 * size;
+    } else if (deco.kind === 'star') {
+      var outerR = 20 * size;
+      var innerR = outerR * 0.45;
 
+      mockCtx.beginPath();
+      for (var s = 0; s < 10; s++) {
+        var angS = (Math.PI / 5) * s - Math.PI / 2;
+        var rS = (s % 2 === 0) ? outerR : innerR;
+        var xS = Math.cos(angS) * rS;
+        var yS = Math.sin(angS) * rS;
+        if (s === 0) mockCtx.moveTo(xS, yS);
+        else mockCtx.lineTo(xS, yS);
+      }
+      mockCtx.closePath();
+
+      // glow fill
+      mockCtx.save();
+      mockCtx.globalAlpha = 0.35;
+      mockCtx.fillStyle = '#ffeb3b';
+      mockCtx.fill();
+      mockCtx.restore();
+
+      // bright center
+      mockCtx.beginPath();
+      mockCtx.fillStyle = '#fffde7';
+      mockCtx.arc(0, 0, 4 * size, 0, Math.PI * 2);
+      mockCtx.fill();
+
+      mockCtx.strokeStyle = '#fdd835';
+      mockCtx.lineWidth = 1.1 * size;
+      mockCtx.stroke();
+
+    } else if (deco.kind === 'mini-tree') {
+      var treeH = 50 * size;
+      var baseW = 30 * size;
+
+      // lower triangle
+      mockCtx.beginPath();
+      mockCtx.fillStyle = '#0b3d0b';
+      mockCtx.moveTo(-baseW / 2, 15 * size);
+      mockCtx.lineTo(0, -treeH / 2);
+      mockCtx.lineTo(baseW / 2, 15 * size);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+      // upper triangle
+      mockCtx.beginPath();
+      mockCtx.moveTo(-baseW * 0.35, -5 * size);
+      mockCtx.lineTo(0, -treeH * 0.9);
+      mockCtx.lineTo(baseW * 0.35, -5 * size);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+      // trunk
+      mockCtx.fillStyle = '#8b5a2b';
+      mockCtx.fillRect(-4 * size, 15 * size, 8 * size, 12 * size);
+
+      // lights spiraling up tree
+      var bulbsT = 20;
+      for (var bt = 0; bt < bulbsT; bt++) {
+        var tT = bt / (bulbsT - 1);
+        var yB = 10 * size - tT * (treeH * 0.9);
+        var halfW = (baseW / 2) * (0.3 + 0.7 * (1 - tT));
+        var xB = (bt % 2 === 0 ? -1 : 1) * halfW * 0.6;
+
+        // glow
         mockCtx.beginPath();
-        mockCtx.fillStyle = '#0b3d0b';
-        if (mockCtx.ellipse) {
-          mockCtx.ellipse(0, 0, wN / 2, hN / 2, 0, 0, Math.PI * 2);
-        } else {
-          mockCtx.arc(0, 0, Math.max(wN, hN) / 2, 0, Math.PI * 2);
-        }
+        mockCtx.globalAlpha = 0.3;
+        mockCtx.fillStyle = '#fff7cc';
+        mockCtx.arc(xB, yB, 4.5 * size, 0, Math.PI * 2);
         mockCtx.fill();
+        mockCtx.globalAlpha = 1;
 
+        // bulb
         mockCtx.beginPath();
-        mockCtx.strokeStyle = 'rgba(255,255,255,0.15)';
-        mockCtx.lineWidth = 1.2 * size;
-        if (mockCtx.ellipse) {
-          mockCtx.ellipse(0, 0, wN / 2, hN / 2, 0, 0, Math.PI * 2);
-        } else {
-          mockCtx.arc(0, 0, Math.max(wN, hN) / 2, 0, Math.PI * 2);
-        }
-        mockCtx.stroke();
-
-        var rows = 4, cols = 7;
-        for (var rN = 0; rN < rows; rN++) {
-          for (var cN = 0; cN < cols; cN++) {
-            var xN = -wN / 2 + (wN * cN) / (cols - 1);
-            var yN = -hN / 2 + (hN * rN) / (rows - 1);
-            xN += (rN % 2 === 0 ? 1 : -1) * 1.5 * size;
-
-            mockCtx.beginPath();
-            mockCtx.globalAlpha = 0.28;
-            mockCtx.fillStyle = '#fff7cc';
-            mockCtx.arc(xN, yN, 5 * size, 0, Math.PI * 2);
-            mockCtx.fill();
-            mockCtx.globalAlpha = 1;
-
-            mockCtx.beginPath();
-            mockCtx.fillStyle = '#fffff5';
-            mockCtx.arc(xN, yN, 2 * size, 0, Math.PI * 2);
-            mockCtx.fill();
-          }
-        }
-
-      } else if (deco.kind === 'star') {
-        var outerR = 20 * size;
-        var innerR = outerR * 0.45;
-
-        mockCtx.beginPath();
-        for (var s = 0; s < 10; s++) {
-          var angS = (Math.PI / 5) * s - Math.PI / 2;
-          var rS = (s % 2 === 0) ? outerR : innerR;
-          var xS = Math.cos(angS) * rS;
-          var yS = Math.sin(angS) * rS;
-          if (s === 0) mockCtx.moveTo(xS, yS);
-          else mockCtx.lineTo(xS, yS);
-        }
-        mockCtx.closePath();
-
-        mockCtx.save();
-        mockCtx.globalAlpha = 0.35;
-        mockCtx.fillStyle = '#ffeb3b';
-        mockCtx.fill();
-        mockCtx.restore();
-
-        mockCtx.beginPath();
-        mockCtx.fillStyle = '#fffde7';
-        mockCtx.arc(0, 0, 4 * size, 0, Math.PI * 2);
-        mockCtx.fill();
-
-        mockCtx.strokeStyle = '#fdd835';
-        mockCtx.lineWidth = 1.1 * size;
-        mockCtx.stroke();
-
-      } else if (deco.kind === 'mini-tree') {
-        var treeH = 50 * size;
-        var baseW = 30 * size;
-
-        mockCtx.beginPath();
-        mockCtx.fillStyle = '#0b3d0b';
-        mockCtx.moveTo(-baseW / 2, 15 * size);
-        mockCtx.lineTo(0, -treeH / 2);
-        mockCtx.lineTo(baseW / 2, 15 * size);
-        mockCtx.closePath();
-        mockCtx.fill();
-
-        mockCtx.beginPath();
-        mockCtx.moveTo(-baseW * 0.35, -5 * size);
-        mockCtx.lineTo(0, -treeH * 0.9);
-        mockCtx.lineTo(baseW * 0.35, -5 * size);
-        mockCtx.closePath();
-        mockCtx.fill();
-
-        mockCtx.fillStyle = '#8b5a2b';
-        mockCtx.fillRect(-4 * size, 15 * size, 8 * size, 12 * size);
-
-        var bulbsT = 20;
-        for (var bt = 0; bt < bulbsT; bt++) {
-          var tT = bt / (bulbsT - 1);
-          var yB = 10 * size - tT * (treeH * 0.9);
-          var halfW = (baseW / 2) * (0.3 + 0.7 * (1 - tT));
-          var xB = (bt % 2 === 0 ? -1 : 1) * halfW * 0.6;
-
-          mockCtx.beginPath();
-          mockCtx.globalAlpha = 0.3;
-          mockCtx.fillStyle = '#fff7cc';
-          mockCtx.arc(xB, yB, 4.5 * size, 0, Math.PI * 2);
-          mockCtx.fill();
-          mockCtx.globalAlpha = 1;
-
-          mockCtx.beginPath();
-          mockCtx.fillStyle = '#ffffff';
-          mockCtx.arc(xB, yB, 2 * size, 0, Math.PI * 2);
-          mockCtx.fill();
-        }
-      } else {
-        mockCtx.beginPath();
-        mockCtx.fillStyle = '#ff00ff';
-        mockCtx.arc(0, 0, 6 * size, 0, Math.PI * 2);
+        mockCtx.fillStyle = '#ffffff';
+        mockCtx.arc(xB, yB, 2 * size, 0, Math.PI * 2);
         mockCtx.fill();
       }
+
+    } else {
+      // generic dot fallback
+      mockCtx.beginPath();
+      mockCtx.fillStyle = '#ff00ff';
+      mockCtx.arc(0, 0, 6 * size, 0, Math.PI * 2);
+      mockCtx.fill();
     }
 
+    // Selection ring + resize handle in edit mode
     if (mockMode === 'decor-edit' && deco.id === mockSelectedDecorId) {
       var selR = getDecorationRadius(deco) + 4;
       mockCtx.beginPath();
@@ -1698,698 +1852,474 @@ document.addEventListener('DOMContentLoaded', function () {
 
     mockCtx.restore();
   }
+}
 
-  function drawDecorations() {
-    if (!mockCtx || !mockDecorations.length) return;
-    mockDecorations.forEach(drawStandardDecoration);
-  }
+// --- Load image into mockup canvas -------------------------
 
-  function drawTreeTraces() {
-    if (!mockCtx || !treeTraces.length) return;
+if (mockImageInput && mockCtx && mockCanvas) {
+  mockImageInput.addEventListener('change', function (e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
 
-    var spacing = 14;           // pixels between bulbs
-    var sizeFactor = 0.8;
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var img = new Image();
+      img.onload = function () {
+        mockImage = img;
+        var cw = mockCanvas.width;
+        var ch = mockCanvas.height;
+        var iw = img.width;
+        var ih = img.height;
+        var scale = Math.min(cw / iw, ch / ih);
+        var drawW = iw * scale;
+        var drawH = ih * scale;
+        var offsetX = (cw - drawW) / 2;
+        var offsetY = (ch - drawH) / 2;
 
-    treeTraces.forEach(function (trace) {
-      if (trace.length < 2) return;
+        mockDrawParams = { x: offsetX, y: offsetY, w: drawW, h: drawH };
+        mockSegments = [];
+        mockDecorations = [];
+        mockTreeTraces = [];
+        mockSelectedDecorId = null;
+        mockLastPoint = null;
+        mockMode = 'draw';
+        mockZoom = 1;
+        mockApplyZoom();
+        mockDrawBase();
+        mockSyncDecorationsToEstimate();
+        mockSetInfo('Photo loaded. Draw runs, place decorations, or use tree/shrub trace.');
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
-      var distAccum = 0;
-      var lastPoint = trace[0];
+// --- Canvas interactions (click / drag / trace) ------------
 
-      for (var i = 1; i < trace.length; i++) {
-        var curr = trace[i];
-        var segLen = mockPointDist(lastPoint, curr);
-        if (!segLen) {
-          lastPoint = curr;
-          continue;
-        }
-        var dx = (curr.x - lastPoint.x) / segLen;
-        var dy = (curr.y - lastPoint.y) / segLen;
-
-        while (distAccum + segLen >= spacing) {
-          var t = (spacing - distAccum) / segLen;
-          var x = lastPoint.x + dx * (spacing - distAccum);
-          var y = lastPoint.y + dy * (spacing - distAccum);
-          var angle = Math.atan2(dy, dx);
-          drawBulb(mockCtx, x, y, angle, '#fff9d7', sizeFactor);
-
-          segLen -= (spacing - distAccum);
-          lastPoint = { x: x, y: y };
-          distAccum = 0;
-        }
-        distAccum += segLen;
-        lastPoint = curr;
-      }
-    });
-  }
-
-  function mockRedraw() {
-    if (!mockCtx || !mockCanvas) return;
-    mockDrawBase();
+if (mockCanvas && mockCtx) {
+  // Click: draw runs or add decorations (but not in adjust / decor-edit / tree-trace)
+  mockCanvas.addEventListener('click', function (evt) {
     if (!mockImage) return;
 
-    drawLightSegments();
-    drawTreeTraces();
-    drawDecorations();
-  }
-
-  // Sync decoration counts back to Estimate tab
-  function syncDecorCountsToEstimate() {
-    var wreath = 0, garland = 0, bow = 0;
-    mockDecorations.forEach(function (d) {
-      if (d.kind === 'wreath') wreath++;
-      else if (d.kind === 'garland') garland++;
-      else if (d.kind === 'bow') bow++;
-    });
-    if (decorWreathCountInput)  decorWreathCountInput.value  = wreath;
-    if (decorGarlandCountInput) decorGarlandCountInput.value = garland;
-    if (decorBowCountInput)     decorBowCountInput.value     = bow;
-  }
-
-  function addDecorationAtPoint(pt, kind, image) {
-    kind = kind || (mockDecorTypeSelect ? mockDecorTypeSelect.value : 'wreath');
-    var deco = {
-      id: mockNextDecorId++,
-      x: pt.x,
-      y: pt.y,
-      kind: kind,
-      size: 1,
-      rotation: 0,
-      image: image || null
-    };
-    mockDecorations.push(deco);
-    mockSelectedDecorId = deco.id;
-    syncDecorCountsToEstimate();
-    mockRedraw();
-    mockSetInfo('Decoration added. Use "Edit decorations" to move/resize.');
-  }
-
-  function getSelectedDecoration() {
-    if (mockSelectedDecorId == null) return null;
-    for (var i = 0; i < mockDecorations.length; i++) {
-      if (mockDecorations[i].id === mockSelectedDecorId) return mockDecorations[i];
-    }
-    return null;
-  }
-
-  function deleteSelectedDecoration() {
-    if (mockSelectedDecorId == null) {
-      mockSetInfo('Select a decoration first.');
+    if (mockMode === 'adjust' ||
+        mockMode === 'decor-edit' ||
+        mockMode === 'tree-trace') {
       return;
     }
-    mockDecorations = mockDecorations.filter(function (d) {
-      return d.id !== mockSelectedDecorId;
-    });
-    mockSelectedDecorId = null;
-    syncDecorCountsToEstimate();
-    mockRedraw();
-    mockSetInfo('Decoration deleted.');
-  }
 
-  // --- Load front photo ---
-  if (mockImageInput && mockCtx && mockCanvas) {
-    mockImageInput.addEventListener('change', function (e) {
-      var file = e.target.files && e.target.files[0];
-      if (!file) return;
-      var reader = new FileReader();
-      reader.onload = function (ev) {
-        var img = new Image();
-        img.onload = function () {
-          mockImage = img;
-          var cw = mockCanvas.width, ch = mockCanvas.height;
-          var iw = img.width, ih = img.height;
-          var scale = Math.min(cw / iw, ch / ih);
-          var w = iw * scale, h = ih * scale;
-          mockDrawParams = { x: (cw - w) / 2, y: (ch - h) / 2, w: w, h: h };
-          mockSegments = [];
-          treeTraces = [];
-          mockDecorations = [];
-          mockSelectedDecorId = null;
-          mockLastPoint = null;
-          mockMode = 'draw';
-          mockZoom = 1;
-          mockApplyZoom();
-          mockDrawBase();
-          syncDecorCountsToEstimate();
-          mockSetInfo('Photo loaded. Draw roof lines, place decorations, or trace trees.');
-        };
-        img.src = ev.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  }
+    var pt = mockCanvasPoint(evt);
 
-  // Canvas interactions
-  if (mockCanvas && mockCtx) {
-    mockCanvas.addEventListener('click', function (evt) {
-      if (!mockImage) return;
-      var pt = mockCanvasPoint(evt);
-
-      if (mockMode === 'decor-edit' || mockMode === 'adjust' || mockMode === 'tree-trace') {
-        // handled by mousedown/move
-        return;
-      }
-
-      if (mockMode === 'decor-add') {
-        addDecorationAtPoint(pt);
-        return;
-      }
-
-      // default: draw roof/ground/tree segments
-      if (!mockLastPoint) {
-        mockLastPoint = pt;
-      } else {
-        var runType = mockRunTypeSelect ? mockRunTypeSelect.value : 'roof';
-        mockSegments.push({ from: mockLastPoint, to: pt, type: runType });
-        mockLastPoint = pt;
-        mockSetInfo('Segment added. Use "Adjust lines" if needed.');
-      }
-      mockRedraw();
-    });
-
-    mockCanvas.addEventListener('mousedown', function (evt) {
-      if (!mockImage) return;
-      var pt = mockCanvasPoint(evt);
-
-      // Tree trace mode – start a new trace
-      if (mockMode === 'tree-trace') {
-        isTracingTree = true;
-        currentTreeTrace = [pt];
-        return;
-      }
-
-      if (mockMode === 'adjust') {
-        var best = { idx: -1, end: null, dist: 12 };
-        mockSegments.forEach(function (seg, i) {
-          var df = mockPointDist(pt, seg.from);
-          if (df < best.dist) best = { idx: i, end: 'from', dist: df };
-          var dt = mockPointDist(pt, seg.to);
-          if (dt < best.dist) best = { idx: i, end: 'to', dist: dt };
-        });
-        if (best.idx >= 0) {
-          mockIsDraggingSegment = true;
-          mockDragSegmentIndex = best.idx;
-          mockDragSegmentEnd = best.end;
-        }
-        return;
-      }
-
-      if (mockMode === 'decor-edit') {
-        var hit = hitTestDecoration(pt);
-        if (hit && hit.deco) {
-          mockSelectedDecorId = hit.deco.id;
-          if (hit.mode === 'handle') {
-            mockIsResizingDecor = true;
-            var center = { x: hit.deco.x, y: hit.deco.y };
-            mockResizeStartDist = mockPointDist(pt, center);
-          } else {
-            mockIsDraggingDecor = true;
-            mockDecorDragOffset.x = pt.x - hit.deco.x;
-            mockDecorDragOffset.y = pt.y - hit.deco.y;
-          }
-          mockRedraw();
-        } else {
-          mockSelectedDecorId = null;
-          mockRedraw();
-        }
-      }
-    });
-
-    mockCanvas.addEventListener('mousemove', function (evt) {
-      if (!mockImage) return;
-      var pt = mockCanvasPoint(evt);
-
-      if (mockMode === 'tree-trace' && isTracingTree && currentTreeTrace.length) {
-        currentTreeTrace.push(pt);
-        mockRedraw();
-        // draw live bulbs preview
-        treeTraces.concat([currentTreeTrace]);
-        drawTreeTraces();
-        return;
-      }
-
-      if (mockMode === 'adjust' && mockIsDraggingSegment && mockDragSegmentIndex >= 0) {
-        var seg = mockSegments[mockDragSegmentIndex];
-        if (!seg) return;
-        seg[mockDragSegmentEnd] = pt;
-        mockRedraw();
-        return;
-      }
-
-      if (mockMode === 'decor-edit' &&
-          (mockIsDraggingDecor || mockIsResizingDecor) &&
-          mockSelectedDecorId != null) {
-
-        var deco = getSelectedDecoration();
-        if (!deco) return;
-
-        if (mockIsDraggingDecor) {
-          deco.x = pt.x - mockDecorDragOffset.x;
-          deco.y = pt.y - mockDecorDragOffset.y;
-          mockRedraw();
-        } else if (mockIsResizingDecor) {
-          var center = { x: deco.x, y: deco.y };
-          var dist = mockPointDist(pt, center);
-          if (dist > 4 && mockResizeStartDist > 0) {
-            var newSize = (deco.size || 1) * (dist / mockResizeStartDist);
-            if (newSize < 0.4) newSize = 0.4;
-            if (newSize > 3.0) newSize = 3.0;
-            deco.size = newSize;
-            mockRedraw();
-          }
-        }
-      }
-    });
-
-    function stopAllDrags() {
-      if (mockIsDraggingSegment) {
-        mockIsDraggingSegment = false;
-        mockDragSegmentIndex = -1;
-        mockDragSegmentEnd = null;
-        mockSetInfo('Line adjusted.');
-      }
-      if (mockIsDraggingDecor || mockIsResizingDecor) {
-        mockIsDraggingDecor = false;
-        mockIsResizingDecor = false;
-        mockSetInfo('Decoration updated.');
-      }
-      if (mockMode === 'tree-trace' && isTracingTree) {
-        isTracingTree = false;
-        if (currentTreeTrace.length > 1) {
-          treeTraces.push(currentTreeTrace.slice());
-          mockSetInfo('Tree lights trace added. Use Undo/Clear if needed.');
-        }
-        currentTreeTrace = [];
-        mockRedraw();
-      }
+    if (mockMode === 'decor-add') {
+      addDecorationAtPoint(pt);
+      return;
     }
 
-    mockCanvas.addEventListener('mouseup', stopAllDrags);
-    mockCanvas.addEventListener('mouseleave', stopAllDrags);
-    window.addEventListener('mouseup', stopAllDrags);
-  }
-
-  // Controls
-
-  if (mockUndoBtn) {
-    mockUndoBtn.addEventListener('click', function () {
-      if (!mockSegments.length) { mockSetInfo('No segments to undo.'); return; }
-      mockSegments.pop();
-      if (mockSegments.length) {
-        var last = mockSegments[mockSegments.length - 1];
-        mockLastPoint = { x: last.to.x, y: last.to.y };
-      } else {
-        mockLastPoint = null;
-      }
-      mockMode = 'draw';
-      mockRedraw();
-      mockSetInfo('Last light run removed.');
-    });
-  }
-  if (mockNewRunBtn) {
-    mockNewRunBtn.addEventListener('click', function () {
-      mockLastPoint = null;
-      mockMode = 'draw';
-      mockSetInfo('New run started. Click to begin a new line.');
-    });
-  }
-  if (mockAdjustBtn) {
-    mockAdjustBtn.addEventListener('click', function () {
-      if (!mockImage) { mockSetInfo('Upload a photo first.'); return; }
-      if (!mockSegments.length) { mockSetInfo('Draw some runs first.'); return; }
-      mockMode = 'adjust';
-      mockLastPoint = null;
-      mockSetInfo('Adjust mode: drag cyan endpoints.');
-      mockRedraw();
-    });
-  }
-  if (mockClearBtn) {
-    mockClearBtn.addEventListener('click', function () {
-      mockSegments = [];
-      mockLastPoint = null;
-      mockMode = 'draw';
-      mockRedraw();
-      mockSetInfo('All light runs cleared (decorations and trees kept).');
-    });
-  }
-
-  if (mockZoomInBtn) {
-    mockZoomInBtn.addEventListener('click', function () {
-      mockZoom = Math.min(mockZoom + 0.25, MOCK_ZOOM_MAX);
-      mockApplyZoom();
-    });
-  }
-  if (mockZoomOutBtn) {
-    mockZoomOutBtn.addEventListener('click', function () {
-      mockZoom = Math.max(mockZoom - 0.25, MOCK_ZOOM_MIN);
-      mockApplyZoom();
-    });
-  }
-
-  // Decorations buttons
-  if (mockDecorPlaceBtn) {
-    mockDecorPlaceBtn.addEventListener('click', function () {
-      if (!mockImage) { mockSetInfo('Upload a photo first.'); return; }
-      mockMode = 'decor-add';
-      mockLastPoint = null;
-      mockSetInfo('Click on the photo to drop decorations.');
-    });
-  }
-  if (mockDecorEditBtn) {
-    mockDecorEditBtn.addEventListener('click', function () {
-      if (!mockImage) { mockSetInfo('Upload a photo first.'); return; }
-      if (!mockDecorations.length) { mockSetInfo('No decorations yet. Place some first.'); return; }
-      mockMode = 'decor-edit';
-      mockLastPoint = null;
-      mockSetInfo('Edit decorations: click/drag to move, drag the cyan square to resize.');
-      mockRedraw();
-    });
-  }
-  if (mockDecorDeleteBtn) {
-    mockDecorDeleteBtn.addEventListener('click', deleteSelectedDecoration);
-  }
-  if (mockDecorClearBtn) {
-    mockDecorClearBtn.addEventListener('click', function () {
-      if (!mockDecorations.length) { mockSetInfo('No decorations to clear.'); return; }
-      mockDecorations = [];
-      mockSelectedDecorId = null;
-      syncDecorCountsToEstimate();
-      mockRedraw();
-      mockSetInfo('All decorations cleared.');
-    });
-  }
-
-  if (decorSmallerBtn) {
-    decorSmallerBtn.addEventListener('click', function () {
-      var deco = getSelectedDecoration();
-      if (!deco) { mockSetInfo('Select a decoration first.'); return; }
-      deco.size = Math.max(0.4, (deco.size || 1) - 0.15);
-      mockRedraw();
-    });
-  }
-  if (decorBiggerBtn) {
-    decorBiggerBtn.addEventListener('click', function () {
-      var deco = getSelectedDecoration();
-      if (!deco) { mockSetInfo('Select a decoration first.'); return; }
-      deco.size = Math.min(3.0, (deco.size || 1) + 0.15);
-      mockRedraw();
-    });
-  }
-  if (decorRotateLeftBtn) {
-    decorRotateLeftBtn.addEventListener('click', function () {
-      var deco = getSelectedDecoration();
-      if (!deco) { mockSetInfo('Select a decoration first.'); return; }
-      deco.rotation = (deco.rotation || 0) - Math.PI / 12;
-      mockRedraw();
-    });
-  }
-  if (decorRotateRightBtn) {
-    decorRotateRightBtn.addEventListener('click', function () {
-      var deco = getSelectedDecoration();
-      if (!deco) { mockSetInfo('Select a decoration first.'); return; }
-      deco.rotation = (deco.rotation || 0) + Math.PI / 12;
-      mockRedraw();
-    });
-  }
-
-  // Tree / shrub free-form controls
-  if (treeTraceBtn) {
-    treeTraceBtn.addEventListener('click', function () {
-      if (!mockImage) { mockSetInfo('Upload a photo first.'); return; }
-      mockMode = 'tree-trace';
-      isTracingTree = false;
-      currentTreeTrace = [];
-      mockSetInfo('Tree/shrub trace: click and drag over branches; release to stop. Bulbs only, no background.');
-    });
-  }
-  if (treeStopBtn) {
-    treeStopBtn.addEventListener('click', function () {
-      if (mockMode === 'tree-trace' && isTracingTree && currentTreeTrace.length > 1) {
-        treeTraces.push(currentTreeTrace.slice());
-      }
-      isTracingTree = false;
-      currentTreeTrace = [];
-      mockMode = 'draw';
-      mockSetInfo('Tree tracing stopped.');
-      mockRedraw();
-    });
-  }
-  if (treeUndoBtn) {
-    treeUndoBtn.addEventListener('click', function () {
-      if (!treeTraces.length) { mockSetInfo('No tree lights to undo.'); return; }
-      treeTraces.pop();
-      mockRedraw();
-      mockSetInfo('Last tree/shrub trace removed.');
-    });
-  }
-  if (treeClearBtn) {
-    treeClearBtn.addEventListener('click', function () {
-      if (!treeTraces.length) { mockSetInfo('No tree lights to clear.'); return; }
-      treeTraces = [];
-      mockRedraw();
-      mockSetInfo('All tree/shrub lights cleared.');
-    });
-  }
-
-  // Custom decoration upload
-  if (customDecorFileInput) {
-    customDecorFileInput.addEventListener('change', function (e) {
-      var file = e.target.files && e.target.files[0];
-      if (!file) return;
-      var reader = new FileReader();
-      reader.onload = function (ev) {
-        var img = new Image();
-        img.onload = function () {
-          customDecorFileInput._customImage = img;
-          mockSetInfo('Custom image ready. Choose "Custom image" in the dropdown, then click on photo to place.');
-        };
-        img.src = ev.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  // When placing decorations, if "Custom image" is chosen, use the uploaded image
-  if (mockDecorPlaceBtn) {
-    mockDecorPlaceBtn.addEventListener('click', function () {
-      if (!mockImage) { mockSetInfo('Upload a photo first.'); return; }
-      mockMode = 'decor-add';
-      mockLastPoint = null;
-      mockSetInfo('Click on the photo to place decorations.');
-
-      mockCanvas.onclick = function (evt) {
-        if (!mockImage || mockMode !== 'decor-add') return;
-        var pt = mockCanvasPoint(evt);
-        var kind = mockDecorTypeSelect ? mockDecorTypeSelect.value : 'wreath';
-        var img = null;
-        if (kind === 'custom-image' && customDecorFileInput && customDecorFileInput._customImage) {
-          img = customDecorFileInput._customImage;
-        }
-        addDecorationAtPoint(pt, kind, img);
-      };
-    });
-  }
-
-  // Redraw when style controls change
-  [mockColorModeSelect, mockColor1Input, mockColor2Input, mockColor3Input,
-   mockBulbSpacingSelect, mockBulbSizeSelect, mockShowWireCheckbox].forEach(function (el) {
-    if (!el) return;
-    el.addEventListener('change', mockRedraw);
+    // Draw light runs
+    if (!mockLastPoint) {
+      mockLastPoint = pt;
+    } else {
+      var runType = mockRunTypeSelect ? mockRunTypeSelect.value : 'roof';
+      mockSegments.push({ from: mockLastPoint, to: pt, type: runType });
+      mockLastPoint = pt;
+    }
+    mockRedraw();
   });
 
-  if (mockRunTypeSelect) {
-    mockRunTypeSelect.addEventListener('change', function () {
-      mockLastPoint = null;
-      mockMode = 'draw';
-      mockSetInfo('Run type changed. Next click starts a new run with this type.');
-    });
-  }
+  // mousedown: segment adjust OR decoration drag/resize OR start tree trace
+  mockCanvas.addEventListener('mousedown', function (evt) {
+    if (!mockImage) return;
+    var pt = mockCanvasPoint(evt);
 
-  // Print / Save mockup – hide handles, then window.print
-  if (mockPrintBtn) {
-    mockPrintBtn.addEventListener('click', function () {
-      if (!mockCanvas) { window.print(); return; }
-      var prevMode = mockMode;
-      mockMode = 'draw';
+    // Tree trace mode
+    if (mockMode === 'tree-trace') {
+      mockIsTracingTree = true;
+      mockCurrentTrace = { points: [pt] };
+      mockTreeTraces.push(mockCurrentTrace);
       mockRedraw();
-      window.print();
-      mockMode = prevMode;
+      return;
+    }
+
+    mockIsDraggingSegment = false;
+    mockIsDraggingDecor = false;
+    mockIsResizingDecor = false;
+
+    if (mockMode === 'adjust') {
+      var hitThreshold = 14;
+      for (var i = 0; i < mockSegments.length; i++) {
+        var seg = mockSegments[i];
+        var dFrom = mockPointDistance(pt, seg.from);
+        var dTo = mockPointDistance(pt, seg.to);
+        if (dFrom <= hitThreshold) {
+          mockIsDraggingSegment = true;
+          mockDragSegmentIndex = i;
+          mockDragSegmentEnd = 'from';
+          break;
+        } else if (dTo <= hitThreshold) {
+          mockIsDraggingSegment = true;
+          mockDragSegmentIndex = i;
+          mockDragSegmentEnd = 'to';
+          break;
+        }
+      }
+
+      if (mockIsDraggingSegment) {
+        mockSetInfo(
+          'Adjusting light run ' + mockDragSegmentIndex +
+          ' (' + mockDragSegmentEnd + '). Drag to move.'
+        );
+      }
+    } else if (mockMode === 'decor-edit') {
+      var hit = hitTestDecoration(pt);
+      if (hit && hit.deco) {
+        mockSelectedDecorId = hit.deco.id;
+        if (hit.mode === 'handle') {
+          mockIsResizingDecor = true;
+          var center = { x: hit.deco.x, y: hit.deco.y };
+          mockResizeStartDist = mockPointDistance(pt, center);
+        } else {
+          mockIsDraggingDecor = true;
+          mockDecorDragOffset.x = pt.x - hit.deco.x;
+          mockDecorDragOffset.y = pt.y - hit.deco.y;
+        }
+        mockRedraw();
+      } else {
+        mockSelectedDecorId = null;
+        mockRedraw();
+      }
+    }
+  });
+
+  // mousemove: update drag or tree trace
+  mockCanvas.addEventListener('mousemove', function (evt) {
+    if (!mockImage) return;
+    var pt = mockCanvasPoint(evt);
+
+    // Tree trace dragging
+    if (mockMode === 'tree-trace' && mockIsTracingTree && mockCurrentTrace) {
+      var pts = mockCurrentTrace.points;
+      var last = pts[pts.length - 1];
+      if (!last || mockPointDistance(last, pt) >= 5) {
+        pts.push(pt);
+        mockRedraw();
+      }
+      return;
+    }
+
+    if (mockMode === 'adjust' && mockIsDraggingSegment) {
+      var seg = mockSegments[mockDragSegmentIndex];
+      if (!seg) return;
+      seg[mockDragSegmentEnd] = pt;
       mockRedraw();
-    });
-  }
-  // ============================================================
-  // Tree / shrub free-form mini-lights + Print fix
-  // ============================================================
+      return;
+    }
 
-  // Buttons in the "Tree / shrub free-form lights" section
-  var mockTreeTraceBtn = document.getElementById('mock-tree-trace');
-  var mockTreeStopBtn  = document.getElementById('mock-tree-stop');
-  var mockTreeUndoBtn  = document.getElementById('mock-tree-undo');
-  var mockTreeClearBtn = document.getElementById('mock-tree-clear');
+    if (mockMode === 'decor-edit' &&
+        (mockIsDraggingDecor || mockIsResizingDecor) &&
+        mockSelectedDecorId != null) {
 
-  // Internal state for tree tracing
-  var treeTraceActive   = false;
-  var treeTraceDrawing  = false;
-  var treeTraces        = [];   // each trace: [{x,y}, {x,y}, ...]
-  var treeCurrentTrace  = null;
+      var deco = findDecorationById(mockSelectedDecorId);
+      if (!deco) return;
 
-  // Draw all tree traces as dense nets of mini bulbs
-  function drawTreeTraces() {
-    if (!mockCtx || !mockCanvas || !treeTraces.length) return;
-
-    mockCtx.save();
-
-    for (var i = 0; i < treeTraces.length; i++) {
-      var trace = treeTraces[i];
-      if (!trace || trace.length < 2) continue;
-
-      var step = 10; // pixels between bulbs
-
-      for (var j = 0; j < trace.length - 1; j++) {
-        var p1 = trace[j];
-        var p2 = trace[j + 1];
-
-        var dx = p2.x - p1.x;
-        var dy = p2.y - p1.y;
-        var len = Math.sqrt(dx * dx + dy * dy);
-        if (len === 0) continue;
-
-        var bulbs = Math.max(1, Math.round(len / step));
-
-        for (var b = 0; b <= bulbs; b++) {
-          var t = bulbs === 0 ? 0 : b / bulbs;
-          var x = p1.x + dx * t;
-          var y = p1.y + dy * t;
-
-          // soft glow
-          mockCtx.beginPath();
-          mockCtx.globalAlpha = 0.25;
-          mockCtx.fillStyle = '#fff7cc';
-          mockCtx.arc(x, y, 5, 0, Math.PI * 2);
-          mockCtx.fill();
-
-          // bright core
-          mockCtx.beginPath();
-          mockCtx.globalAlpha = 1;
-          mockCtx.fillStyle = '#ffffff';
-          mockCtx.arc(x, y, 2.3, 0, Math.PI * 2);
-          mockCtx.fill();
+      if (mockIsDraggingDecor) {
+        deco.x = pt.x - mockDecorDragOffset.x;
+        deco.y = pt.y - mockDecorDragOffset.y;
+        mockRedraw();
+      } else if (mockIsResizingDecor) {
+        var center = { x: deco.x, y: deco.y };
+        var dist = mockPointDistance(pt, center);
+        if (dist > 4 && mockResizeStartDist > 0) {
+          var scale = dist / mockResizeStartDist;
+          var newSize = (deco.size || 1) * scale;
+          if (newSize < 0.4) newSize = 0.4;
+          if (newSize > 3.0) newSize = 3.0;
+          deco.size = newSize;
+          mockRedraw();
         }
       }
     }
+  });
 
-    mockCtx.restore();
+  function mockStopDragOrTrace() {
+    if (mockIsDraggingSegment) {
+      mockIsDraggingSegment = false;
+      mockDragSegmentIndex = -1;
+      mockDragSegmentEnd = null;
+      mockSetInfo('Light run endpoint adjusted.');
+    }
+    if (mockIsDraggingDecor || mockIsResizingDecor) {
+      mockIsDraggingDecor = false;
+      mockIsResizingDecor = false;
+      mockSetInfo('Decoration updated.');
+    }
+    if (mockIsTracingTree) {
+      mockIsTracingTree = false;
+      mockCurrentTrace = null;
+      mockSetInfo('Tree / shrub mini lights updated.');
+    }
   }
 
-  // Wrap the existing mockRedraw so tree lights are always drawn on top
-  if (typeof mockRedraw === 'function') {
-    var _origMockRedraw = mockRedraw;
-    mockRedraw = function () {
-      _origMockRedraw();
-      drawTreeTraces();
-    };
+  mockCanvas.addEventListener('mouseup', mockStopDragOrTrace);
+  mockCanvas.addEventListener('mouseleave', mockStopDragOrTrace);
+}
+
+// --- Undo / new run / adjust / clear for light runs --------
+
+if (mockUndoBtn) {
+  mockUndoBtn.addEventListener('click', function () {
+    if (!mockSegments.length) {
+      mockSetInfo('No segments to undo.');
+      return;
+    }
+    mockSegments.pop();
+    if (mockSegments.length > 0) {
+      var lastSeg = mockSegments[mockSegments.length - 1];
+      mockLastPoint = { x: lastSeg.to.x, y: lastSeg.to.y };
+    } else {
+      mockLastPoint = null;
+    }
+    mockMode = 'draw';
+    mockRedraw();
+    mockSetInfo('Last segment removed. Back in draw mode.');
+  });
+}
+
+if (mockNewRunBtn) {
+  mockNewRunBtn.addEventListener('click', function () {
+    mockLastPoint = null;
+    mockMode = 'draw';
+    mockSetInfo('New run started. Next click will begin a fresh light run.');
+    mockRedraw();
+  });
+}
+
+if (mockAdjustBtn) {
+  mockAdjustBtn.addEventListener('click', function () {
+    if (!mockImage) {
+      mockSetInfo('Upload a photo first.');
+      return;
+    }
+    if (!mockSegments.length) {
+      mockSetInfo('Draw some runs first, then adjust.');
+      return;
+    }
+    mockMode = 'adjust';
+    mockLastPoint = null;
+    mockSetInfo('Adjust mode: drag the cyan end points to fine-tune your runs.');
+    mockRedraw();
+  });
+}
+
+if (mockClearBtn) {
+  mockClearBtn.addEventListener('click', function () {
+    mockSegments = [];
+    mockTreeTraces = []; // also clear free-form tree lights
+    mockLastPoint = null;
+    mockMode = 'draw';
+    mockRedraw();
+    mockSetInfo('All light runs and tree traces cleared. Decorations are untouched.');
+  });
+}
+
+// --- Decorations buttons -----------------------------------
+
+if (mockDecorPlaceBtn) {
+  mockDecorPlaceBtn.addEventListener('click', function () {
+    if (!mockImage) {
+      mockSetInfo('Upload a photo first.');
+      return;
+    }
+    mockMode = 'decor-add';
+    mockLastPoint = null;
+    mockSetInfo('Decoration placement mode: click on the photo to drop icons.');
+  });
+}
+
+if (mockDecorEditBtn) {
+  mockDecorEditBtn.addEventListener('click', function () {
+    if (!mockImage) {
+      mockSetInfo('Upload a photo first.');
+      return;
+    }
+    if (!mockDecorations.length) {
+      mockSetInfo('No decorations yet. Use "Place decorations" first.');
+      return;
+    }
+    mockMode = 'decor-edit';
+    mockLastPoint = null;
+    mockSetInfo('Edit decorations: click/drag to move, drag the cyan square to resize.');
+    mockRedraw();
+  });
+}
+
+if (mockDecorDeleteBtn) {
+  mockDecorDeleteBtn.addEventListener('click', deleteSelectedDecoration);
+}
+
+if (mockDecorClearBtn) {
+  mockDecorClearBtn.addEventListener('click', function () {
+    if (!mockDecorations.length && !mockTreeTraces.length) {
+      mockSetInfo('There are no decorations or tree traces to clear.');
+      return;
+    }
+    mockDecorations = [];
+    mockTreeTraces = [];
+    mockSelectedDecorId = null;
+    mockSyncDecorationsToEstimate();
+    mockRedraw();
+    mockSetInfo('All decorations and tree traces cleared.');
+  });
+}
+
+// Helper: get the currently selected decoration (if any)
+function getSelectedDecoration() {
+  if (mockSelectedDecorId == null) {
+    mockSetInfo('Select a decoration in "Edit decorations" mode first.');
+    return null;
   }
-
-  // Canvas interactions for tree tracing
-  if (mockCanvas) {
-    // Start a new trace on mousedown
-    mockCanvas.addEventListener('mousedown', function (evt) {
-      if (!treeTraceActive || !mockImage) return;
-
-      var pt = mockCanvasPoint(evt);
-
-      treeTraceDrawing = true;
-      treeCurrentTrace = [pt];
-      treeTraces.push(treeCurrentTrace);
-
-      mockRedraw();
-    });
-
-    // Add points as you drag
-    mockCanvas.addEventListener('mousemove', function (evt) {
-      if (!treeTraceActive || !treeTraceDrawing || !treeCurrentTrace) return;
-
-      var pt = mockCanvasPoint(evt);
-      var last = treeCurrentTrace[treeCurrentTrace.length - 1];
-      if (!last) return;
-
-      var dx = pt.x - last.x;
-      var dy = pt.y - last.y;
-      if (dx * dx + dy * dy < 16) {
-        // too close; skip to keep array smaller
-        return;
-      }
-
-      treeCurrentTrace.push(pt);
-      mockRedraw();
-    });
-
-    // Stop tracing on mouseup anywhere
-    window.addEventListener('mouseup', function () {
-      if (!treeTraceActive) return;
-      treeTraceDrawing = false;
-      treeCurrentTrace = null;
-    });
+  var deco = findDecorationById(mockSelectedDecorId);
+  if (!deco) {
+    mockSetInfo('Selected decoration no longer exists.');
+    return null;
   }
+  return deco;
+}
 
-  // Button wiring for tree / shrub controls
-  if (mockTreeTraceBtn) {
-    mockTreeTraceBtn.addEventListener('click', function () {
-      if (!mockImage) {
-        mockSetInfo('Upload a photo first, then drag over the tree or shrub to drop mini bulbs.');
-        return;
-      }
-      treeTraceActive = true;
-      mockSetInfo('Tree / shrub trace: click and drag over foliage to drop a net of mini bulbs.');
-    });
-  }
+// Smaller / Bigger
+if (decorSmallerBtn) {
+  decorSmallerBtn.addEventListener('click', function () {
+    var deco = getSelectedDecoration();
+    if (!deco) return;
 
-  if (mockTreeStopBtn) {
-    mockTreeStopBtn.addEventListener('click', function () {
-      treeTraceActive = false;
-      treeTraceDrawing = false;
-      treeCurrentTrace = null;
-      mockSetInfo('Tree tracing stopped. Click "Trace tree / shrub lights" to start again.');
-    });
-  }
+    var size = deco.size || 1;
+    size -= 0.15;
+    if (size < 0.4) size = 0.4;
+    deco.size = size;
 
-  if (mockTreeUndoBtn) {
-    mockTreeUndoBtn.addEventListener('click', function () {
-      if (!treeTraces.length) {
-        mockSetInfo('No tree lights to undo.');
-        return;
-      }
-      treeTraces.pop();
-      treeCurrentTrace = null;
-      mockRedraw();
-      mockSetInfo('Last traced tree / shrub lights removed.');
-    });
-  }
+    mockRedraw();
+    mockSetInfo('Decoration made smaller.');
+  });
+}
 
-  if (mockTreeClearBtn) {
-    mockTreeClearBtn.addEventListener('click', function () {
-      if (!treeTraces.length) {
-        mockSetInfo('There are no tree lights to clear.');
-        return;
-      }
-      treeTraces = [];
-      treeCurrentTrace = null;
-      treeTraceDrawing = false;
-      mockRedraw();
-      mockSetInfo('All tree / shrub lights cleared.');
-    });
-  }
+if (decorBiggerBtn) {
+  decorBiggerBtn.addEventListener('click', function () {
+    var deco = getSelectedDecoration();
+    if (!deco) return;
 
-  // Make sure the Print / Save button always works
-  var mockPrintBtn = document.getElementById('mockup-print');
-  if (mockPrintBtn) {
-    mockPrintBtn.addEventListener('click', function () {
-      if (typeof mockRedraw === 'function') {
-        mockRedraw();  // ensure latest decorations + tree lights are visible
-      }
+    var size = deco.size || 1;
+    size += 0.15;
+    if (size > 3.0) size = 3.0;
+    deco.size = size;
+
+    mockRedraw();
+    mockSetInfo('Decoration made bigger.');
+  });
+}
+
+// Rotate left / right (15° steps)
+if (decorRotateLeftBtn) {
+  decorRotateLeftBtn.addEventListener('click', function () {
+    var deco = getSelectedDecoration();
+    if (!deco) return;
+
+    var current = deco.rotation || 0;
+    deco.rotation = current - Math.PI / 12;  // 15° left
+
+    mockRedraw();
+    mockSetInfo('Decoration rotated left.');
+  });
+}
+
+if (decorRotateRightBtn) {
+  decorRotateRightBtn.addEventListener('click', function () {
+    var deco = getSelectedDecoration();
+    if (!deco) return;
+
+    var current = deco.rotation || 0;
+    deco.rotation = current + Math.PI / 12;  // 15° right
+
+    mockRedraw();
+    mockSetInfo('Decoration rotated right.');
+  });
+}
+
+// --- Tree trace button -------------------------------------
+
+if (mockTreeTraceBtn) {
+  mockTreeTraceBtn.addEventListener('click', function () {
+    if (!mockImage) {
+      mockSetInfo('Upload a photo first.');
+      return;
+    }
+    mockMode = 'tree-trace';
+    mockLastPoint = null;
+    mockSetInfo('Tree / shrub trace: click and drag on trees or shrubs to lay mini lights.');
+  });
+}
+
+// --- Zoom controls -----------------------------------------
+
+if (mockZoomInBtn) {
+  mockZoomInBtn.addEventListener('click', function () {
+    mockZoom = Math.min(mockZoom + 0.25, MOCK_ZOOM_MAX);
+    mockApplyZoom();
+  });
+}
+
+if (mockZoomOutBtn) {
+  mockZoomOutBtn.addEventListener('click', function () {
+    mockZoom = Math.max(mockZoom - 0.25, MOCK_ZOOM_MIN);
+    mockApplyZoom();
+  });
+}
+
+// --- Redraw on style changes -------------------------------
+
+function mockAttachRedrawControl(el) {
+  if (!el) return;
+  el.addEventListener('change', mockRedraw);
+}
+mockAttachRedrawControl(mockColorModeSelect);
+mockAttachRedrawControl(mockColor1Input);
+mockAttachRedrawControl(mockColor2Input);
+mockAttachRedrawControl(mockColor3Input);
+mockAttachRedrawControl(mockBulbSpacingSelect);
+mockAttachRedrawControl(mockBulbSizeSelect);
+mockAttachRedrawControl(mockShowWireCheckbox);
+
+if (mockRunTypeSelect) {
+  mockRunTypeSelect.addEventListener('change', function () {
+    mockLastPoint = null;
+    mockMode = 'draw';
+    mockSetInfo('Run type changed. Next click will start a new run with this type.');
+    mockRedraw();
+  });
+}
+
+// Print / save mockup via browser print dialog (no adjust handles)
+if (mockPrintBtn) {
+  mockPrintBtn.addEventListener('click', function () {
+    if (!mockCanvas) {
       window.print();
-    });
+      return;
+    }
+    var prevMode = mockMode;
+    mockMode = 'draw'; // hide handles
+    mockRedraw();
+    window.print();
+    mockMode = prevMode;
+    mockRedraw();
+  });
+}
+
+// Allow Delete key to remove selected decoration in decor-edit mode
+window.addEventListener('keydown', function (evt) {
+  if ((evt.key === 'Delete' || evt.key === 'Backspace') &&
+      mockMode === 'decor-edit' &&
+      mockSelectedDecorId != null) {
+    deleteSelectedDecoration();
   }
+});
 
   console.log('Willy Good Christmas Tool script loaded (clean version).');
 });
