@@ -2310,12 +2310,12 @@ if (mockZoomOutBtn) {
   });
 }
 
-// --- Redraw on style changes -------------------------------
-
+// --- Redraw on style changes -----------------------------------
 function mockAttachRedrawControl(el) {
   if (!el) return;
   el.addEventListener('change', mockRedraw);
 }
+
 mockAttachRedrawControl(mockColorModeSelect);
 mockAttachRedrawControl(mockColor1Input);
 mockAttachRedrawControl(mockColor2Input);
