@@ -451,70 +451,54 @@
         <button id="mockup-adjust-mode">Adjust lines</button>
         <button id="mockup-clear">Clear all lines</button><br><br>
 
- <label for="mockup-decor-type"><strong>Decoration type:</strong></label><br>
-        
-<select id="mockup-decor-type" style="width:220px;">
-  <option value="wreath">Wreath (with lights)</option>
-  <option value="bow">Bow</option>
-  <option value="garland">Garland swag</option>
-  <option value="tree-wrap">Tree wrap (mini lights)</option>
-  <option value="net">Shrub / net lights</option>
-  <option value="star">Star / tree topper</option>
-  <option value="mini-tree">Mini yard tree</option>
-  <option value="custom-image">Custom image (uploaded)</option>
-</select>
+        <h3 style="margin-top:0.5rem;">Decorations</h3>
+        <p class="small-note">
+          Choose a decoration, click <strong>Place decorations</strong>, then click on the photo to drop it.
+          Click <strong>Edit decorations</strong> to move, resize, or delete.
+        </p>
 
-<label for="mockup-decor-image"><strong>Upload custom decoration:</strong></label><br>
-<input type="file" id="mockup-decor-image" accept="image/*"><br>
-<span class="small-note">
-  Upload a PNG/JPG, choose "Custom image", then click on the photo to place it.
-</span><br><br>
+        <label for="mockup-decor-type"><strong>Decoration type:</strong></label><br>
+        <select id="mockup-decor-type" style="width:220px;">
+          <option value="wreath">Wreath (with lights)</option>
+          <option value="bow">Bow</option>
+          <option value="garland">Garland swag</option>
+          <option value="tree-wrap">Tree wrap (mini lights)</option>
+          <option value="net">Shrub / net lights</option>
+          <option value="star">Star / tree topper</option>
+          <option value="mini-tree">Mini yard tree</option>
+        </select><br><br>
 
-<button id="mockup-decor-mode">Place decorations</button>
-<button id="mockup-decor-edit">Edit decorations</button><br><br>
+        <!-- Place / edit decorations -->
+        <button id="mockup-decor-mode">Place decorations</button>
+        <button id="mockup-decor-edit">Edit decorations</button><br><br>
 
-<button id="mockup-decor-delete">Delete selected</button>
-<button id="mockup-decor-clear">Clear all decorations</button><br><br>
+        <!-- Delete / clear -->
+        <button id="mockup-decor-delete">Delete selected</button>
+        <button id="mockup-decor-clear">Clear all decorations</button><br><br>
 
-<button id="mockup-zoom-in">Zoom in</button>
-<button id="mockup-zoom-out">Zoom out</button>
-<button id="mockup-print" style="margin-bottom:0.5rem;">
+        <div class="small-note" style="margin-bottom:4px;">
+          With a decoration selected (in Edit decorations mode):
+        </div>
+        <button id="decor-smaller">Smaller</button>
+        <button id="decor-bigger">Bigger</button>
+        <button id="decor-rotate-left">Rotate ⟲</button>
+        <button id="decor-rotate-right">Rotate ⟳</button><br><br>
 
-<div class="small-note" style="margin-bottom:4px;">
- With a decoration selected:
-</div>
-<button id="decor-smaller">Smaller</button>
-<button id="decor-bigger">Bigger</button>
-<button id="decor-rotate-left">Rotate ⟲</button>
-<button id="decor-rotate-right">Rotate ⟳</button><br><br>
+        <!-- Free-form tree / shrub trace -->
+        <button id="mockTreeTraceBtn">Tree / shrub free-form trace</button>
+        <p class="small-note">
+          Click once to start tracing around the tree/shrub, click around the outline,
+          then double-click to finish. Mini bulbs will fill inside the traced shape.
+        </p>
+        <br>
 
-<!-- NEW: Tree / shrub free-form trace -->
-<button id="mockup-tree-trace">Tree / shrub free-form trace</button><br><br>
+        <!-- Zoom & print -->
+        <button id="mockup-zoom-in">Zoom in</button>
+        <button id="mockup-zoom-out">Zoom out</button><br><br>
 
-<button id="mockup-zoom-in">Zoom in</button>
-<button id="mockup-zoom-out">Zoom out</button>
-<button id="mockup-print" style="margin-bottom:0.5rem;">
-  Print / Save this mockup as PDF
-</button>
-
-<h3>Tree / shrub free-form lights</h3>
-<p class="small-note">
-  Click <strong>Trace tree / shrub lights</strong>, then click and drag over the tree or shrub.
-  The tool will drop mini bulbs along your path. Release the mouse to stop.
-  Click again to add more. Use Undo / Clear to remove.
-</p>
-
-<button id="tree-trace-start">Trace tree / shrub lights</button>
-<button id="tree-trace-stop">Stop tracing</button><br><br>
-<button id="tree-trace-undo">Undo last tree lights</button>
-<button id="tree-trace-clear">Clear all tree lights</button>
-
-<p class="small-note">
-  Decoration added: mini-tree lights. Switch to "Edit decorations" mode to move or resize.
-</p>
-
-  Print / Save this mockup as PDF
-</button>
+        <button id="mockup-print" style="margin-bottom:0.5rem;">
+          Print / Save this mockup as PDF
+        </button>
       </div>
 
       <!-- Canvas column -->
