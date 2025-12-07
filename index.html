@@ -2228,7 +2228,9 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
 
-    function finishTreeTraceIfAny() {
+        // Handle mouse-up / leaving canvas: finish tree trace AND stop drags
+    function handleMockCanvasMouseUpOrLeave() {
+      // 1) Finish tree / shrub trace if we were tracing
       if (mockMode === 'tree-trace' && treeTracingDrag) {
         treeTracingDrag = false;
 
@@ -2245,13 +2247,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
         treeTraceCurrent = [];
         _lastTracePoint  = null;
-        mockRedraw();
       }
+
+      // 2) Stop segment adjusting
+      if (mockIsDraggingSegment) {
+        mockIsDraggingSegment = false;
+        mockDragSegmentIndex  = -1;
+        mockDragSegmentEnd    = null;
+      }
+
+      // 3) Stop decoration drag / resize
+      if (mockIsDraggingDecor || mockIsResizingDecor) {
+        mockIsDraggingDecor = false;
+        mockIsResizingDecor = false;
+      }
+
+      // Redraw once with all the final positions
+      mockRedraw();
     }
 
-    mockCanvas.addEventListener('mouseup', finishTreeTraceIfAny);
-    mockCanvas.addEventListener('mouseleave', finishTreeTraceIfAny);
-  }
+    // Mouse up / leave on the canvas
+    mockCanvas.addEventListener('mouseup', handleMockCanvasMouseUpOrLeave);
+    mockCanvas.addEventListener('mouseleave', handleMockCanvasMouseUpOrLeave);
+
+    // Optional: if mouse is released *outside* the canvas, still stop dragging
+    document.addEventListener('mouseup', function () {
+      handleMockCanvasMouseUpOrLeave();
+    });
 
   // --- Undo / new run / adjust / clear for light runs --------------
   if (mockUndoBtn) {
