@@ -135,6 +135,11 @@
     .screen.active {
       display: block !important;
     }
+
+    /* NEW: hide helper text on printed proposal */
+    .print-hide {
+      display: none !important;
+    }
   }
 
   </style>
@@ -555,8 +560,10 @@
   
   <!-- Screen 5: Proposal -->
   <section id="screen-proposal" class="screen">
-  <h2>Proposal</h2>
-  <p>Preview what you can send to the client. Use your browser's Print feature and choose "Save as PDF" to export.</p>
+ <h2>Proposal</h2>
+<p class="print-hide">
+  Preview what you can send to the client. Use your browser's Print feature and choose "Save as PDF" to export.
+</p>
 
   <button id="refresh-proposal" style="margin-bottom:0.5rem;">Refresh from last estimate</button>
   <button onclick="window.print();" style="margin-bottom:0.5rem; margin-left:8px;">Print / Save as PDF</button>
@@ -568,9 +575,10 @@
   <!-- NEW: mockup image under proposal -->
   <div id="proposal-mockup-wrapper" style="margin-top:16px; max-width:700px;">
     <h3>Photo / color mockup</h3>
-    <p class="small-note">
-      This preview comes from the Photo Mockup tab and will appear when you print to PDF.
-    </p>
+<p class="small-note print-hide">
+  This preview comes from the Photo Mockup tab and will appear when you print to PDF.
+</p>
+
     <img
       id="proposal-mockup-image"
       src=""
