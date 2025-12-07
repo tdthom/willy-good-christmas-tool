@@ -823,51 +823,54 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   renderProposal();
 
+    // ------------------------------------------------------------------
+  // ROOF MEASURE (Top View) – with visual zoom, scale preserved
   // ------------------------------------------------------------------
-  // ROOF MEASURE (TOP VIEW)
-  // ------------------------------------------------------------------
-  var roofCanvas = document.getElementById('roof-canvas');
-  var roofCtx = roofCanvas ? roofCanvas.getContext('2d') : null;
-  var roofImageInput = document.getElementById('roof-image-input');
+  var roofCanvas      = document.getElementById('roof-canvas');
+  var roofCtx         = roofCanvas ? roofCanvas.getContext('2d') : null;
+  var roofImageInput  = document.getElementById('roof-image-input');
   var roofSetScaleBtn = document.getElementById('roof-set-scale');
-  var roofMeasureBtn = document.getElementById('roof-measure-mode');
-  var roofUndoBtn = document.getElementById('roof-undo');
-  var roofClearBtn = document.getElementById('roof-clear');
-  var roofAdjustBtn = document.getElementById('roof-adjust-mode');
-  var roofSendBtn = document.getElementById('roof-send-to-estimate');
+  var roofMeasureBtn  = document.getElementById('roof-measure-mode');
+  var roofUndoBtn     = document.getElementById('roof-undo');
+  var roofClearBtn    = document.getElementById('roof-clear');
+  var roofAdjustBtn   = document.getElementById('roof-adjust-mode');
+  var roofSendBtn     = document.getElementById('roof-send-to-estimate');
   var roofScaleFeetInput = document.getElementById('roof-scale-feet');
-  var roofRunTypeSelect = document.getElementById('roof-run-type');
-  var roofInfo = document.getElementById('roof-info');
-  var roofTotals = document.getElementById('roof-totals');
-  var roofZoomInBtn  = document.getElementById('roof-zoom-in');
-  var roofZoomOutBtn = document.getElementById('roof-zoom-out');
+  var roofRunTypeSelect  = document.getElementById('roof-run-type');
+  var roofInfo        = document.getElementById('roof-info');
+  var roofTotals      = document.getElementById('roof-totals');
 
-  var roofZoom      = 1;
-  var ROOF_ZOOM_MIN = 0.5;
-  var ROOF_ZOOM_MAX = 3;
+  // Zoom controls
+  var roofZoomInBtn   = document.getElementById('roof-zoom-in');
+  var roofZoomOutBtn  = document.getElementById('roof-zoom-out');
+  var roofZoom        = 1;
+  var ROOF_ZOOM_MIN   = 0.5;
+  var ROOF_ZOOM_MAX   = 3;
 
-  var roofImage = null;
+  // Core state
+  var roofImage       = null;
   var roofFeetPerPixel = null;
-  var roofScalePoints = [];
-  var roofSegments = []; // {from,to,feet,type}
-  var roofMode = 'none';
-  var roofDrawParams = null;
-  var roofLastPoint = null;
-  var roofIsDragging = false;
-  var roofDragIndex = -1;
-  var roofDragEnd = null;
+  var roofScalePoints  = [];
+  var roofSegments     = []; // {from, to, feet, type}
+  var roofMode         = 'none'; // 'none', 'scale', 'measure', 'adjust'
+  var roofDrawParams   = null;
+  var roofLastPoint    = null;
+  var roofIsDragging   = false;
+  var roofDragIndex    = -1;
+  var roofDragEnd      = null;
 
   function roofSetInfo(msg) {
     if (roofInfo) roofInfo.textContent = msg;
   }
 
+  // Map mouse to canvas coordinates (compensates for CSS zoom)
   function roofCanvasPoint(evt) {
     var rect = roofCanvas.getBoundingClientRect();
-    var sx = roofCanvas.width / rect.width;
-    var sy = roofCanvas.height / rect.height;
+    var sx   = roofCanvas.width  / rect.width;
+    var sy   = roofCanvas.height / rect.height;
     return {
       x: (evt.clientX - rect.left) * sx,
-      y: (evt.clientY - rect.top) * sy
+      y: (evt.clientY - rect.top)  * sy
     };
   }
 
@@ -877,8 +880,15 @@ document.addEventListener('DOMContentLoaded', function () {
     return Math.sqrt(dx * dx + dy * dy);
   }
 
+  // Apply visual zoom only – does not change canvas width/height
+  function roofApplyZoom() {
+    if (!roofCanvas) return;
+    roofCanvas.style.transformOrigin = '0 0';
+    roofCanvas.style.transform = 'scale(' + roofZoom.toFixed(2) + ')';
+  }
+
   function roofDrawBase() {
-    if (!roofCtx) return;
+    if (!roofCtx || !roofCanvas) return;
     roofCtx.clearRect(0, 0, roofCanvas.width, roofCanvas.height);
     if (roofImage && roofDrawParams) {
       roofCtx.drawImage(
@@ -895,25 +905,27 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!roofCtx) return;
     roofDrawBase();
 
+    // scale line preview
     if (roofScalePoints.length === 2) {
       roofCtx.beginPath();
       roofCtx.strokeStyle = '#ffa500';
-      roofCtx.lineWidth = 2;
+      roofCtx.lineWidth   = 2;
       roofCtx.moveTo(roofScalePoints[0].x, roofScalePoints[0].y);
       roofCtx.lineTo(roofScalePoints[1].x, roofScalePoints[1].y);
       roofCtx.stroke();
     }
 
+    // measured segments
     roofSegments.forEach(function (seg) {
       var color = '#ff0000';
-      if (seg.type === 'eaves') color = '#0000ff';
-      if (seg.type === 'gable') color = '#008000';
+      if (seg.type === 'eaves')  color = '#0000ff';
+      if (seg.type === 'gable')  color = '#008000';
 
       roofCtx.beginPath();
       roofCtx.strokeStyle = color;
-      roofCtx.lineWidth = 3;
+      roofCtx.lineWidth   = 3;
       roofCtx.moveTo(seg.from.x, seg.from.y);
-      roofCtx.lineTo(seg.to.x, seg.to.y);
+      roofCtx.lineTo(seg.to.x,   seg.to.y);
       roofCtx.stroke();
 
       if (roofMode === 'adjust') {
@@ -921,6 +933,7 @@ document.addEventListener('DOMContentLoaded', function () {
         roofCtx.fillStyle = '#00ffff';
         roofCtx.arc(seg.from.x, seg.from.y, 4, 0, Math.PI * 2);
         roofCtx.fill();
+
         roofCtx.beginPath();
         roofCtx.arc(seg.to.x, seg.to.y, 4, 0, Math.PI * 2);
         roofCtx.fill();
@@ -944,7 +957,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var all = totals.ridge + totals.eaves + totals.gable;
     var html = '';
-
     if (roofFeetPerPixel) {
       html += '<p>Scale: 1 pixel ≈ ' + roofFeetPerPixel.toFixed(4) + ' ft</p>';
     }
@@ -954,10 +966,10 @@ document.addEventListener('DOMContentLoaded', function () {
     html += '<li><strong>Gable / other:</strong> ' + totals.gable.toFixed(1) + ' ft</li>';
     html += '</ul>';
     html += '<p><strong>Total measured (all):</strong> ' + all.toFixed(1) + ' ft</p>';
-
     roofTotals.innerHTML = html;
   }
 
+  // Image load
   if (roofImageInput && roofCtx) {
     roofImageInput.addEventListener('change', function (e) {
       var file = e.target.files && e.target.files[0];
@@ -968,10 +980,10 @@ document.addEventListener('DOMContentLoaded', function () {
         var img = new Image();
         img.onload = function () {
           roofImage = img;
-          var cw = roofCanvas.width;
-          var ch = roofCanvas.height;
-          var iw = img.width;
-          var ih = img.height;
+
+          // fit image into canvas
+          var cw = roofCanvas.width,  ch = roofCanvas.height;
+          var iw = img.width,         ih = img.height;
           var scale = Math.min(cw / iw, ch / ih);
           var w = iw * scale;
           var h = ih * scale;
@@ -981,11 +993,15 @@ document.addEventListener('DOMContentLoaded', function () {
             w: w,
             h: h
           };
-          roofScalePoints = [];
-          roofSegments = [];
+
+          roofScalePoints  = [];
+          roofSegments     = [];
           roofFeetPerPixel = null;
-          roofMode = 'none';
-          roofLastPoint = null;
+          roofMode         = 'none';
+          roofLastPoint    = null;
+
+          roofZoom = 1;
+          roofApplyZoom();
           roofDrawBase();
           roofUpdateTotals();
           roofSetInfo('Image loaded. Step 1: click "Set scale" and draw a known distance.');
@@ -995,19 +1011,15 @@ document.addEventListener('DOMContentLoaded', function () {
       reader.readAsDataURL(file);
     });
   }
-roofZoom = 1;
-roofApplyZoom();
 
+  // Mode buttons
   if (roofSetScaleBtn) {
     roofSetScaleBtn.addEventListener('click', function () {
-      if (!roofImage) {
-        roofSetInfo('Upload an image first.');
-        return;
-      }
-      roofMode = 'scale';
-      roofScalePoints = [];
-      roofLastPoint = null;
-      roofSegments = [];
+      if (!roofImage) { roofSetInfo('Upload an image first.'); return; }
+      roofMode         = 'scale';
+      roofScalePoints  = [];
+      roofLastPoint    = null;
+      roofSegments     = [];
       roofFeetPerPixel = null;
       roofRedraw();
       roofUpdateTotals();
@@ -1017,15 +1029,9 @@ roofApplyZoom();
 
   if (roofMeasureBtn) {
     roofMeasureBtn.addEventListener('click', function () {
-      if (!roofImage) {
-        roofSetInfo('Upload an image first.');
-        return;
-      }
-      if (!roofFeetPerPixel) {
-        roofSetInfo('Set scale first.');
-        return;
-      }
-      roofMode = 'measure';
+      if (!roofImage)       { roofSetInfo('Upload an image first.'); return; }
+      if (!roofFeetPerPixel){ roofSetInfo('Set scale first.');      return; }
+      roofMode      = 'measure';
       roofLastPoint = null;
       roofSetInfo('Measure mode: choose run type, then click along each run.');
     });
@@ -1033,10 +1039,7 @@ roofApplyZoom();
 
   if (roofUndoBtn) {
     roofUndoBtn.addEventListener('click', function () {
-      if (!roofSegments.length) {
-        roofSetInfo('No segments to undo.');
-        return;
-      }
+      if (!roofSegments.length) { roofSetInfo('No segments to undo.'); return; }
       roofSegments.pop();
       roofLastPoint = null;
       roofRedraw();
@@ -1047,8 +1050,8 @@ roofApplyZoom();
 
   if (roofClearBtn) {
     roofClearBtn.addEventListener('click', function () {
-      roofSegments = [];
-      roofLastPoint = null;
+      roofSegments     = [];
+      roofLastPoint    = null;
       roofRedraw();
       roofUpdateTotals();
       roofSetInfo('All segments cleared. Scale kept.');
@@ -1057,25 +1060,17 @@ roofApplyZoom();
 
   if (roofAdjustBtn) {
     roofAdjustBtn.addEventListener('click', function () {
-      if (!roofImage) {
-        roofSetInfo('Upload an image first.');
-        return;
-      }
-      if (!roofFeetPerPixel) {
-        roofSetInfo('Set scale first.');
-        return;
-      }
-      if (!roofSegments.length) {
-        roofSetInfo('No segments yet – measure first.');
-        return;
-      }
-      roofMode = 'adjust';
+      if (!roofImage)       { roofSetInfo('Upload an image first.');       return; }
+      if (!roofFeetPerPixel){ roofSetInfo('Set scale first.');            return; }
+      if (!roofSegments.length) { roofSetInfo('No segments yet – measure first.'); return; }
+      roofMode      = 'adjust';
       roofLastPoint = null;
       roofSetInfo('Adjust mode: drag cyan endpoints to tweak lines.');
       roofRedraw();
     });
   }
 
+  // Canvas interactions
   if (roofCanvas && roofCtx) {
     roofCanvas.addEventListener('click', function (evt) {
       if (!roofImage) return;
@@ -1084,9 +1079,10 @@ roofApplyZoom();
       if (roofMode === 'scale') {
         roofScalePoints.push(pt);
         if (roofScalePoints.length > 2) roofScalePoints = [pt];
+
         if (roofScalePoints.length === 2) {
           var pixels = roofDist(roofScalePoints[0], roofScalePoints[1]);
-          var feet = parseNum(roofScaleFeetInput);
+          var feet   = parseNum(roofScaleFeetInput);
           if (feet > 0 && pixels > 0) {
             roofFeetPerPixel = feet / pixels;
             roofSetInfo('Scale set: ' + feet.toFixed(1) + ' ft = ' +
@@ -1102,10 +1098,7 @@ roofApplyZoom();
       }
 
       if (roofMode === 'measure') {
-        if (!roofFeetPerPixel) {
-          roofSetInfo('Set scale first.');
-          return;
-        }
+        if (!roofFeetPerPixel) { roofSetInfo('Set scale first.'); return; }
         var runType = roofRunTypeSelect ? roofRunTypeSelect.value : 'ridge';
         if (!roofLastPoint) {
           roofLastPoint = pt;
@@ -1117,9 +1110,11 @@ roofApplyZoom();
           roofUpdateTotals();
         }
         roofRedraw();
+        return;
       }
     });
 
+    // adjust mode drag
     roofCanvas.addEventListener('mousedown', function (evt) {
       if (roofMode !== 'adjust' || !roofSegments.length) return;
       var pt = roofCanvasPoint(evt);
@@ -1127,19 +1122,15 @@ roofApplyZoom();
 
       roofSegments.forEach(function (seg, idx) {
         var df = roofDist(pt, seg.from);
-        if (df < best.dist) {
-          best = { index: idx, end: 'from', dist: df };
-        }
+        if (df < best.dist) best = { index: idx, end: 'from', dist: df };
         var dt = roofDist(pt, seg.to);
-        if (dt < best.dist) {
-          best = { index: idx, end: 'to', dist: dt };
-        }
+        if (dt < best.dist) best = { index: idx, end: 'to', dist: dt };
       });
 
       if (best.index >= 0) {
         roofIsDragging = true;
-        roofDragIndex = best.index;
-        roofDragEnd = best.end;
+        roofDragIndex  = best.index;
+        roofDragEnd    = best.end;
       }
     });
 
@@ -1159,13 +1150,14 @@ roofApplyZoom();
     window.addEventListener('mouseup', function () {
       if (roofIsDragging) {
         roofIsDragging = false;
-        roofDragIndex = -1;
-        roofDragEnd = null;
+        roofDragIndex  = -1;
+        roofDragEnd    = null;
         roofSetInfo('Endpoint adjusted.');
       }
     });
   }
 
+  // Send ridge + eaves totals back to Estimate tab
   if (roofSendBtn) {
     roofSendBtn.addEventListener('click', function () {
       if (!roofSegments.length || !roofFeetPerPixel) {
@@ -1186,19 +1178,20 @@ roofApplyZoom();
     });
   }
 
-    if (roofZoomInBtn && roofCanvas) {
+  // Zoom buttons
+  if (roofZoomInBtn && roofCanvas) {
     roofZoomInBtn.addEventListener('click', function () {
-    roofZoom = Math.min(roofZoom + 0.25, ROOF_ZOOM_MAX);
-    roofApplyZoom();
-  });
-}
+      roofZoom = Math.min(roofZoom + 0.25, ROOF_ZOOM_MAX);
+      roofApplyZoom();
+    });
+  }
 
-if (roofZoomOutBtn && roofCanvas) {
-  roofZoomOutBtn.addEventListener('click', function () {
-    roofZoom = Math.max(roofZoom - 0.25, ROOF_ZOOM_MIN);
-    roofApplyZoom();
-  });
-}
+  if (roofZoomOutBtn && roofCanvas) {
+    roofZoomOutBtn.addEventListener('click', function () {
+      roofZoom = Math.max(roofZoom - 0.25, ROOF_ZOOM_MIN);
+      roofApplyZoom();
+    });
+  }
 
   // ------------------------------------------------------------------
   // PHOTO MOCKUP (visual-only color designer with zoom + adjust +
