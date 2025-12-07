@@ -1247,12 +1247,15 @@ document.addEventListener('DOMContentLoaded', function () {
   var treeTraceDrawing = false;
   var treeTraceCaptureSpacing = 6;
 
-  // Tree bulb look
+   // Tree bulb look (Strandr-style shrubs: tiny, dense, warm white)
   var warmGlow   = 'rgba(255, 244, 213, 0.35)';
   var warmCore   = '#fffdf5';
-  var treeFillSpacing = 10;
-  var treeGlowR   = 4;
-  var treeCoreR   = 2;
+
+  // Smaller bulbs + more coverage inside the traced area
+  // Lower spacing => more bulbs (denser)
+  var treeFillSpacing = 7;   // was 10
+  var treeGlowR       = 2;   // was 4
+  var treeCoreR       = 1;   // was 2
 
   function mockSetInfo(text) {
     if (mockInfo) mockInfo.textContent = text;
@@ -1280,12 +1283,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function mockCanvasPoint(evt) {
     if (!mockCanvas) return { x: 0, y: 0 };
-    var rect = mockCanvas.getBoundingClientRect();
-    var scaleX = mockCanvas.width / rect.width;
+    var rect   = mockCanvas.getBoundingClientRect();
+    var scaleX = mockCanvas.width  / rect.width;
     var scaleY = mockCanvas.height / rect.height;
     return {
       x: (evt.clientX - rect.left) * scaleX,
-      y: (evt.clientY - rect.top) * scaleY
+      y: (evt.clientY - rect.top)  * scaleY
     };
   }
 
@@ -1330,13 +1333,13 @@ document.addEventListener('DOMContentLoaded', function () {
   function hitTestDecoration(pt) {
     var best = null;
     for (var i = 0; i < mockDecorations.length; i++) {
-      var deco = mockDecorations[i];
+      var deco   = mockDecorations[i];
       var center = { x: deco.x, y: deco.y };
-      var r = getDecorationRadius(deco);
+      var r      = getDecorationRadius(deco);
 
       // handle has priority
       var handlePos = getDecorationHandlePosition(deco);
-      var dHandle = mockPointDistance(pt, handlePos);
+      var dHandle   = mockPointDistance(pt, handlePos);
       if (dHandle <= 10) {
         return { deco: deco, mode: 'handle' };
       }
@@ -1356,10 +1359,13 @@ document.addEventListener('DOMContentLoaded', function () {
         !decorGarlandCountInput ||
         !decorBowCountInput) return;
 
-    var wreath = 0, garland = 0, bow = 0;
+    var wreath  = 0;
+    var garland = 0;
+    var bow     = 0;
+
     for (var i = 0; i < mockDecorations.length; i++) {
       var k = mockDecorations[i].kind;
-      if (k === 'wreath')      wreath++;
+      if (k === 'wreath')       wreath++;
       else if (k === 'garland') garland++;
       else if (k === 'bow')     bow++;
     }
@@ -1372,9 +1378,9 @@ document.addEventListener('DOMContentLoaded', function () {
   function addDecorationAtPoint(pt) {
     var type = mockDecorTypeSelect ? mockDecorTypeSelect.value : 'wreath';
     var deco = {
-      id: mockNextDecorId++,
-      x: pt.x,
-      y: pt.y,
+      id:   mockNextDecorId++,
+      x:    pt.x,
+      y:    pt.y,
       kind: type,
       size: 1,
       rotation: 0
@@ -1420,7 +1426,8 @@ document.addEventListener('DOMContentLoaded', function () {
     for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
       var xi = poly[i].x, yi = poly[i].y;
       var xj = poly[j].x, yj = poly[j].y;
-      var intersect = ((yi > y) !== (yj > y)) &&
+      var intersect =
+        ((yi > y) !== (yj > y)) &&
         (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-9) + xi);
       if (intersect) inside = !inside;
     }
@@ -1430,7 +1437,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function drawTreeShapeBulbs(poly) {
     if (!poly || poly.length < 3 || !mockCtx) return;
 
-    // bounding box
+    // bounding box for the traced polygon
     var minX = poly[0].x, maxX = poly[0].x;
     var minY = poly[0].y, maxY = poly[0].y;
     for (var i = 1; i < poly.length; i++) {
@@ -1441,26 +1448,23 @@ document.addEventListener('DOMContentLoaded', function () {
       if (py > maxY) maxY = py;
     }
 
-    // jittered grid of bulbs inside polygon
+    // regular grid of bulbs (NO randomness → no flashing)
     for (var y = minY; y <= maxY; y += treeFillSpacing) {
       for (var x = minX; x <= maxX; x += treeFillSpacing) {
-        var jitterX = x + (Math.random() - 0.5) * (treeFillSpacing * 0.6);
-        var jitterY = y + (Math.random() - 0.5) * (treeFillSpacing * 0.6);
-        var pt = { x: jitterX, y: jitterY };
-
+        var pt = { x: x, y: y };
         if (!pointInPolygon(pt, poly)) continue;
 
-        // glow
+        // glow halo
         mockCtx.beginPath();
         mockCtx.globalAlpha = 1;
         mockCtx.fillStyle = warmGlow;
-        mockCtx.arc(jitterX, jitterY, treeGlowR, 0, Math.PI * 2);
+        mockCtx.arc(x, y, treeGlowR, 0, Math.PI * 2);
         mockCtx.fill();
 
-        // core
+        // bright core
         mockCtx.beginPath();
         mockCtx.fillStyle = warmCore;
-        mockCtx.arc(jitterX, jitterY, treeCoreR, 0, Math.PI * 2);
+        mockCtx.arc(x, y, treeCoreR, 0, Math.PI * 2);
         mockCtx.fill();
       }
     }
