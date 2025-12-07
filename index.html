@@ -1158,23 +1158,33 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Send ridge + eaves totals back to Estimate tab
-  if (roofSendBtn) {
+    if (roofSendBtn) {
     roofSendBtn.addEventListener('click', function () {
       if (!roofSegments.length || !roofFeetPerPixel) {
         alert('Measure some runs first.');
         return;
       }
+
+      // Sum all segments by type
       var totals = { ridge: 0, eaves: 0, gable: 0 };
       roofSegments.forEach(function (seg) {
         if (totals.hasOwnProperty(seg.type)) {
           totals[seg.type] += seg.feet || 0;
         }
       });
-      if (ridgeInput) ridgeInput.value = totals.ridge.toFixed(1);
-      if (eavesInput) eavesInput.value = totals.eaves.toFixed(1);
-      roofSetInfo('Sent ridge (' + totals.ridge.toFixed(1) +
-                  ' ft) and eaves (' + totals.eaves.toFixed(1) +
-                  ' ft) to Estimate.');
+
+      // NEW: fold gable returns into ridge total
+      var ridgeWithGable = totals.ridge + totals.gable;
+      var eavesOnly      = totals.eaves;
+
+      if (ridgeInput) ridgeInput.value = ridgeWithGable.toFixed(1);
+      if (eavesInput) eavesInput.value = eavesOnly.toFixed(1);
+
+      roofSetInfo(
+        'Sent ridge (' + ridgeWithGable.toFixed(1) +
+        ' ft, incl. gable returns) and eaves (' +
+        eavesOnly.toFixed(1) + ' ft) to Estimate.'
+      );
     });
   }
 
