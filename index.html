@@ -1568,52 +1568,118 @@ document.addEventListener('DOMContentLoaded', function () {
   var treeTraceDrawing = false;
   var treeTraceCaptureSpacing = 6;
 
-    // Tree / shrub bulb look – smaller bulbs, more coverage, softer glow
-  var warmGlow       = 'rgba(255, 244, 213, 0.32)';
-  var warmCore       = '#fffdf5';
-  var treeFillSpacing = 8;    // tighter spacing for better coverage
-  var treeGlowR       = 3;    // smaller glow radius
-  var treeCoreR       = 1.5;  // smaller bulb core
+   // --- Tree / shrub bulbs – stable positions per traced shape ------
+  // We keep bulbs small, warm-white, and organically scattered.
+  var warmGlow        = 'rgba(255, 244, 213, 0.32)';
+  var warmCore        = '#fffdf5';
+  var treeFillSpacing = 8;     // controls density
+  var treeGlowR       = 3;     // glow radius
+  var treeCoreR       = 1.5;   // bulb core radius
 
-  function mockSetInfo(text) {
-    if (mockInfo) mockInfo.textContent = text;
-  }
-
-  function mockApplyZoom() {
-    if (!mockCanvas) return;
-    mockCanvas.style.transformOrigin = '0 0';
-    mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
-  }
-
-  function mockDrawBase() {
-    if (!mockCtx || !mockCanvas) return;
-    mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
-    if (mockImage && mockDrawParams) {
-      mockCtx.drawImage(
-        mockImage,
-        mockDrawParams.x,
-        mockDrawParams.y,
-        mockDrawParams.w,
-        mockDrawParams.h
-      );
+  // Standard point-in-polygon test
+  function pointInPolygon(pt, poly) {
+    var x = pt.x, y = pt.y;
+    var inside = false;
+    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      var xi = poly[i].x, yi = poly[i].y;
+      var xj = poly[j].x, yj = poly[j].y;
+      var intersect = ((yi > y) !== (yj > y)) &&
+        (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-9) + xi);
+      if (intersect) inside = !inside;
     }
+    return inside;
   }
 
-  function mockCanvasPoint(evt) {
-    if (!mockCanvas) return { x: 0, y: 0 };
-    var rect   = mockCanvas.getBoundingClientRect();
-    var scaleX = mockCanvas.width  / rect.width;
-    var scaleY = mockCanvas.height / rect.height;
+  // Build a "tree shape" from a traced polygon:
+  // { poly: [...points...], bulbs: [{x,y,glowR,coreR}, ...] }
+  function buildTreeShapeFromPolygon(poly) {
+    if (!poly || poly.length < 3) return null;
+
+    // Bounding box
+    var minX = poly[0].x, maxX = poly[0].x;
+    var minY = poly[0].y, maxY = poly[0].y;
+    for (var i = 1; i < poly.length; i++) {
+      var px = poly[i].x, py = poly[i].y;
+      if (px < minX) minX = px;
+      if (px > maxX) maxX = px;
+      if (py < minY) minY = py;
+      if (py > maxY) maxY = py;
+    }
+
+    var width  = maxX - minX;
+    var height = maxY - minY;
+    if (width <= 0 || height <= 0) return null;
+
+    // Approximate density based on area, then sample randomly inside polygon
+    var approxCount = Math.round(
+      (width * height) / (treeFillSpacing * treeFillSpacing) * 0.9
+    );
+    if (approxCount < 20) approxCount = 20;   // minimum so tiny shrubs still glow
+
+    var bulbs    = [];
+    var placed   = 0;
+    var maxTries = approxCount * 5;
+
+    for (var tries = 0; tries < maxTries && placed < approxCount; tries++) {
+      var x = minX + Math.random() * width;
+      var y = minY + Math.random() * height;
+      var pt = { x: x, y: y };
+
+      if (!pointInPolygon(pt, poly)) continue;
+
+      var sizeJitter = 0.75 + Math.random() * 0.5; // 0.75–1.25
+      bulbs.push({
+        x: x,
+        y: y,
+        glowR: treeGlowR * sizeJitter,
+        coreR: treeCoreR * sizeJitter
+      });
+      placed++;
+    }
+
     return {
-      x: (evt.clientX - rect.left) * scaleX,
-      y: (evt.clientY - rect.top)  * scaleY
+      poly: poly.slice(),  // copy of vertices for the outline
+      bulbs: bulbs
     };
   }
 
-  function mockPointDistance(a, b) {
-    var dx = a.x - b.x;
-    var dy = a.y - b.y;
-    return Math.sqrt(dx * dx + dy * dy);
+  // Draw a previously-built tree shape (no randomness here)
+  function drawTreeShapeBulbs(shape) {
+    if (!shape || !shape.bulbs || !shape.bulbs.length || !mockCtx) return;
+
+    // Bulb glows + cores
+    for (var i = 0; i < shape.bulbs.length; i++) {
+      var b = shape.bulbs[i];
+
+      // glow
+      mockCtx.beginPath();
+      mockCtx.globalAlpha = 1;
+      mockCtx.fillStyle = warmGlow;
+      mockCtx.arc(b.x, b.y, b.glowR, 0, Math.PI * 2);
+      mockCtx.fill();
+
+      // core
+      mockCtx.beginPath();
+      mockCtx.fillStyle = warmCore;
+      mockCtx.arc(b.x, b.y, b.coreR, 0, Math.PI * 2);
+      mockCtx.fill();
+    }
+    mockCtx.globalAlpha = 1;
+
+    // Soft outline of the traced polygon for feedback
+    var poly = shape.poly || [];
+    if (poly.length >= 2) {
+      mockCtx.beginPath();
+      mockCtx.strokeStyle = 'rgba(255,255,255,0.12)';
+      mockCtx.lineWidth = 1;
+      for (var j = 0; j < poly.length; j++) {
+        var p = poly[j];
+        if (j === 0) mockCtx.moveTo(p.x, p.y);
+        else mockCtx.lineTo(p.x, p.y);
+      }
+      mockCtx.closePath();
+      mockCtx.stroke();
+    }
   }
 
   // --- Decorations helpers ----------------------------------
@@ -2413,21 +2479,14 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
 
-    function finishTreeTrace() {
-      if (mockMode === 'tree-trace' && treeTraceDrawing) {
-        treeTraceDrawing = false;
-
-        if (treeTraceCurrent.length >= 8) {
-          treeTraceShapes.push(treeTraceCurrent.slice());
-          mockSetInfo('Tree/shrub lights added. Use "Undo last tree lights" to remove.');
-        } else {
-          mockSetInfo('Trace too short – try dragging all the way around the tree/shrub.');
-        }
-
-        treeTraceCurrent = [];
-        mockRedraw();
+        if (treeTraceCurrent.length > 8) {
+      var poly  = treeTraceCurrent.slice();
+      var shape = buildTreeShapeFromPolygon(poly);
+      if (shape) {
+        treeTraceShapes.push(shape);
       }
-    }
+      mockSetInfo('Tree/shrub lights added. Click trace again to draw another.');
+
 
     mockCanvas.addEventListener('mouseup', function () {
       finishTreeTrace();
@@ -2650,15 +2709,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (treeTraceClearBtn) {
     treeTraceClearBtn.addEventListener('click', function () {
-      if (!treeTraceShapes.length && !treeTraceCurrent.length) {
-        mockSetInfo('No tree lights to clear.');
-        return;
+          if (treeTraceCurrent.length >= 3) {
+      var poly  = treeTraceCurrent.slice();
+      var shape = buildTreeShapeFromPolygon(poly);
+      if (shape) {
+        treeTraceShapes.push(shape);
       }
-      treeTraceShapes = [];
       treeTraceCurrent = [];
-      treeTraceDrawing = false;
+      treeTraceMode = false;
+      mockSetInfo('Tree/shrub area completed. Tiny bulbs filled inside.');
       mockRedraw();
-      mockSetInfo('All tree/shrub lights cleared.');
+
     });
   }
 
