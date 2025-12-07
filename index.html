@@ -355,6 +355,10 @@
     <button id="roof-clear">Clear lines</button>
     <br><br>
 
+    <button id="roof-zoom-in">Zoom in</button>
+    <button id="roof-zoom-out">Zoom out</button>
+    <br><br>
+
     <label for="roof-run-type"><strong>Run type:</strong></label>
     <select id="roof-run-type">
       <option value="ridge">Ridge / hip / shingle</option>
@@ -835,6 +839,12 @@ document.addEventListener('DOMContentLoaded', function () {
   var roofRunTypeSelect = document.getElementById('roof-run-type');
   var roofInfo = document.getElementById('roof-info');
   var roofTotals = document.getElementById('roof-totals');
+  var roofZoomInBtn  = document.getElementById('roof-zoom-in');
+  var roofZoomOutBtn = document.getElementById('roof-zoom-out');
+
+  var roofZoom      = 1;
+  var ROOF_ZOOM_MIN = 0.5;
+  var ROOF_ZOOM_MAX = 3;
 
   var roofImage = null;
   var roofFeetPerPixel = null;
@@ -985,6 +995,8 @@ document.addEventListener('DOMContentLoaded', function () {
       reader.readAsDataURL(file);
     });
   }
+roofZoom = 1;
+roofApplyZoom();
 
   if (roofSetScaleBtn) {
     roofSetScaleBtn.addEventListener('click', function () {
@@ -1173,6 +1185,20 @@ document.addEventListener('DOMContentLoaded', function () {
                   ' ft) to Estimate.');
     });
   }
+
+    if (roofZoomInBtn && roofCanvas) {
+    roofZoomInBtn.addEventListener('click', function () {
+    roofZoom = Math.min(roofZoom + 0.25, ROOF_ZOOM_MAX);
+    roofApplyZoom();
+  });
+}
+
+if (roofZoomOutBtn && roofCanvas) {
+  roofZoomOutBtn.addEventListener('click', function () {
+    roofZoom = Math.max(roofZoom - 0.25, ROOF_ZOOM_MIN);
+    roofApplyZoom();
+  });
+}
 
   // ------------------------------------------------------------------
   // PHOTO MOCKUP (visual-only color designer with zoom + adjust +
