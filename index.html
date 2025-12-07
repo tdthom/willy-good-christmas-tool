@@ -1604,13 +1604,12 @@ document.addEventListener('DOMContentLoaded', function () {
   var mockResizeStartDist = 0;
   var mockNextDecorId = 1;
 
-    // Tree / shrub free-form trace state
-  var treeTraceShapes        = [];   // finished shapes ({ poly, bulbs })
-  var treeTraceCurrent       = [];   // in-progress stroke (array of {x,y})
-  var treeTraceMode          = false; // true after button pressed at least once
-  var treeTracingDrag        = false; // true while mouse is down in trace mode
-  var treeTraceSpacingPixels = 8;    // minimum distance between captured points
-  var _lastTracePoint        = null; // last captured point while dragging
+  // Tree / shrub free-form trace state
+  var treeTraceShapes        = [];   // finished shapes
+  var treeTraceCurrent       = [];   // in-progress polyline while dragging
+  var treeTracingDrag        = false;
+  var _lastTracePoint        = null;
+  var treeTraceSpacingPixels = 6;    // minimum gap between captured points
 
     // --- Tree / shrub bulbs – stable positions per traced shape ------
   // Smaller warm-white bulbs, organically scattered and NOT re-randomized.
@@ -2712,24 +2711,28 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-     // --- Tree trace: Clear all tree/shrub lights ----------------------
-  if (treeTraceClearBtn) {
-    treeTraceClearBtn.addEventListener('click', function () {
-      if (!treeTraceShapes.length && !treeTraceCurrent.length) {
-        mockSetInfo('No tree/shrub lights to clear.');
-        return;
-      }
+// Clear ALL tree/shrub lights
+if (treeTraceClearBtn) {
+  treeTraceClearBtn.addEventListener('click', function () {
+    if (!treeTraceShapes.length && !treeTraceCurrent.length) {
+      mockSetInfo('No tree/shrub lights to clear.');
+      return;
+    }
 
-      treeTraceShapes    = [];
-      treeTraceCurrent   = [];
-      treeTraceMode      = false;
-      treeTracingDrag    = false;
-      _lastTracePoint    = null;
+    // wipe all tree/shrub areas
+    treeTraceShapes    = [];
+    treeTraceCurrent   = [];
+    treeTracingDrag    = false;
+    _lastTracePoint    = null;
 
-      mockRedraw();
-      mockSetInfo('All tree/shrub lights cleared.');
-    });
-  }
+    // go back to normal draw mode for regular runs
+    mockMode           = 'draw';
+    mockLastPoint      = null;
+
+    mockRedraw();
+    mockSetInfo('All tree/shrub lights cleared.');
+  });
+}
 
   // --- Zoom controls -----------------------------------------
   if (mockZoomInBtn) {
