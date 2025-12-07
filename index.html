@@ -1568,15 +1568,12 @@ document.addEventListener('DOMContentLoaded', function () {
   var treeTraceDrawing = false;
   var treeTraceCaptureSpacing = 6;
 
-   // Tree bulb look (Strandr-style shrubs: tiny, dense, warm white)
-  var warmGlow   = 'rgba(255, 244, 213, 0.35)';
-  var warmCore   = '#fffdf5';
-
-  // Smaller bulbs + more coverage inside the traced area
-  // Lower spacing => more bulbs (denser)
-  var treeFillSpacing = 7;   // was 10
-  var treeGlowR       = 2;   // was 4
-  var treeCoreR       = 1;   // was 2
+    // Tree / shrub bulb look – smaller bulbs, more coverage, softer glow
+  var warmGlow       = 'rgba(255, 244, 213, 0.32)';
+  var warmCore       = '#fffdf5';
+  var treeFillSpacing = 8;    // tighter spacing for better coverage
+  var treeGlowR       = 3;    // smaller glow radius
+  var treeCoreR       = 1.5;  // smaller bulb core
 
   function mockSetInfo(text) {
     if (mockInfo) mockInfo.textContent = text;
@@ -1755,10 +1752,10 @@ document.addEventListener('DOMContentLoaded', function () {
     return inside;
   }
 
-  function drawTreeShapeBulbs(poly) {
+    function drawTreeShapeBulbs(poly) {
     if (!poly || poly.length < 3 || !mockCtx) return;
 
-    // bounding box for the traced polygon
+    // --- 1) Bounding box of the traced polygon ----------------------
     var minX = poly[0].x, maxX = poly[0].x;
     var minY = poly[0].y, maxY = poly[0].y;
     for (var i = 1; i < poly.length; i++) {
@@ -1769,30 +1766,54 @@ document.addEventListener('DOMContentLoaded', function () {
       if (py > maxY) maxY = py;
     }
 
-    // regular grid of bulbs (NO randomness → no flashing)
-    for (var y = minY; y <= maxY; y += treeFillSpacing) {
-      for (var x = minX; x <= maxX; x += treeFillSpacing) {
-        var pt = { x: x, y: y };
-        if (!pointInPolygon(pt, poly)) continue;
+    var width  = maxX - minX;
+    var height = maxY - minY;
+    if (width <= 0 || height <= 0) return;
 
-        // glow halo
-        mockCtx.beginPath();
-        mockCtx.globalAlpha = 1;
-        mockCtx.fillStyle = warmGlow;
-        mockCtx.arc(x, y, treeGlowR, 0, Math.PI * 2);
-        mockCtx.fill();
+    // --- 2) Decide how many bulbs to place --------------------------
+    // Approximate density based on area, but then scatter randomly.
+    var approxCount = Math.round(
+      (width * height) / (treeFillSpacing * treeFillSpacing) * 0.9
+    );
+    if (approxCount < 20) approxCount = 20; // minimum for small shrubs
 
-        // bright core
-        mockCtx.beginPath();
-        mockCtx.fillStyle = warmCore;
-        mockCtx.arc(x, y, treeCoreR, 0, Math.PI * 2);
-        mockCtx.fill();
-      }
+    var placed   = 0;
+    var maxTries = approxCount * 5; // safety guard so we don't loop forever
+
+    // --- 3) Randomly scatter bulbs inside the traced polygon --------
+    for (var tries = 0; tries < maxTries && placed < approxCount; tries++) {
+      var x = minX + Math.random() * width;
+      var y = minY + Math.random() * height;
+      var pt = { x: x, y: y };
+
+      if (!pointInPolygon(pt, poly)) continue;
+
+      // Slight size jitter so bulbs don't all look identical
+      var sizeJitter = 0.75 + Math.random() * 0.5; // 0.75 – 1.25
+      var glowR = treeGlowR * sizeJitter;
+      var coreR = treeCoreR * sizeJitter;
+
+      // Glow
+      mockCtx.beginPath();
+      mockCtx.globalAlpha = 1;
+      mockCtx.fillStyle = warmGlow;
+      mockCtx.arc(x, y, glowR, 0, Math.PI * 2);
+      mockCtx.fill();
+
+      // Core
+      mockCtx.beginPath();
+      mockCtx.fillStyle = warmCore;
+      mockCtx.arc(x, y, coreR, 0, Math.PI * 2);
+      mockCtx.fill();
+
+      placed++;
     }
 
-    // faint outline of traced area for feedback
+    mockCtx.globalAlpha = 1;
+
+    // --- 4) Soft outline of the traced shape for feedback ----------
     mockCtx.beginPath();
-    mockCtx.strokeStyle = 'rgba(255,255,255,0.15)';
+    mockCtx.strokeStyle = 'rgba(255,255,255,0.12)';
     mockCtx.lineWidth = 1;
     for (var j = 0; j < poly.length; j++) {
       var p = poly[j];
