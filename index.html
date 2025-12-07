@@ -611,6 +611,242 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+    // ------------------------------------------------------------------
+  // CLIENTS – save to localStorage, list, and use for estimate
+  // ------------------------------------------------------------------
+  var clientNameInput        = document.getElementById('client-name');
+  var clientPhoneInput       = document.getElementById('client-phone');
+  var clientEmailInput       = document.getElementById('client-email');
+  var clientAddressInput     = document.getElementById('client-address');
+  var clientPreferredInput   = document.getElementById('client-preferred');
+  var clientNotesInput       = document.getElementById('client-notes');
+  var clientRateInput        = document.getElementById('client-rate');
+  var clientTakedownRateInput= document.getElementById('client-takedown-rate');
+  var clientLightsSelect     = document.getElementById('client-lights-owned');
+
+  var saveClientBtn          = document.getElementById('save-client');
+  var clientsList            = document.getElementById('clients-list');
+  var currentClientSummary   = document.getElementById('current-client-summary');
+
+  var CLIENTS_KEY = 'wgc-clients-v1';
+
+  var clients = [];
+  var editingClientId = null;
+
+  // This is what Estimate/Proposal will use as the "active" client
+  var currentClientForEstimate = null;
+
+  function escHtml(str) {
+    return (str || '').replace(/[&<>"']/g, function (c) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
+    });
+  }
+
+  function loadClientsFromStorage() {
+    try {
+      var raw = localStorage.getItem(CLIENTS_KEY);
+      if (!raw) return [];
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+      console.warn('Could not load clients', e);
+      return [];
+    }
+  }
+
+  function saveClientsToStorage() {
+    try {
+      localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
+    } catch (e) {
+      console.warn('Could not save clients', e);
+    }
+  }
+
+  function readClientForm() {
+    var id = editingClientId ||
+      ('c' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8));
+
+    return {
+      id: id,
+      name:      (clientNameInput.value      || '').trim(),
+      phone:     (clientPhoneInput.value     || '').trim(),
+      email:     (clientEmailInput.value     || '').trim(),
+      address:   (clientAddressInput.value   || '').trim(),
+      preferred: (clientPreferredInput.value || '').trim(),
+      notes:     (clientNotesInput.value     || '').trim(),
+      defaultRate:          parseNum(clientRateInput),
+      defaultTakedownRate:  parseNum(clientTakedownRateInput),
+      lightsOwned: clientLightsSelect ? clientLightsSelect.value : 'company'
+    };
+  }
+
+  function fillClientForm(c) {
+    editingClientId = c.id;
+    clientNameInput.value        = c.name      || '';
+    clientPhoneInput.value       = c.phone     || '';
+    clientEmailInput.value       = c.email     || '';
+    clientAddressInput.value     = c.address   || '';
+    clientPreferredInput.value   = c.preferred || '';
+    clientNotesInput.value       = c.notes     || '';
+
+    if (clientRateInput) {
+      clientRateInput.value =
+        (typeof c.defaultRate === 'number' && c.defaultRate > 0)
+          ? c.defaultRate.toFixed(2)
+          : '';
+    }
+    if (clientTakedownRateInput) {
+      clientTakedownRateInput.value =
+        (typeof c.defaultTakedownRate === 'number' && c.defaultTakedownRate > 0)
+          ? c.defaultTakedownRate.toFixed(2)
+          : '';
+    }
+    if (clientLightsSelect && c.lightsOwned) {
+      clientLightsSelect.value = c.lightsOwned;
+    }
+  }
+
+  function clearClientForm() {
+    editingClientId = null;
+    if (clientNameInput)        clientNameInput.value = '';
+    if (clientPhoneInput)       clientPhoneInput.value = '';
+    if (clientEmailInput)       clientEmailInput.value = '';
+    if (clientAddressInput)     clientAddressInput.value = '';
+    if (clientPreferredInput)   clientPreferredInput.value = '';
+    if (clientNotesInput)       clientNotesInput.value = '';
+    if (clientRateInput)        clientRateInput.value = '';
+    if (clientTakedownRateInput)clientTakedownRateInput.value = '';
+    if (clientLightsSelect)     clientLightsSelect.value = 'company';
+  }
+
+  function setCurrentClientForEstimate(client) {
+    currentClientForEstimate = {
+      name:      client.name      || '',
+      address:   client.address   || '',
+      phone:     client.phone     || '',
+      email:     client.email     || '',
+      preferred: client.preferred || ''
+    };
+
+    if (!currentClientSummary) return;
+
+    var html = '<strong>' + escHtml(currentClientForEstimate.name) + '</strong><br>';
+    if (currentClientForEstimate.address) {
+      html += escHtml(currentClientForEstimate.address) + '<br>';
+    }
+    if (currentClientForEstimate.phone) {
+      html += 'Phone: ' + escHtml(currentClientForEstimate.phone) + '<br>';
+    }
+    if (currentClientForEstimate.email) {
+      html += 'Email: ' + escHtml(currentClientForEstimate.email) + '<br>';
+    }
+    if (currentClientForEstimate.preferred) {
+      html += 'Preferred install: ' +
+              escHtml(currentClientForEstimate.preferred) + '<br>';
+    }
+    currentClientSummary.innerHTML = html;
+  }
+
+  function renderClientsList() {
+    if (!clientsList) return;
+    clientsList.innerHTML = '';
+
+    if (!clients.length) {
+      var emptyLi = document.createElement('li');
+      emptyLi.textContent = 'No clients saved yet.';
+      clientsList.appendChild(emptyLi);
+      return;
+    }
+
+    clients.forEach(function (c) {
+      var li = document.createElement('li');
+
+      var headerHtml = '<strong>' + escHtml(c.name || '(No name)') + '</strong><br>';
+      if (c.address)  headerHtml += escHtml(c.address) + '<br>';
+      if (c.phone)    headerHtml += 'Phone: ' + escHtml(c.phone) + '<br>';
+      if (c.email)    headerHtml += 'Email: ' + escHtml(c.email) + '<br>';
+      if (c.preferred)headerHtml += 'Preferred install: ' +
+                                   escHtml(c.preferred) + '<br>';
+
+      li.innerHTML = headerHtml;
+
+      var btnRow = document.createElement('div');
+      btnRow.style.marginTop = '4px';
+
+      // Use for estimate
+      var useBtn = document.createElement('button');
+      useBtn.textContent = 'Use for estimate';
+      useBtn.addEventListener('click', function () {
+        setCurrentClientForEstimate(c);
+
+        // Pre-fill Estimate rates if provided
+        if (typeof c.defaultRate === 'number' && c.defaultRate > 0 && rateInput) {
+          rateInput.value = c.defaultRate.toFixed(2);
+        }
+        if (typeof c.defaultTakedownRate === 'number' &&
+            c.defaultTakedownRate > 0 &&
+            takedownRateInput) {
+          takedownRateInput.value = c.defaultTakedownRate.toFixed(2);
+        }
+      });
+      btnRow.appendChild(useBtn);
+
+      // Edit
+      var editBtn = document.createElement('button');
+      editBtn.textContent = 'Edit';
+      editBtn.style.marginLeft = '4px';
+      editBtn.addEventListener('click', function () {
+        fillClientForm(c);
+      });
+      btnRow.appendChild(editBtn);
+
+      // Delete
+      var delBtn = document.createElement('button');
+      delBtn.textContent = 'Delete';
+      delBtn.style.marginLeft = '4px';
+      delBtn.addEventListener('click', function () {
+        if (!confirm('Delete this client?')) return;
+        clients = clients.filter(function (x) { return x.id !== c.id; });
+        saveClientsToStorage();
+        renderClientsList();
+      });
+      btnRow.appendChild(delBtn);
+
+      li.appendChild(btnRow);
+      clientsList.appendChild(li);
+    });
+  }
+
+  if (saveClientBtn) {
+    saveClientBtn.addEventListener('click', function () {
+      if (!clientNameInput || !clientNameInput.value.trim()) {
+        alert('Please enter at least a client name.');
+        return;
+      }
+      var c = readClientForm();
+
+      var idx = -1;
+      for (var i = 0; i < clients.length; i++) {
+        if (clients[i].id === c.id) {
+          idx = i;
+          break;
+        }
+      }
+      if (idx >= 0) {
+        clients[idx] = c;
+      } else {
+        clients.push(c);
+      }
+      editingClientId = null;
+      saveClientsToStorage();
+      renderClientsList();
+    });
+  }
+
+  // Initial load
+  clients = loadClientsFromStorage();
+  renderClientsList();
+
   // ------------------------------------------------------------------
   // GENERIC HELPER
   // ------------------------------------------------------------------
@@ -659,15 +895,19 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  function getCurrentClientInfo() {
+    function getCurrentClientInfo() {
+    // If a saved client has been chosen, use that
+    if (currentClientForEstimate) {
+      return currentClientForEstimate;
+    }
+
+    // Fallback: read directly from the form
     var nameEl = document.getElementById('client-name');
     var addrEl = document.getElementById('client-address');
     var phoneEl = document.getElementById('client-phone');
     var emailEl = document.getElementById('client-email');
     var prefEl  = document.getElementById('client-preferred');
-
     if (!nameEl || !nameEl.value) return null;
-
     return {
       name: (nameEl.value || '').trim(),
       address: addrEl ? addrEl.value.trim() : '',
