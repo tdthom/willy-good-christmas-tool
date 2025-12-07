@@ -327,64 +327,94 @@
     <!-- Screen 3: Roof Measure (Top View with measure + adjust) -->
   <section id="screen-roof" class="screen">
     <h2>Roof Measure (Top View)</h2>
-    <p>Use a satellite or drone screenshot to measure ridge, hips, and eaves from above.</p>
+    <p>
+      Use a satellite or drone screenshot to measure ridge, hips, eaves, and gable returns from above.
+      Gable returns are tracked separately so you can allow for extra wire and tie-in waste.
+    </p>
 
     <ol>
       <li>Upload a top-down screenshot of the roof.</li>
-      <li>Click <strong>Set scale</strong> and draw a line of known length (for example, a 40 ft front wall).</li>
-      <li>Select run type and click <strong>Measure runs</strong>, then click along the roof lines.</li>
+      <li>
+        Click <strong>Set scale</strong> and draw a line of known length
+        (for example, a 40 ft front wall).
+      </li>
+      <li>
+        Select run type and click <strong>Measure runs</strong>, then click along the roof lines.
+      </li>
     </ol>
 
-    <input type="file" id="roof-image-input" accept="image/*"><br><br>
+    <div style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start; margin-top:0.75rem;">
 
-    <button id="roof-set-scale">1) Set scale</button>
-    <label for="roof-scale-feet"><small>Known distance (ft):</small></label>
-    <input
-      id="roof-scale-feet"
-      type="number"
-      min="0"
-      step="0.1"
-      value="40"
-      style="width:80px;"
-    >
-    <br><br>
+      <!-- LEFT COLUMN: controls (scrollable) -->
+      <div style="min-width:260px; max-width:320px; max-height:80vh; overflow-y:auto; background:#ffffff; border:1px solid #ccc; padding:8px; box-sizing:border-box;">
 
-    <button id="roof-measure-mode">2) Measure runs</button>
-    <button id="roof-undo">Undo last segment</button>
-    <button id="roof-adjust-mode">Adjust lines</button>
-    <button id="roof-clear">Clear lines</button>
-    <br><br>
+        <h3 style="margin-top:0;">Image &amp; scale</h3>
 
-    <button id="roof-zoom-in">Zoom in</button>
-    <button id="roof-zoom-out">Zoom out</button>
-    <br><br>
+        <label for="roof-image-input"><strong>Roof image:</strong></label><br>
+        <input type="file" id="roof-image-input" accept="image/*"><br><br>
 
-    <label for="roof-run-type"><strong>Run type:</strong></label>
-    <select id="roof-run-type">
-      <option value="ridge">Ridge / hip / shingle</option>
-      <option value="eaves">Eaves / gutters</option>
-      <option value="gable">Gable returns / other</option>
-    </select>
-    <br><br>
+        <button id="roof-set-scale">1) Set scale</button>
+        <label for="roof-scale-feet" style="margin-left:0.5rem;">
+          <small>Known distance (ft):</small>
+        </label>
+        <input
+          id="roof-scale-feet"
+          type="number"
+          min="0"
+          step="0.1"
+          value="40"
+          style="width:80px;"
+        >
+        <br><br>
 
-    <button id="roof-send-to-estimate">Send ridge / eaves totals to Estimate</button>
+        <h3 style="margin-bottom:0.4rem;">Measure &amp; edit</h3>
+        <button id="roof-measure-mode">2) Measure runs</button>
+        <button id="roof-undo">Undo</button>
+        <button id="roof-adjust-mode">Adjust</button>
+        <button id="roof-clear">Clear</button>
+        <br><br>
 
-    <div style="margin-top:1rem;">
-      <canvas
-        id="roof-canvas"
-        width="800"
-        height="500"
-        style="border:1px solid #ccc; max-width:100%;"
-      ></canvas>
-    </div>
+        <button id="roof-zoom-in">Zoom in</button>
+        <button id="roof-zoom-out">Zoom out</button>
+        <br><br>
 
-    <div id="roof-info" class="small-note" style="margin-top:0.5rem;">
-      No image loaded.
-    </div>
+        <label for="roof-run-type"><strong>Run type:</strong></label><br>
+        <select id="roof-run-type" style="width:100%;">
+          <option value="ridge">Ridge / hip / shingle</option>
+          <option value="eaves">Eaves / gutters</option>
+          <option value="gable">Gable returns / other</option>
+        </select>
+        <br><br>
 
-    <div id="roof-totals" style="margin-top:0.5rem; font-size:0.9rem;">
-      <!-- totals appear here -->
-    </div>
+        <p class="small-note" style="margin-top:0;">
+          Gable returns are measured separately so you can calculate extra wire and tie-ins.
+          The totals below show gable footage and <strong>gable + 10% waste</strong>.
+        </p>
+
+        <button id="roof-send-to-estimate" style="width:100%; margin-bottom:0.5rem;">
+          Send ridge + eaves totals to Estimate
+        </button>
+
+        <div id="roof-info" class="small-note" style="margin-top:0.5rem;">
+          No image loaded.
+        </div>
+
+        <div id="roof-totals" style="margin-top:0.5rem; font-size:0.9rem;">
+          <!-- totals appear here -->
+        </div>
+      </div> <!-- end left controls column -->
+
+      <!-- RIGHT COLUMN: canvas (stays visible) -->
+      <div style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff;">
+        <canvas
+          id="roof-canvas"
+          width="800"
+          height="500"
+          style="border:1px solid #ccc; max-width:none; transform-origin:0 0;"
+        ></canvas>
+      </div>
+
+    </div> <!-- end flex row -->
   </section>
 
      <!-- Screen 4: Photo Mockup (visual-only color designer) -->
@@ -941,7 +971,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  function roofUpdateTotals() {
+    function roofUpdateTotals() {
     if (!roofTotals) return;
     if (!roofSegments.length) {
       roofTotals.innerHTML = '';
@@ -956,16 +986,30 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     var all = totals.ridge + totals.eaves + totals.gable;
+
+    // 10% waste for gable returns (extra wire / tie-ins)
+    var gableWasteFactor = 1.10;
+    var gableWithWaste   = totals.gable * gableWasteFactor;
+
     var html = '';
     if (roofFeetPerPixel) {
       html += '<p>Scale: 1 pixel ≈ ' + roofFeetPerPixel.toFixed(4) + ' ft</p>';
     }
     html += '<ul>';
-    html += '<li><strong>Ridge / hip / shingle:</strong> ' + totals.ridge.toFixed(1) + ' ft</li>';
-    html += '<li><strong>Eaves / gutters:</strong> ' + totals.eaves.toFixed(1) + ' ft</li>';
-    html += '<li><strong>Gable / other:</strong> ' + totals.gable.toFixed(1) + ' ft</li>';
+    html += '<li><strong>Ridge / hip / shingle:</strong> ' +
+            totals.ridge.toFixed(1) + ' ft</li>';
+    html += '<li><strong>Eaves / gutters:</strong> ' +
+            totals.eaves.toFixed(1) + ' ft</li>';
+    html += '<li><strong>Gable returns / other:</strong> ' +
+            totals.gable.toFixed(1) + ' ft</li>';
     html += '</ul>';
-    html += '<p><strong>Total measured (all):</strong> ' + all.toFixed(1) + ' ft</p>';
+
+    html += '<p><strong>Gable w/ 10% waste (extra wire, tie-ins):</strong> ' +
+            gableWithWaste.toFixed(1) + ' ft</p>';
+
+    html += '<p><strong>Total measured (all segments, before waste):</strong> ' +
+            all.toFixed(1) + ' ft</p>';
+
     roofTotals.innerHTML = html;
   }
 
