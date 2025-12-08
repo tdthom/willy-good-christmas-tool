@@ -1595,6 +1595,161 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+    // --- PHOTO MOCKUP helpers ---------------------------------------
+  function mockSetInfo(msg) {
+    if (mockInfo) {
+      mockInfo.textContent = msg || '';
+    }
+  }
+
+  function mockDrawBase() {
+    if (!mockCtx || !mockCanvas) return;
+
+    // Clear the canvas
+    mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
+
+    // Redraw the background photo if we have one
+    if (mockImage && mockDrawParams) {
+      mockCtx.drawImage(
+        mockImage,
+        mockDrawParams.x,
+        mockDrawParams.y,
+        mockDrawParams.w,
+        mockDrawParams.h
+      );
+    }
+  }
+
+   // --- PHOTO MOCKUP helpers ---------------------------------------
+  function mockSetInfo(msg) {
+    if (mockInfo) {
+      mockInfo.textContent = msg || '';
+    }
+  }
+
+  function mockDrawBase() {
+    if (!mockCtx || !mockCanvas) return;
+
+    // Clear the canvas
+    mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
+
+    // Redraw the background photo if we have one
+    if (mockImage && mockDrawParams) {
+      mockCtx.drawImage(
+        mockImage,
+        mockDrawParams.x,
+        mockDrawParams.y,
+        mockDrawParams.w,
+        mockDrawParams.h
+      );
+    }
+  }
+
+  function mockApplyZoom() {
+    if (!mockCanvas) return;
+    mockCanvas.style.transformOrigin = '0 0';
+    mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
+  }
+
+   // --- PHOTO MOCKUP helpers ---------------------------------------
+  function mockSetInfo(msg) {
+    if (mockInfo) {
+      mockInfo.textContent = msg || '';
+    }
+  }
+
+  function mockDrawBase() {
+    if (!mockCtx || !mockCanvas) return;
+
+    // Clear the canvas
+    mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
+
+    // Redraw the background photo if we have one
+    if (mockImage && mockDrawParams) {
+      mockCtx.drawImage(
+        mockImage,
+        mockDrawParams.x,
+        mockDrawParams.y,
+        mockDrawParams.w,
+        mockDrawParams.h
+      );
+    }
+  }
+
+  // --- PHOTO MOCKUP helpers ---------------------------------------
+  function mockSetInfo(msg) {
+    if (mockInfo) {
+      mockInfo.textContent = msg || '';
+    }
+  }
+
+  function mockDrawBase() {
+    if (!mockCtx || !mockCanvas) return;
+
+    // Clear the canvas
+    mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
+
+    // Redraw the background photo if we have one
+    if (mockImage && mockDrawParams) {
+      mockCtx.drawImage(
+        mockImage,
+        mockDrawParams.x,
+        mockDrawParams.y,
+        mockDrawParams.w,
+        mockDrawParams.h
+      );
+    }
+  }
+
+  // --- PHOTO MOCKUP helpers ---------------------------------------
+  function mockSetInfo(msg) {
+    if (mockInfo) {
+      mockInfo.textContent = msg || '';
+    }
+  }
+
+  function mockDrawBase() {
+    if (!mockCtx || !mockCanvas) return;
+
+    // Clear the canvas
+    mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
+
+    // Redraw the background photo if we have one
+    if (mockImage && mockDrawParams) {
+      mockCtx.drawImage(
+        mockImage,
+        mockDrawParams.x,
+        mockDrawParams.y,
+        mockDrawParams.w,
+        mockDrawParams.h
+      );
+    }
+  }
+
+  // --- PHOTO MOCKUP helpers ---------------------------------------
+  function mockSetInfo(msg) {
+    if (mockInfo) {
+      mockInfo.textContent = msg || '';
+    }
+  }
+
+  function mockDrawBase() {
+    if (!mockCtx || !mockCanvas) return;
+
+    // Clear the canvas
+    mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
+
+    // Redraw the background photo if we have one
+    if (mockImage && mockDrawParams) {
+      mockCtx.drawImage(
+        mockImage,
+        mockDrawParams.x,
+        mockDrawParams.y,
+        mockDrawParams.w,
+        mockDrawParams.h
+      );
+    }
+  }
   function mockApplyZoom() {
     if (!mockCanvas) return;
     mockCanvas.style.transformOrigin = '0 0';
@@ -1617,7 +1772,6 @@ document.addEventListener('DOMContentLoaded', function () {
     var dy = a.y - b.y;
     return Math.sqrt(dx * dx + dy * dy);
   }
-
   // --- Tree / shrub bulbs – stable positions per traced shape ------
   var warmGlow        = 'rgba(255, 244, 213, 0.32)';
   var warmCore        = '#fffdf5';
