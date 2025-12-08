@@ -341,35 +341,7 @@
   style="width:90px;"
 ><br><br>
 
-<label for="decor-bow-count"><strong>Bows</strong> (qty)</label><br>
-<input
-  id="decor-bow-count"
-  type="number"
-  min="0"
-  step="1"
-  value="0"
-  style="width:80px;"
->
-&nbsp;
-<label for="decor-bow-price">Price each</label>
-<input
-  id="decor-bow-price"
-  type="number"
-  min="0"
-  step="0.01"
-  value="30.00"
-  style="width:90px;"
-><br><br>
-
-<button id="calc-estimate">Calculate estimate</button>
-
-    <h3>Result</h3>
-    <div id="estimate-result">
-      Enter values and click "Calculate estimate" to see the price.
-    </div>
-  </section>
-
-    <!-- Screen 3: Roof Measure (Top View with measure + adjust) -->
+  <!-- Screen 3: Roof Measure (Top View with measure + adjust) -->
   <section id="screen-roof" class="screen">
     <h2>Roof Measure (Top View)</h2>
     <p>
@@ -2265,8 +2237,30 @@ document.addEventListener('DOMContentLoaded', function () {
         mockCtx.arc(0, 0, r * 0.4, 0, Math.PI * 2);
         mockCtx.fill();
       }
-  mockCtx.restore();  
-}
+
+      // done with this decoration
+      mockCtx.restore();
+    }
+
+    // 3) tree / shrub bulbs from traced shapes
+    for (var ti = 0; ti < treeTraceShapes.length; ti++) {
+      drawTreeShapeBulbs(treeTraceShapes[ti]);
+    }
+
+    // Optional: outline while you are tracing a tree/shrub
+    if (mockMode === 'tree-trace' && treeTraceCurrent.length > 1) {
+      mockCtx.beginPath();
+      mockCtx.strokeStyle = 'rgba(255,255,255,0.20)';
+      mockCtx.lineWidth = 1;
+      for (var i2 = 0; i2 < treeTraceCurrent.length; i2++) {
+        var pt2 = treeTraceCurrent[i2];
+        if (i2 === 0) mockCtx.moveTo(pt2.x, pt2.y);
+        else mockCtx.lineTo(pt2.x, pt2.y);
+      }
+      mockCtx.closePath();
+      mockCtx.stroke();
+    }
+    
   // --- Load image into mockup canvas -------------------------------
   if (mockImageInput && mockCtx && mockCanvas) {
     mockImageInput.addEventListener('change', function (e) {
