@@ -1702,309 +1702,422 @@ document.addEventListener('DOMContentLoaded', function () {
   // MAIN REDRAW (bulbs + decorations + trees)
   // -------------------------------------------------------------
   function mockRedraw() {
-    if (!mockCtx || !mockCanvas) return;
+  if (!mockCtx || !mockCanvas) return;
 
-    mockDrawBase();
-    if (!mockImage) return;
+  // Draw background photo first (this resets transforms & clears canvas)
+  mockDrawBase();
+  if (!mockImage) return;
 
-    var mode = mockColorModeSelect ? mockColorModeSelect.value : 'single';
+  // ---------------------------------------------------------------
+  // 1) LIGHT RUNS (roof, ground, trees, other)
+  // ---------------------------------------------------------------
+  var mode = mockColorModeSelect ? mockColorModeSelect.value : 'single';
+  var c1   = (mockColor1Input && mockColor1Input.value) || '#ffffff';
+  var c2   = (mockColor2Input && mockColor2Input.value) || '#ff0000';
+  var c3   = (mockColor3Input && mockColor3Input.value) || '#00ff00';
 
-    var c1 = (mockColor1Input && mockColor1Input.value) || '#ffffff';
-    var c2 = (mockColor2Input && mockColor2Input.value) || '#ff0000';
-    var c3 = (mockColor3Input && mockColor3Input.value) || '#00ff00';
+  // bulb spacing (in pixels)
+  var spacingInches = 12;
+  if (mockBulbSpacingSelect) {
+    var sval = parseFloat(mockBulbSpacingSelect.value);
+    if (!isNaN(sval) && sval > 0) spacingInches = sval;
+  }
+  var spacingPx = (spacingInches === 15) ? 28 : 22;
 
-    var spacingInches = 12;
-    if (mockBulbSpacingSelect) {
-      var sval = parseFloat(mockBulbSpacingSelect.value);
-      if (!isNaN(sval) && sval > 0) spacingInches = sval;
+  // bulb size
+  var baseSize = 2.4; // slightly smaller default
+  if (mockBulbSizeSelect) {
+    var sizeVal = mockBulbSizeSelect.value;
+    if (sizeVal === 'small') baseSize = 1.8;
+    else if (sizeVal === 'medium') baseSize = 2.4;
+    else if (sizeVal === 'large') baseSize = 3.2;
+  }
+  var bulbHeight = baseSize * 2.4;
+  var glowRadius = bulbHeight * 0.9;
+  var showWire   = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
+
+  // Draw each light segment
+  for (var i = 0; i < mockSegments.length; i++) {
+    var seg  = mockSegments[i];
+    var from = seg.from;
+    var to   = seg.to;
+    var dx   = to.x - from.x;
+    var dy   = to.y - from.y;
+    var lengthPx = Math.sqrt(dx * dx + dy * dy);
+    if (lengthPx === 0) continue;
+
+    var angle = Math.atan2(dy, dx);
+
+    // wire
+    if (showWire) {
+      var wireColor = '#555555';
+      if (seg.type === 'ground') wireColor = '#3a7a3a';
+      else if (seg.type === 'tree') wireColor = '#8b5a2b';
+
+      mockCtx.beginPath();
+      mockCtx.strokeStyle = wireColor;
+      mockCtx.lineWidth   = 1.2;
+      mockCtx.moveTo(from.x, from.y);
+      mockCtx.lineTo(to.x, to.y);
+      mockCtx.stroke();
     }
-   var spacingPx = (spacingInches === 15) ? 28 : 22;
 
-    var showWire = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
+    // bulbs
+    var count = Math.max(1, Math.round(lengthPx / spacingPx));
+    for (var b = 0; b <= count; b++) {
+      var t = count === 0 ? 0 : b / count;
+      var x = from.x + dx * t;
+      var y = from.y + dy * t;
 
-    // 1) light runs
-    var mode = mockColorModeSelect ? mockColorModeSelect.value : 'single';
-    var c1   = (mockColor1Input && mockColor1Input.value) || '#ffffff';
-    var c2   = (mockColor2Input && mockColor2Input.value) || '#ff0000';
-    var c3   = (mockColor3Input && mockColor3Input.value) || '#00ff00';
-
-    // spacing (same behavior as before)
-    var spacingInches = 12;
-    if (mockBulbSpacingSelect) {
-      var sval = parseFloat(mockBulbSpacingSelect.value);
-      if (!isNaN(sval) && sval > 0) spacingInches = sval;
-    }
-    var spacingPx = (spacingInches === 15) ? 28 : 22;
-
-    // BULB SCALE – tuned smaller overall
-    // Small = tiny, Medium = normal, Large = big but usable
-    var baseSize = 1.8; // medium default width
-    if (mockBulbSizeSelect) {
-      var sizeVal = mockBulbSizeSelect.value;
-      if (sizeVal === 'small')  baseSize = 1.1;
-      else if (sizeVal === 'medium') baseSize = 1.8;
-      else if (sizeVal === 'large')  baseSize = 2.4;
-    }
-
-    // Height + glow are based off baseSize
-    var bulbHeight = baseSize * 3.4;
-    var glowRadius = bulbHeight * 0.8;
-
-    // Wire on/off
-    var showWire = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
-    // 2) Decorations
-    for (var d = 0; d < mockDecorations.length; d++) {
-      var deco = mockDecorations[d];
-
-      mockCtx.save();
-      mockCtx.translate(deco.x, deco.y);
-      var rotation = deco.rotation || 0;
-      if (rotation !== 0) mockCtx.rotate(rotation);
-
-      var r = getDecorationRadius(deco);
-      var innerR;
-
-      if (deco.kind === 'wreath') {
-        innerR = r * 0.55;
-
-        mockCtx.beginPath();
-        mockCtx.arc(0, 0, r, 0, Math.PI * 2);
-        mockCtx.strokeStyle = '#0b5b3b';
-        mockCtx.lineWidth   = 6;
-        mockCtx.stroke();
-
-        mockCtx.beginPath();
-        mockCtx.arc(0, 0, innerR, 0, Math.PI * 2);
-        mockCtx.strokeStyle = '#0b3b24';
-        mockCtx.lineWidth   = 4;
-        mockCtx.stroke();
-
-        mockCtx.fillStyle = '#c62828';
-        mockCtx.beginPath();
-        mockCtx.moveTo(-innerR * 0.7, innerR * 0.6);
-        mockCtx.lineTo(0, innerR * 1.1);
-        mockCtx.lineTo(innerR * 0.7, innerR * 0.6);
-        mockCtx.closePath();
-        mockCtx.fill();
-
-        mockCtx.beginPath();
-        mockCtx.moveTo(-innerR * 0.2, innerR * 0.6);
-        mockCtx.lineTo(0, innerR * 1.4);
-        mockCtx.lineTo(innerR * 0.2, innerR * 0.6);
-        mockCtx.closePath();
-        mockCtx.fill();
-
-      } else if (deco.kind === 'bow') {
-        var w = r * 1.4;
-        var h = r * 0.7;
-
-        mockCtx.fillStyle = '#c62828';
-
-        mockCtx.beginPath();
-        mockCtx.moveTo(-w * 0.5, 0);
-        mockCtx.quadraticCurveTo(-w * 0.9, -h * 0.8, -w * 0.2, -h * 0.4);
-        mockCtx.quadraticCurveTo(-w * 0.6, 0, -w * 0.5, 0);
-        mockCtx.fill();
-
-        mockCtx.beginPath();
-        mockCtx.moveTo(w * 0.5, 0);
-        mockCtx.quadraticCurveTo(w * 0.9, -h * 0.8, w * 0.2, -h * 0.4);
-        mockCtx.quadraticCurveTo(w * 0.6, 0, w * 0.5, 0);
-        mockCtx.fill();
-
-        mockCtx.beginPath();
-        mockCtx.rect(-w * 0.12, -h * 0.25, w * 0.24, h * 0.5);
-        mockCtx.fillStyle = '#8e0000';
-        mockCtx.fill();
-
-        mockCtx.fillStyle = '#c62828';
-        mockCtx.beginPath();
-        mockCtx.moveTo(-w * 0.18, h * 0.25);
-        mockCtx.lineTo(-w * 0.45, h * 0.9);
-        mockCtx.lineTo(-w * 0.05, h * 0.7);
-        mockCtx.closePath();
-        mockCtx.fill();
-
-        mockCtx.beginPath();
-        mockCtx.moveTo(w * 0.18, h * 0.25);
-        mockCtx.lineTo(w * 0.45, h * 0.9);
-        mockCtx.lineTo(w * 0.05, h * 0.7);
-        mockCtx.closePath();
-        mockCtx.fill();
-
-      } else if (deco.kind === 'garland') {
-        var swagW = r * 2.0;
-        var swagH = r * 0.8;
-
-        mockCtx.beginPath();
-        mockCtx.moveTo(-swagW / 2, -swagH * 0.1);
-        mockCtx.quadraticCurveTo(0, swagH, swagW / 2, -swagH * 0.1);
-        mockCtx.strokeStyle = '#0b5b3b';
-        mockCtx.lineWidth   = 6;
-        mockCtx.stroke();
-
-        var bulbs = 7;
-        for (var bi = 0; bi < bulbs; bi++) {
-          var t2 = bulbs === 1 ? 0.5 : bi / (bulbs - 1);
-          var xx = -swagW / 2 + swagW * t2;
-          var yy = -swagH * 0.1 + (Math.sin(t2 * Math.PI) * swagH * 0.7);
-          mockCtx.beginPath();
-          mockCtx.fillStyle = (bi % 2 === 0) ? '#ffd54f' : '#ff5252';
-          mockCtx.arc(xx, yy, r * 0.08, 0, Math.PI * 2);
-          mockCtx.fill();
-        }
-
-      } else if (deco.kind === 'tree-wrap') {
-        var trunkH = r * 1.6;
-        var trunkW = r * 0.25;
-
-        mockCtx.fillStyle = '#5d4037';
-        mockCtx.fillRect(-trunkW / 2, -trunkH / 2, trunkW, trunkH);
-
-        var wraps = 6;
-        mockCtx.strokeStyle = '#fff59d';
-        mockCtx.lineWidth   = 2;
-        for (var wi = 0; wi < wraps; wi++) {
-          var ty = -trunkH / 2 + (trunkH * wi / (wraps - 1));
-          mockCtx.beginPath();
-          mockCtx.moveTo(-trunkW * 0.6, ty);
-          mockCtx.lineTo(trunkW * 0.6, ty + trunkW * 0.4);
-          mockCtx.stroke();
-        }
-
-      } else if (deco.kind === 'star') {
-        var outer = r * 0.9;
-        var inner = outer * 0.45;
-        mockCtx.beginPath();
-        for (var si = 0; si < 10; si++) {
-          var ang = (Math.PI / 5) * si - Math.PI / 2;
-          var rad = (si % 2 === 0) ? outer : inner;
-          var sx = Math.cos(ang) * rad;
-          var sy = Math.sin(ang) * rad;
-          if (si === 0) mockCtx.moveTo(sx, sy);
-          else mockCtx.lineTo(sx, sy);
-        }
-        mockCtx.closePath();
-        mockCtx.fillStyle   = '#fff176';
-        mockCtx.strokeStyle = '#fbc02d';
-        mockCtx.lineWidth   = 2;
-        mockCtx.fill();
-        mockCtx.stroke();
-
-      } else if (deco.kind === 'net') {
-        var netW = r * 1.8;
-        var netH = r * 1.2;
-        mockCtx.strokeStyle = 'rgba(255,255,255,0.35)';
-        mockCtx.lineWidth   = 1;
-        var cells = 4;
-
-        for (var gx = 0; gx <= cells; gx++) {
-          var xx2 = -netW / 2 + (netW * gx / cells);
-          mockCtx.beginPath();
-          mockCtx.moveTo(xx2, -netH / 2);
-          mockCtx.lineTo(xx2, netH / 2);
-          mockCtx.stroke();
-        }
-        for (var gy = 0; gy <= cells; gy++) {
-          var yy2 = -netH / 2 + (netH * gy / cells);
-          mockCtx.beginPath();
-          mockCtx.moveTo(-netW / 2, yy2);
-          mockCtx.lineTo(netW / 2, yy2);
-          mockCtx.stroke();
-        }
-
-        for (var gx2 = 0; gx2 < cells; gx2++) {
-          for (var gy2 = 0; gy2 < cells; gy2++) {
-            var px = -netW / 2 + netW * (gx2 + 0.5) / cells;
-            var py = -netH / 2 + netH * (gy2 + 0.5) / cells;
-            mockCtx.beginPath();
-            mockCtx.fillStyle = '#fff9c4';
-            mockCtx.arc(px, py, r * 0.06, 0, Math.PI * 2);
-            mockCtx.fill();
-          }
-        }
-
-      } else if (deco.kind === 'mini-tree') {
-        var treeH = r * 1.7;
-
-        mockCtx.fillStyle = '#1b5e20';
-        mockCtx.beginPath();
-        mockCtx.moveTo(0, -treeH / 2);
-        mockCtx.lineTo(-r * 0.7, treeH / 2);
-        mockCtx.lineTo(r * 0.7, treeH / 2);
-        mockCtx.closePath();
-        mockCtx.fill();
-
-        mockCtx.fillStyle = '#5d4037';
-        mockCtx.fillRect(-r * 0.15, treeH / 2, r * 0.3, treeH * 0.25);
-
-        var rows = 3;
-        var bulbsPerRow = 5;
-        for (var ry = 0; ry < rows; ry++) {
-          var rowY = -treeH / 4 + (treeH * ry / (rows + 1));
-          for (var rb = 0; rb < bulbsPerRow; rb++) {
-            var t3 = bulbsPerRow === 1 ? 0.5 : rb / (bulbsPerRow - 1);
-            var rowWidth = r * (1.1 - ry * 0.25);
-            var bx = -rowWidth / 2 + rowWidth * t3;
-            mockCtx.beginPath();
-            var colr;
-            var m = (ry * bulbsPerRow + rb) % 3;
-            if (m === 0) colr = '#ff5252';
-            else if (m === 1) colr = '#ffeb3b';
-            else colr = '#69f0ae';
-            mockCtx.fillStyle = colr;
-            mockCtx.arc(bx, rowY, r * 0.07, 0, Math.PI * 2);
-            mockCtx.fill();
-          }
-        }
-
-      } else {
-        mockCtx.beginPath();
-        mockCtx.fillStyle = '#ffffff';
-        mockCtx.arc(0, 0, r * 0.4, 0, Math.PI * 2);
-        mockCtx.fill();
+      // choose color based on pattern
+      var color = c1;
+      if (mode === 'two') {
+        color = (b % 2 === 0) ? c1 : c2;
+      } else if (mode === 'three') {
+        var idx = b % 3;
+        color = (idx === 0) ? c1 : (idx === 1 ? c2 : c3);
       }
 
-      if (mockSelectedDecorId != null && deco.id === mockSelectedDecorId) {
-        mockCtx.beginPath();
-        mockCtx.strokeStyle = 'rgba(0, 210, 255, 0.9)';
-        mockCtx.lineWidth   = 1.5;
-        mockCtx.setLineDash([4, 3]);
-        mockCtx.arc(0, 0, r * 1.05, 0, Math.PI * 2);
-        mockCtx.stroke();
-        mockCtx.setLineDash([]);
+      mockCtx.save();
+      mockCtx.translate(x, y);
 
-        var handlePos = getDecorationHandlePosition({
-          x: 0, y: 0, kind: deco.kind, size: deco.size || 1
-        });
-        var hx = handlePos.x;
-        var hy = handlePos.y;
-        var hl = 6;
-        mockCtx.beginPath();
-        mockCtx.fillStyle = '#00d2ff';
-        mockCtx.fillRect(hx - hl / 2, hy - hl / 2, hl, hl);
+      // ground lights always straight up, others follow the line
+      var bulbAngle = (seg.type === 'ground') ? 0 : angle;
+      mockCtx.rotate(bulbAngle);
+
+      // glow
+      mockCtx.beginPath();
+      mockCtx.globalAlpha = 0.25;
+      mockCtx.fillStyle = color;
+      mockCtx.arc(0, 0, glowRadius, 0, Math.PI * 2, false);
+      mockCtx.fill();
+      mockCtx.globalAlpha = 1;
+
+      // bulb body
+      mockCtx.beginPath();
+      mockCtx.moveTo(0, -bulbHeight / 2);
+      mockCtx.quadraticCurveTo(baseSize, 0, 0, bulbHeight / 2);
+      mockCtx.quadraticCurveTo(-baseSize, 0, 0, -bulbHeight / 2);
+      mockCtx.closePath();
+      mockCtx.fillStyle   = color;
+      mockCtx.strokeStyle = '#f5f5f5';
+      mockCtx.lineWidth   = 0.8;
+      mockCtx.fill();
+      mockCtx.stroke();
+
+      // socket
+      mockCtx.fillStyle = '#444444';
+      mockCtx.fillRect(
+        -baseSize * 0.6,
+        bulbHeight / 2,
+        baseSize * 1.2,
+        baseSize * 0.6
+      );
+
+      // stake for ground lights
+      if (seg.type === 'ground') {
+        var stakeHeight = bulbHeight * 0.9;
+        mockCtx.fillStyle = '#444444';
+        mockCtx.fillRect(
+          -baseSize * 0.25,
+          bulbHeight / 2 + baseSize * 0.6,
+          baseSize * 0.5,
+          stakeHeight
+        );
       }
 
       mockCtx.restore();
     }
 
-    // 3) Tree / shrub traced lights
-    for (var s = 0; s < treeTraceShapes.length; s++) {
-      drawTreeShapeBulbs(treeTraceShapes[s]);
-    }
-
-    if (treeTraceCurrent && treeTraceCurrent.length > 1) {
+    // adjust handles
+    if (mockMode === 'adjust') {
       mockCtx.beginPath();
-      for (var ti = 0; ti < treeTraceCurrent.length; ti++) {
-        var p = treeTraceCurrent[ti];
-        if (ti === 0) mockCtx.moveTo(p.x, p.y);
-        else mockCtx.lineTo(p.x, p.y);
-      }
-      mockCtx.strokeStyle = 'rgba(255,255,255,0.6)';
+      mockCtx.fillStyle   = '#00ffff';
+      mockCtx.strokeStyle = '#004b80';
       mockCtx.lineWidth   = 1;
+      mockCtx.arc(from.x, from.y, 3, 0, Math.PI * 2);
+      mockCtx.fill();
+      mockCtx.stroke();
+
+      mockCtx.beginPath();
+      mockCtx.arc(to.x, to.y, 3, 0, Math.PI * 2);
+      mockCtx.fill();
       mockCtx.stroke();
     }
   }
+
+  // ---------------------------------------------------------------
+  // 2) TREE / SHRUB FREE-FORM SHAPES
+  // ---------------------------------------------------------------
+  for (var ts = 0; ts < treeTraceShapes.length; ts++) {
+    drawTreeShapeBulbs(treeTraceShapes[ts]);
+  }
+
+  // show current trace outline while drawing
+  if (treeTraceCurrent && treeTraceCurrent.length > 1) {
+    mockCtx.beginPath();
+    mockCtx.strokeStyle = 'rgba(255,255,255,0.4)';
+    mockCtx.lineWidth = 1;
+    for (var ti = 0; ti < treeTraceCurrent.length; ti++) {
+      var p = treeTraceCurrent[ti];
+      if (ti === 0) mockCtx.moveTo(p.x, p.y);
+      else mockCtx.lineTo(p.x, p.y);
+    }
+    mockCtx.stroke();
+  }
+
+  // ---------------------------------------------------------------
+  // 3) DECORATIONS (wreath, bow, garland, tree-wrap, net, star, mini-tree)
+  // ---------------------------------------------------------------
+  for (var d = 0; d < mockDecorations.length; d++) {
+    var deco = mockDecorations[d];
+    var size = deco.size || 1;
+
+    mockCtx.save();
+    mockCtx.translate(deco.x, deco.y);
+    var rotation = deco.rotation || 0;
+    if (rotation !== 0) mockCtx.rotate(rotation);
+
+    var r = getDecorationRadius(deco);
+    var innerR;
+
+    if (deco.kind === 'wreath') {
+      innerR = r * 0.55;
+
+      // outer ring
+      mockCtx.beginPath();
+      mockCtx.arc(0, 0, r, 0, Math.PI * 2);
+      mockCtx.strokeStyle = '#0b5b3b';
+      mockCtx.lineWidth = 6;
+      mockCtx.stroke();
+
+      // inner ring
+      mockCtx.beginPath();
+      mockCtx.arc(0, 0, innerR, 0, Math.PI * 2);
+      mockCtx.strokeStyle = '#0b3b24';
+      mockCtx.lineWidth = 4;
+      mockCtx.stroke();
+
+      // bow at bottom
+      mockCtx.fillStyle = '#c62828';
+      mockCtx.beginPath();
+      mockCtx.moveTo(-innerR * 0.7, innerR * 0.6);
+      mockCtx.lineTo(0, innerR * 1.1);
+      mockCtx.lineTo(innerR * 0.7, innerR * 0.6);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+      // hanging tails
+      mockCtx.beginPath();
+      mockCtx.moveTo(-innerR * 0.2, innerR * 0.6);
+      mockCtx.lineTo(0, innerR * 1.4);
+      mockCtx.lineTo(innerR * 0.2, innerR * 0.6);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+    } else if (deco.kind === 'bow') {
+      var w = r * 1.4;
+      var h = r * 0.7;
+
+      mockCtx.fillStyle = '#c62828';
+
+      // left loop
+      mockCtx.beginPath();
+      mockCtx.moveTo(-w * 0.5, 0);
+      mockCtx.quadraticCurveTo(-w * 0.9, -h * 0.8, -w * 0.2, -h * 0.4);
+      mockCtx.quadraticCurveTo(-w * 0.6, 0, -w * 0.5, 0);
+      mockCtx.fill();
+
+      // right loop
+      mockCtx.beginPath();
+      mockCtx.moveTo(w * 0.5, 0);
+      mockCtx.quadraticCurveTo(w * 0.9, -h * 0.8, w * 0.2, -h * 0.4);
+      mockCtx.quadraticCurveTo(w * 0.6, 0, w * 0.5, 0);
+      mockCtx.fill();
+
+      // center knot
+      mockCtx.beginPath();
+      mockCtx.rect(-w * 0.12, -h * 0.25, w * 0.24, h * 0.5);
+      mockCtx.fillStyle = '#8e0000';
+      mockCtx.fill();
+
+      // tails
+      mockCtx.fillStyle = '#c62828';
+      mockCtx.beginPath();
+      mockCtx.moveTo(-w * 0.18, h * 0.25);
+      mockCtx.lineTo(-w * 0.45, h * 0.9);
+      mockCtx.lineTo(-w * 0.05, h * 0.7);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+      mockCtx.beginPath();
+      mockCtx.moveTo(w * 0.18, h * 0.25);
+      mockCtx.lineTo(w * 0.45, h * 0.9);
+      mockCtx.lineTo(w * 0.05, h * 0.7);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+    } else if (deco.kind === 'garland') {
+      var swagW = r * 2.0;
+      var swagH = r * 0.8;
+
+      mockCtx.beginPath();
+      mockCtx.moveTo(-swagW / 2, -swagH * 0.1);
+      mockCtx.quadraticCurveTo(0, swagH, swagW / 2, -swagH * 0.1);
+      mockCtx.strokeStyle = '#0b5b3b';
+      mockCtx.lineWidth = 6;
+      mockCtx.stroke();
+
+      // bulbs along the garland
+      var bulbs = 7;
+      for (var bi = 0; bi < bulbs; bi++) {
+        var tt = bulbs === 1 ? 0.5 : bi / (bulbs - 1);
+        var gx = -swagW / 2 + swagW * tt;
+        var gy = -swagH * 0.1 + (Math.sin(tt * Math.PI) * swagH * 0.7);
+        mockCtx.beginPath();
+        mockCtx.fillStyle = (bi % 2 === 0) ? '#ffd54f' : '#ff5252';
+        mockCtx.arc(gx, gy, r * 0.08, 0, Math.PI * 2);
+        mockCtx.fill();
+      }
+
+    } else if (deco.kind === 'tree-wrap') {
+      var trunkH = r * 1.6;
+      var trunkW = r * 0.25;
+
+      mockCtx.fillStyle = '#5d4037';
+      mockCtx.fillRect(-trunkW / 2, -trunkH / 2, trunkW, trunkH);
+
+      var wraps = 6;
+      mockCtx.strokeStyle = '#fff59d';
+      mockCtx.lineWidth = 2;
+      for (var wi = 0; wi < wraps; wi++) {
+        var ty = -trunkH / 2 + (trunkH * wi / (wraps - 1));
+        mockCtx.beginPath();
+        mockCtx.moveTo(-trunkW * 0.6, ty);
+        mockCtx.lineTo(trunkW * 0.6, ty + trunkW * 0.4);
+        mockCtx.stroke();
+      }
+
+    } else if (deco.kind === 'star') {
+      var outer = r * 0.9;
+      var inner = outer * 0.45;
+      mockCtx.beginPath();
+      for (var si = 0; si < 10; si++) {
+        var ang = (Math.PI / 5) * si - Math.PI / 2;
+        var rad = (si % 2 === 0) ? outer : inner;
+        var sx = Math.cos(ang) * rad;
+        var sy = Math.sin(ang) * rad;
+        if (si === 0) mockCtx.moveTo(sx, sy);
+        else mockCtx.lineTo(sx, sy);
+      }
+      mockCtx.closePath();
+      mockCtx.fillStyle = '#fff176';
+      mockCtx.strokeStyle = '#fbc02d';
+      mockCtx.lineWidth = 2;
+      mockCtx.fill();
+      mockCtx.stroke();
+
+    } else if (deco.kind === 'net') {
+      var netW = r * 1.8;
+      var netH = r * 1.2;
+      mockCtx.strokeStyle = 'rgba(255,255,255,0.35)';
+      mockCtx.lineWidth = 1;
+      var cells = 4;
+
+      for (var gx2 = 0; gx2 <= cells; gx2++) {
+        var xx = -netW / 2 + (netW * gx2 / cells);
+        mockCtx.beginPath();
+        mockCtx.moveTo(xx, -netH / 2);
+        mockCtx.lineTo(xx, netH / 2);
+        mockCtx.stroke();
+      }
+      for (var gy2 = 0; gy2 <= cells; gy2++) {
+        var yy = -netH / 2 + (netH * gy2 / cells);
+        mockCtx.beginPath();
+        mockCtx.moveTo(-netW / 2, yy);
+        mockCtx.lineTo(netW / 2, yy);
+        mockCtx.stroke();
+      }
+
+      for (var gx3 = 0; gx3 < cells; gx3++) {
+        for (var gy3 = 0; gy3 < cells; gy3++) {
+          var px = -netW / 2 + netW * (gx3 + 0.5) / cells;
+          var py = -netH / 2 + netH * (gy3 + 0.5) / cells;
+          mockCtx.beginPath();
+          mockCtx.fillStyle = '#fff9c4';
+          mockCtx.arc(px, py, r * 0.06, 0, Math.PI * 2);
+          mockCtx.fill();
+        }
+      }
+
+    } else if (deco.kind === 'mini-tree') {
+      var treeH = r * 1.7;
+
+      // tree body
+      mockCtx.fillStyle = '#1b5e20';
+      mockCtx.beginPath();
+      mockCtx.moveTo(0, -treeH / 2);
+      mockCtx.lineTo(-r * 0.7, treeH / 2);
+      mockCtx.lineTo(r * 0.7, treeH / 2);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+      // trunk
+      mockCtx.fillStyle = '#5d4037';
+      mockCtx.fillRect(-r * 0.15, treeH / 2, r * 0.3, treeH * 0.25);
+
+      // bulbs on rows
+      var rows = 3;
+      var bulbsPerRow = 5;
+      for (var ry = 0; ry < rows; ry++) {
+        var rowY = -treeH / 4 + (treeH * ry / (rows + 1));
+        for (var rb = 0; rb < bulbsPerRow; rb++) {
+          var t2 = bulbsPerRow === 1 ? 0.5 : rb / (bulbsPerRow - 1);
+          var rowWidth = r * (1.1 - ry * 0.25);
+          var bx = -rowWidth / 2 + rowWidth * t2;
+          mockCtx.beginPath();
+          var colr;
+          var m = (ry * bulbsPerRow + rb) % 3;
+          if (m === 0) colr = '#ff5252';
+          else if (m === 1) colr = '#ffeb3b';
+          else colr = '#69f0ae';
+          mockCtx.fillStyle = colr;
+          mockCtx.arc(bx, rowY, r * 0.07, 0, Math.PI * 2);
+          mockCtx.fill();
+        }
+      }
+
+    } else {
+      // fallback: simple circle
+      mockCtx.beginPath();
+      mockCtx.fillStyle = '#ffffff';
+      mockCtx.arc(0, 0, r * 0.4, 0, Math.PI * 2);
+      mockCtx.fill();
+    }
+
+    // selection outline + resize handle when editing
+    if (mockSelectedDecorId === deco.id && mockMode === 'decor-edit') {
+      mockCtx.beginPath();
+      mockCtx.strokeStyle = '#00e5ff';
+      mockCtx.lineWidth = 1.5;
+      mockCtx.setLineDash([4, 3]);
+      mockCtx.arc(0, 0, r * 1.05, 0, Math.PI * 2);
+      mockCtx.stroke();
+      mockCtx.setLineDash([]);
+
+      var handleX = r * 0.7;
+      var handleY = -r * 0.7;
+      mockCtx.fillStyle = '#00e5ff';
+      mockCtx.fillRect(handleX - 4, handleY - 4, 8, 8);
+      mockCtx.strokeStyle = '#004b80';
+      mockCtx.lineWidth = 1;
+      mockCtx.strokeRect(handleX - 4, handleY - 4, 8, 8);
+    }
+
+    // IMPORTANT: restore state so transforms don't leak into the next thing
+    mockCtx.restore();
+  } // end decorations loop
+}
 
   // -------------------------------------------------------------
   // PHOTO MOCKUP: IMAGE LOAD
