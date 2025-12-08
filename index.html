@@ -2448,11 +2448,12 @@ document.addEventListener('DOMContentLoaded', function () {
    // Clear all tree / shrub traced lights from the photo mockup
   if (treeTraceClearBtn) {
     treeTraceClearBtn.addEventListener('click', function () {
+      // remove all finished shapes and any in-progress outline
       treeTraceShapes = [];
       treeTraceCurrent = [];
       treeTracingDrag = false;
 
-      // If we used a last-trace-point variable earlier, reset it if it exists.
+      // reset any last-point tracking if you’re using it
       if (typeof _lastTracePoint !== 'undefined') {
         _lastTracePoint = null;
       }
