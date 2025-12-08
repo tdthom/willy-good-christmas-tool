@@ -1570,11 +1570,34 @@ document.addEventListener('DOMContentLoaded', function () {
   var treeTraceSpacingPixels = 8;
   var _lastTracePoint        = null;
 
-  // --- PHOTO MOCKUP helpers ---------------------------------------
+    // --- PHOTO MOCKUP helpers ---------------------------------------
+  function mockSetInfo(msg) {
+    if (mockInfo) {
+      mockInfo.textContent = msg || '';
+    }
+  }
+
+  function mockDrawBase() {
+    if (!mockCtx || !mockCanvas) return;
+
+    // Clear entire canvas
+    mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
+
+    // Redraw the background image (photo) if we have one
+    if (mockImage && mockDrawParams) {
+      mockCtx.drawImage(
+        mockImage,
+        mockDrawParams.x,
+        mockDrawParams.y,
+        mockDrawParams.w,
+        mockDrawParams.h
+      );
+    }
+  }
+
   function mockApplyZoom() {
     if (!mockCanvas) return;
     mockCanvas.style.transformOrigin = '0 0';
-    // mockZoom should already be your zoom scale (1 = 100%)
     mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
   }
 
