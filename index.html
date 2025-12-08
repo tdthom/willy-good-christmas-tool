@@ -1734,138 +1734,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var showWire = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
 
-    // 1) Light runs: realistic C9 bulbs
-    for (var i = 0; i < mockSegments.length; i++) {
-      var seg  = mockSegments[i];
-      var from = seg.from;
-      var to   = seg.to;
+    // 1) light runs
+    var mode = mockColorModeSelect ? mockColorModeSelect.value : 'single';
+    var c1   = (mockColor1Input && mockColor1Input.value) || '#ffffff';
+    var c2   = (mockColor2Input && mockColor2Input.value) || '#ff0000';
+    var c3   = (mockColor3Input && mockColor3Input.value) || '#00ff00';
 
-      var dx = to.x - from.x;
-      var dy = to.y - from.y;
-      var lengthPx = Math.sqrt(dx * dx + dy * dy);
-      if (!lengthPx || lengthPx <= 0.5) continue;
+    // spacing (same behavior as before)
+    var spacingInches = 12;
+    if (mockBulbSpacingSelect) {
+      var sval = parseFloat(mockBulbSpacingSelect.value);
+      if (!isNaN(sval) && sval > 0) spacingInches = sval;
+    }
+    var spacingPx = (spacingInches === 15) ? 28 : 22;
 
-      var angle = Math.atan2(dy, dx);
-
-      if (showWire) {
-        var wireColor = '#555555';
-        if (seg.type === 'ground') wireColor = '#3a7a3a';
-        else if (seg.type === 'tree') wireColor = '#8b5a2b';
-
-        mockCtx.beginPath();
-        mockCtx.strokeStyle = wireColor;
-        mockCtx.lineWidth   = 1.3;
-        mockCtx.moveTo(from.x, from.y);
-        mockCtx.lineTo(to.x,   to.y);
-        mockCtx.stroke();
-      }
-
-      var count = Math.max(1, Math.round(lengthPx / spacingPx));
-
-      for (var b = 0; b <= count; b++) {
-        var t = count === 0 ? 0 : b / count;
-        var x = from.x + dx * t;
-        var y = from.y + dy * t;
-
-        var color = c1;
-        if (mode === 'two') {
-          color = (b % 2 === 0) ? c1 : c2;
-        } else if (mode === 'three') {
-          var idx = b % 3;
-          color = (idx === 0) ? c1 : (idx === 1 ? c2 : c3);
-        }
-
-        mockCtx.save();
-        mockCtx.translate(x, y);
-
-        var bulbAngle = (seg.type === 'ground') ? 0 : angle;
-        mockCtx.rotate(bulbAngle);
-
-        var bulbHeight = baseSize * 4.2;
-
-        mockCtx.beginPath();
-        mockCtx.globalAlpha = 0.24;
-        mockCtx.fillStyle   = color;
-        mockCtx.arc(0, 0, glowRadius, 0, Math.PI * 2);
-        mockCtx.fill();
-        mockCtx.globalAlpha = 1;
-
-        mockCtx.beginPath();
-        var halfH = bulbHeight * 0.5;
-        var halfW = bulbWidth  * 0.5;
-
-        mockCtx.moveTo(0, -halfH);
-        mockCtx.bezierCurveTo(
-          halfW, -halfH * 0.1,
-          halfW,  halfH * 0.45,
-          0,      halfH
-        );
-        mockCtx.bezierCurveTo(
-          -halfW,  halfH * 0.45,
-          -halfW, -halfH * 0.1,
-          0,      -halfH
-        );
-        mockCtx.closePath();
-        mockCtx.fillStyle   = color;
-        mockCtx.strokeStyle = '#f5f5f5';
-        mockCtx.lineWidth   = 0.8;
-        mockCtx.fill();
-        mockCtx.stroke();
-
-        mockCtx.beginPath();
-        mockCtx.ellipse(
-          -halfW * 0.35,
-          -halfH * 0.1,
-          halfW * 0.45,
-          halfH * 0.35,
-          0,
-          Math.PI * 0.8,
-          Math.PI * 1.8
-        );
-        mockCtx.fillStyle = 'rgba(255,255,255,0.45)';
-        mockCtx.fill();
-
-        var socketH = baseSize * 1.1;
-        var socketW = bulbWidth * 0.9;
-        mockCtx.fillStyle = '#444444';
-        mockCtx.fillRect(
-          -socketW / 2,
-          halfH - 0.3 * baseSize,
-          socketW,
-          socketH
-        );
-
-        if (seg.type === 'ground') {
-          var stakeH = bulbHeight * 1.05;
-          var stakeW = baseSize * 0.6;
-          mockCtx.fillStyle = '#3a3a3a';
-          mockCtx.fillRect(
-            -stakeW / 2,
-            halfH + socketH - 0.1 * baseSize,
-            stakeW,
-            stakeH
-          );
-        }
-
-        mockCtx.restore();
-      }
-
-      if (mockMode === 'adjust') {
-        mockCtx.beginPath();
-        mockCtx.fillStyle   = '#00ffff';
-        mockCtx.strokeStyle = '#004b80';
-        mockCtx.lineWidth   = 1;
-        mockCtx.arc(from.x, from.y, 3, 0, Math.PI * 2);
-        mockCtx.fill();
-        mockCtx.stroke();
-
-        mockCtx.beginPath();
-        mockCtx.arc(to.x, to.y, 3, 0, Math.PI * 2);
-        mockCtx.fill();
-        mockCtx.stroke();
-      }
+    // BULB SCALE – tuned smaller overall
+    // Small = tiny, Medium = normal, Large = big but usable
+    var baseSize = 1.8; // medium default width
+    if (mockBulbSizeSelect) {
+      var sizeVal = mockBulbSizeSelect.value;
+      if (sizeVal === 'small')  baseSize = 1.1;
+      else if (sizeVal === 'medium') baseSize = 1.8;
+      else if (sizeVal === 'large')  baseSize = 2.4;
     }
 
+    // Height + glow are based off baseSize
+    var bulbHeight = baseSize * 3.4;
+    var glowRadius = bulbHeight * 0.8;
+
+    // Wire on/off
+    var showWire = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
     // 2) Decorations
     for (var d = 0; d < mockDecorations.length; d++) {
       var deco = mockDecorations[d];
