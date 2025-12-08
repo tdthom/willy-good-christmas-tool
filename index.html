@@ -1457,18 +1457,6 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function mockDrawBase() {
-    if (!mockCtx || !mockCanvas) return;
-    mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
-    if (mockImage && mockDrawParams) {
-      mockCtx.drawImage(
-        mockImage,
-        mockDrawParams.x,
-        mockDrawParams.y,
-        mockDrawParams.w,
-        mockDrawParams.h
-      );
-    }
-  }
 
   function mockApplyZoom() {
     if (!mockCanvas) return;
