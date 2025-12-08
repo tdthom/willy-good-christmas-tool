@@ -2254,9 +2254,11 @@ document.addEventListener('DOMContentLoaded', function () {
     mockCanvas.addEventListener('mouseleave', handleMockCanvasMouseUpOrLeave);
 
     // Optional: if mouse is released *outside* the canvas, still stop dragging
-    document.addEventListener('mouseup', function () {
+       document.addEventListener('mouseup', function () {
       handleMockCanvasMouseUpOrLeave();
     });
+
+} // <-- CLOSES: if (mockCanvas && mockCtx) { ... }
 
   // --- Undo / new run / adjust / clear for light runs --------------
   if (mockUndoBtn) {
