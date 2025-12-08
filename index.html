@@ -1570,29 +1570,12 @@ document.addEventListener('DOMContentLoaded', function () {
   var treeTraceSpacingPixels = 8;
   var _lastTracePoint        = null;
 
-  // --- Helper functions (fix missing references) --------------------
-  function mockSetInfo(text) {
-    if (mockInfo) mockInfo.textContent = text;
-  }
-
+  // --- PHOTO MOCKUP helpers ---------------------------------------
   function mockApplyZoom() {
     if (!mockCanvas) return;
     mockCanvas.style.transformOrigin = '0 0';
+    // mockZoom should already be your zoom scale (1 = 100%)
     mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
-  }
-
-  function mockDrawBase() {
-    if (!mockCtx || !mockCanvas) return;
-    mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
-    if (mockImage && mockDrawParams) {
-      mockCtx.drawImage(
-        mockImage,
-        mockDrawParams.x,
-        mockDrawParams.y,
-        mockDrawParams.w,
-        mockDrawParams.h
-      );
-    }
   }
 
   function mockCanvasPoint(evt) {
@@ -2462,18 +2445,20 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+   // Clear all tree / shrub traced lights from the photo mockup
   if (treeTraceClearBtn) {
     treeTraceClearBtn.addEventListener('click', function () {
-      if (!treeTraceShapes.length && !treeTraceCurrent.length) {
-        mockSetInfo('No tree/shrub lights to clear.');
-        return;
-      }
-      treeTraceShapes  = [];
+      treeTraceShapes = [];
       treeTraceCurrent = [];
-      treeTracingDrag  = false;
-      _lastTracePoint  = null;
+      treeTracingDrag = false;
+
+      // If we used a last-trace-point variable earlier, reset it if it exists.
+      if (typeof _lastTracePoint !== 'undefined') {
+        _lastTracePoint = null;
+      }
+
+      mockSetInfo('Tree/shrub lights cleared from photo mockup.');
       mockRedraw();
-      mockSetInfo('All tree/shrub lights cleared.');
     });
   }
 
@@ -2514,6 +2499,35 @@ document.addEventListener('DOMContentLoaded', function () {
       mockRedraw();
     });
   }
+  // Global mouseup: stop any dragging / tracing even if mouse is released off canvas
+  document.addEventListener('mouseup', function () {
+    // Stop adjusting light segments
+    mockIsDraggingSegment = false;
+    mockDragSegmentIndex = -1;
+    mockDragSegmentEnd = null;
+
+    // Stop decoration drag / resize
+    mockIsDraggingDecor = false;
+    mockIsResizingDecor = false;
+    mockResizeStartDist = 0;
+
+    // Finish tree / shrub trace if we were tracing
+    if (mockMode === 'tree-trace' && treeTracingDrag) {
+      treeTracingDrag = false;
+
+      if (treeTraceCurrent.length >= 3 && typeof buildTreeShapeFromPolygon === 'function') {
+        var poly  = treeTraceCurrent.slice();
+        var shape = buildTreeShapeFromPolygon(poly);
+        if (shape) {
+          treeTraceShapes.push(shape);
+          mockSetInfo('Tree/shrub area completed. Tiny bulbs filled inside.');
+        }
+      }
+
+      treeTraceCurrent = [];
+      mockRedraw();
+    }
+  });
 
   // Print / save mockup via browser print dialog (hide handles)
   if (mockPrintBtn) {
