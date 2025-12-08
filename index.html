@@ -321,6 +321,46 @@
   style="width:90px;"
 ><br><br>
 
+<label for="decor-treewrap-count"><strong>Tree wrap strands</strong> (qty)</label><br>
+<input
+  id="decor-treewrap-count"
+  type="number"
+  min="0"
+  step="1"
+  value="0"
+  style="width:80px;"
+>
+&nbsp;
+<label for="decor-treewrap-price">Price per strand</label>
+<input
+  id="decor-treewrap-price"
+  type="number"
+  min="0"
+  step="0.01"
+  value="45.00"
+  style="width:90px;"
+><br><br>
+
+<label for="decor-bow-count"><strong>Bows</strong> (qty)</label><br>
+<input
+  id="decor-bow-count"
+  type="number"
+  min="0"
+  step="1"
+  value="0"
+  style="width:80px;"
+>
+&nbsp;
+<label for="decor-bow-price">Price each</label>
+<input
+  id="decor-bow-price"
+  type="number"
+  min="0"
+  step="0.01"
+  value="30.00"
+  style="width:90px;"
+><br><br>
+
 <button id="calc-estimate">Calculate estimate</button>
 
     <h3>Result</h3>
@@ -874,6 +914,8 @@ document.addEventListener('DOMContentLoaded', function () {
   var decorGarlandPriceInput = document.getElementById('decor-garland-price');
   var decorBowCountInput     = document.getElementById('decor-bow-count');
   var decorBowPriceInput     = document.getElementById('decor-bow-price');
+  var decorTreeWrapCountInput = document.getElementById('decor-treewrap-count');
+  var decorTreeWrapPriceInput = document.getElementById('decor-treewrap-price');
 
   var ESTIMATE_KEY = 'wgc-last-estimate-v3';
 
@@ -938,17 +980,20 @@ document.addEventListener('DOMContentLoaded', function () {
       var takedownSub = totalFeet * tdRate;
       var equipSub = totalFeet * equipRate;
 
-      var wCount = parseInt(decorWreathCountInput && decorWreathCountInput.value, 10) || 0;
+       var wCount = parseInt(decorWreathCountInput && decorWreathCountInput.value, 10) || 0;
       var wPrice = parseNum(decorWreathPriceInput);
       var gCount = parseInt(decorGarlandCountInput && decorGarlandCountInput.value, 10) || 0;
       var gPrice = parseNum(decorGarlandPriceInput);
       var bCount = parseInt(decorBowCountInput && decorBowCountInput.value, 10) || 0;
       var bPrice = parseNum(decorBowPriceInput);
+      var twCount = parseInt(decorTreeWrapCountInput && decorTreeWrapCountInput.value, 10) || 0;
+      var twPrice = parseNum(decorTreeWrapPriceInput);
 
-      var wreathSub  = wCount * wPrice;
-      var garlandSub = gCount * gPrice;
-      var bowSub     = bCount * bPrice;
-      var decorSub   = wreathSub + garlandSub + bowSub;
+      var wreathSub   = wCount * wPrice;
+      var garlandSub  = gCount * gPrice;
+      var bowSub      = bCount * bPrice;
+      var treeWrapSub = twCount * twPrice;
+      var decorSub    = wreathSub + garlandSub + bowSub + treeWrapSub;
 
       var custSubtotalBeforeTax = installSub + takedownSub + decorSub;
       var taxableBase = equipSub + container + decorSub;
@@ -985,9 +1030,12 @@ document.addEventListener('DOMContentLoaded', function () {
         decorGarlandPrice: gPrice,
         decorBowCount: bCount,
         decorBowPrice: bPrice,
+        decorTreeWrapCount: twCount,
+        decorTreeWrapPrice: twPrice,
+        decorTreeWrapSubtotal: treeWrapSub,
         decorSubtotal: decorSub,
         client: getCurrentClientInfo()
-      };
+
 
       saveLastEstimate(snapshot);
 
@@ -1936,25 +1984,30 @@ document.addEventListener('DOMContentLoaded', function () {
     return best ? { deco: best.deco, mode: best.mode } : null;
   }
 
-  function mockSyncDecorationsToEstimate() {
+    function mockSyncDecorationsToEstimate() {
     if (!decorWreathCountInput ||
         !decorGarlandCountInput ||
         !decorBowCountInput) return;
 
-    var wreath  = 0;
-    var garland = 0;
-    var bow     = 0;
+    var wreath   = 0;
+    var garland  = 0;
+    var bow      = 0;
+    var treeWrap = 0;
 
     for (var i = 0; i < mockDecorations.length; i++) {
       var k = mockDecorations[i].kind;
-      if (k === 'wreath')       wreath++;
-      else if (k === 'garland') garland++;
-      else if (k === 'bow')     bow++;
+      if (k === 'wreath')         wreath++;
+      else if (k === 'garland')   garland++;
+      else if (k === 'bow')       bow++;
+      else if (k === 'tree-wrap') treeWrap++;
     }
 
     decorWreathCountInput.value  = wreath;
     decorGarlandCountInput.value = garland;
     decorBowCountInput.value     = bow;
+    if (decorTreeWrapCountInput) {
+      decorTreeWrapCountInput.value = treeWrap;
+    }
   }
 
   function addDecorationAtPoint(pt) {
@@ -2148,52 +2201,227 @@ document.addEventListener('DOMContentLoaded', function () {
       var rotation = deco.rotation || 0;
       if (rotation !== 0) mockCtx.rotate(rotation);
 
-      // (wreath, bow, garland, tree-wrap, star, net, mini-tree)
-      // NOTE: identical drawing logic to your previous version – omitted here for brevity,
-      // but keep your existing decoration-drawing block inside this branch.
+            var r = getDecorationRadius(deco);
+      var innerR;
 
-      // --- START OF YOUR PREVIOUS DECORATION DRAWING BLOCK ---
-      // (Paste your existing wreath/bow/garland/tree-wrap/star/net/mini-tree drawing code here)
-      // --- END OF YOUR PREVIOUS DECORATION DRAWING BLOCK ---
+      if (deco.kind === 'wreath') {
+        innerR = r * 0.55;
 
-      // Selection ring + resize handle in edit mode
-      if (mockMode === 'decor-edit' && deco.id === mockSelectedDecorId) {
-        var selR = getDecorationRadius(deco) + 4;
+        // outer ring
         mockCtx.beginPath();
-        mockCtx.strokeStyle = '#00ffff';
-        mockCtx.lineWidth   = 1.5;
-        mockCtx.arc(0, 0, selR, 0, Math.PI * 2);
+        mockCtx.arc(0, 0, r, 0, Math.PI * 2);
+        mockCtx.strokeStyle = '#0b5b3b';
+        mockCtx.lineWidth = 6;
         mockCtx.stroke();
 
-        var handleR = getDecorationRadius(deco);
-        var hx = handleR * 0.7;
-        var hy = -handleR * 0.7;
-        mockCtx.fillStyle = '#00ffff';
-        mockCtx.fillRect(hx - 4, hy - 4, 8, 8);
+        // inner ring
+        mockCtx.beginPath();
+        mockCtx.arc(0, 0, innerR, 0, Math.PI * 2);
+        mockCtx.strokeStyle = '#0b3b24';
+        mockCtx.lineWidth = 4;
+        mockCtx.stroke();
+
+        // bow at bottom
+        mockCtx.fillStyle = '#c62828';
+        mockCtx.beginPath();
+        mockCtx.moveTo(-innerR * 0.7, innerR * 0.6);
+        mockCtx.lineTo(0, innerR * 1.1);
+        mockCtx.lineTo(innerR * 0.7, innerR * 0.6);
+        mockCtx.closePath();
+        mockCtx.fill();
+
+        // hanging tails
+        mockCtx.beginPath();
+        mockCtx.moveTo(-innerR * 0.2, innerR * 0.6);
+        mockCtx.lineTo(0, innerR * 1.4);
+        mockCtx.lineTo(innerR * 0.2, innerR * 0.6);
+        mockCtx.closePath();
+        mockCtx.fill();
+
+      } else if (deco.kind === 'bow') {
+        var w = r * 1.4;
+        var h = r * 0.7;
+
+        mockCtx.fillStyle = '#c62828';
+
+        // left loop
+        mockCtx.beginPath();
+        mockCtx.moveTo(-w * 0.5, 0);
+        mockCtx.quadraticCurveTo(-w * 0.9, -h * 0.8, -w * 0.2, -h * 0.4);
+        mockCtx.quadraticCurveTo(-w * 0.6, 0, -w * 0.5, 0);
+        mockCtx.fill();
+
+        // right loop
+        mockCtx.beginPath();
+        mockCtx.moveTo(w * 0.5, 0);
+        mockCtx.quadraticCurveTo(w * 0.9, -h * 0.8, w * 0.2, -h * 0.4);
+        mockCtx.quadraticCurveTo(w * 0.6, 0, w * 0.5, 0);
+        mockCtx.fill();
+
+        // center knot
+        mockCtx.beginPath();
+        mockCtx.rect(-w * 0.12, -h * 0.25, w * 0.24, h * 0.5);
+        mockCtx.fillStyle = '#8e0000';
+        mockCtx.fill();
+
+        // tails
+        mockCtx.fillStyle = '#c62828';
+        mockCtx.beginPath();
+        mockCtx.moveTo(-w * 0.18, h * 0.25);
+        mockCtx.lineTo(-w * 0.45, h * 0.9);
+        mockCtx.lineTo(-w * 0.05, h * 0.7);
+        mockCtx.closePath();
+        mockCtx.fill();
+
+        mockCtx.beginPath();
+        mockCtx.moveTo(w * 0.18, h * 0.25);
+        mockCtx.lineTo(w * 0.45, h * 0.9);
+        mockCtx.lineTo(w * 0.05, h * 0.7);
+        mockCtx.closePath();
+        mockCtx.fill();
+
+      } else if (deco.kind === 'garland') {
+        var swagW = r * 2.0;
+        var swagH = r * 0.8;
+
+        mockCtx.beginPath();
+        mockCtx.moveTo(-swagW / 2, -swagH * 0.1);
+        mockCtx.quadraticCurveTo(0, swagH, swagW / 2, -swagH * 0.1);
+        mockCtx.strokeStyle = '#0b5b3b';
+        mockCtx.lineWidth = 6;
+        mockCtx.stroke();
+
+        // bulbs along the garland
+        var bulbs = 7;
+        for (var bi = 0; bi < bulbs; bi++) {
+          var t = bulbs === 1 ? 0.5 : bi / (bulbs - 1);
+          var x = -swagW / 2 + swagW * t;
+          var y = -swagH * 0.1 + (Math.sin(t * Math.PI) * swagH * 0.7);
+          mockCtx.beginPath();
+          mockCtx.fillStyle = (bi % 2 === 0) ? '#ffd54f' : '#ff5252';
+          mockCtx.arc(x, y, r * 0.08, 0, Math.PI * 2);
+          mockCtx.fill();
+        }
+
+      } else if (deco.kind === 'tree-wrap') {
+        var trunkH = r * 1.6;
+        var trunkW = r * 0.25;
+
+        // trunk
+        mockCtx.fillStyle = '#5d4037';
+        mockCtx.fillRect(-trunkW / 2, -trunkH / 2, trunkW, trunkH);
+
+        // horizontal “wrap” bands with lights
+        var wraps = 6;
+        mockCtx.strokeStyle = '#fff59d';
+        mockCtx.lineWidth = 2;
+        for (var wi = 0; wi < wraps; wi++) {
+          var ty = -trunkH / 2 + (trunkH * wi / (wraps - 1));
+          mockCtx.beginPath();
+          mockCtx.moveTo(-trunkW * 0.6, ty);
+          mockCtx.lineTo(trunkW * 0.6, ty + trunkW * 0.4);
+          mockCtx.stroke();
+        }
+
+      } else if (deco.kind === 'star') {
+        var outer = r * 0.9;
+        var inner = outer * 0.45;
+        mockCtx.beginPath();
+        for (var si = 0; si < 10; si++) {
+          var ang = (Math.PI / 5) * si - Math.PI / 2;
+          var rad = (si % 2 === 0) ? outer : inner;
+          var sx = Math.cos(ang) * rad;
+          var sy = Math.sin(ang) * rad;
+          if (si === 0) mockCtx.moveTo(sx, sy);
+          else mockCtx.lineTo(sx, sy);
+        }
+        mockCtx.closePath();
+        mockCtx.fillStyle = '#fff176';
+        mockCtx.strokeStyle = '#fbc02d';
+        mockCtx.lineWidth = 2;
+        mockCtx.fill();
+        mockCtx.stroke();
+
+      } else if (deco.kind === 'net') {
+        var netW = r * 1.8;
+        var netH = r * 1.2;
+        mockCtx.strokeStyle = 'rgba(255,255,255,0.35)';
+        mockCtx.lineWidth = 1;
+        var cells = 4;
+
+        // grid
+        for (var gx = 0; gx <= cells; gx++) {
+          var xx = -netW / 2 + (netW * gx / cells);
+          mockCtx.beginPath();
+          mockCtx.moveTo(xx, -netH / 2);
+          mockCtx.lineTo(xx, netH / 2);
+          mockCtx.stroke();
+        }
+        for (var gy = 0; gy <= cells; gy++) {
+          var yy = -netH / 2 + (netH * gy / cells);
+          mockCtx.beginPath();
+          mockCtx.moveTo(-netW / 2, yy);
+          mockCtx.lineTo(netW / 2, yy);
+          mockCtx.stroke();
+        }
+
+        // bulbs at grid intersections
+        for (var gx2 = 0; gx2 < cells; gx2++) {
+          for (var gy2 = 0; gy2 < cells; gy2++) {
+            var px = -netW / 2 + netW * (gx2 + 0.5) / cells;
+            var py = -netH / 2 + netH * (gy2 + 0.5) / cells;
+            mockCtx.beginPath();
+            mockCtx.fillStyle = '#fff9c4';
+            mockCtx.arc(px, py, r * 0.06, 0, Math.PI * 2);
+            mockCtx.fill();
+          }
+        }
+
+      } else if (deco.kind === 'mini-tree') {
+        var treeH = r * 1.7;
+
+        // tree body
+        mockCtx.fillStyle = '#1b5e20';
+        mockCtx.beginPath();
+        mockCtx.moveTo(0, -treeH / 2);
+        mockCtx.lineTo(-r * 0.7, treeH / 2);
+        mockCtx.lineTo(r * 0.7, treeH / 2);
+        mockCtx.closePath();
+        mockCtx.fill();
+
+        // trunk
+        mockCtx.fillStyle = '#5d4037';
+        mockCtx.fillRect(-r * 0.15, treeH / 2, r * 0.3, treeH * 0.25);
+
+        // bulbs on rows
+        var rows = 3;
+        var bulbsPerRow = 5;
+        for (var ry = 0; ry < rows; ry++) {
+          var rowY = -treeH / 4 + (treeH * ry / (rows + 1));
+          for (var rb = 0; rb < bulbsPerRow; rb++) {
+            var t2 = bulbsPerRow === 1 ? 0.5 : rb / (bulbsPerRow - 1);
+            var rowWidth = r * (1.1 - ry * 0.25);
+            var bx = -rowWidth / 2 + rowWidth * t2;
+            mockCtx.beginPath();
+            var colr;
+            var m = (ry * bulbsPerRow + rb) % 3;
+            if (m === 0) colr = '#ff5252';
+            else if (m === 1) colr = '#ffeb3b';
+            else colr = '#69f0ae';
+            mockCtx.fillStyle = colr;
+            mockCtx.arc(bx, rowY, r * 0.07, 0, Math.PI * 2);
+            mockCtx.fill();
+          }
+        }
+
+      } else {
+        // fallback: simple circle
+        mockCtx.beginPath();
+        mockCtx.fillStyle = '#ffffff';
+        mockCtx.arc(0, 0, r * 0.4, 0, Math.PI * 2);
+        mockCtx.fill();
       }
 
-      mockCtx.restore();
-    }
-
-    // 3) tree / shrub traced shapes
-    for (var s = 0; s < treeTraceShapes.length; s++) {
-      drawTreeShapeBulbs(treeTraceShapes[s]);
-    }
-
-    // live outline while dragging
-    if (mockMode === 'tree-trace' && treeTraceCurrent.length > 1) {
-      mockCtx.beginPath();
-      mockCtx.strokeStyle = '#ff00ff';
-      mockCtx.setLineDash([4, 3]);
-      for (var i3 = 0; i3 < treeTraceCurrent.length; i3++) {
-        var pt3 = treeTraceCurrent[i3];
-        if (i3 === 0) mockCtx.moveTo(pt3.x, pt3.y);
-        else mockCtx.lineTo(pt3.x, pt3.y);
-      }
-      mockCtx.setLineDash([]);
-      mockCtx.stroke();
-    }
-  }
 
   // --- Load image into mockup canvas -------------------------------
   if (mockImageInput && mockCtx && mockCanvas) {
