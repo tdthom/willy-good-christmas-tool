@@ -2045,7 +2045,7 @@ document.addEventListener('DOMContentLoaded', function () {
       var rotation = deco.rotation || 0;
       if (rotation !== 0) mockCtx.rotate(rotation);
 
-            var r = getDecorationRadius(deco);
+      var r = getDecorationRadius(deco);
       var innerR;
 
       if (deco.kind === 'wreath') {
@@ -2265,7 +2265,8 @@ document.addEventListener('DOMContentLoaded', function () {
         mockCtx.arc(0, 0, r * 0.4, 0, Math.PI * 2);
         mockCtx.fill();
       }
-
+  mockCtx.restore();  
+}
   // --- Load image into mockup canvas -------------------------------
   if (mockImageInput && mockCtx && mockCanvas) {
     mockImageInput.addEventListener('change', function (e) {
