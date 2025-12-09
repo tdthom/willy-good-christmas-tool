@@ -2299,23 +2299,28 @@ mockCanvas.addEventListener('click', function (evt) {
   });
 }
 
-// Finish trace on mouseup anywhere
-document.addEventListener('mouseup', function () {
-  if (mockMode !== 'tree-trace' || !treeTracingDrag) return;
+if (mockCanvas && mockCtx) {
+  // Start stroke
+  mockCanvas.addEventListener('mousedown', function (evt) {
+    if (mockMode !== 'tree-trace' || !mockImage) return;
+    var pt = mockCanvasPoint(evt);
+    treeTracingDrag  = true;
+    treeTraceCurrent = [pt];
+  });
 
-  treeTracingDrag = false;
-
-  if (treeTraceCurrent.length >= 3) {
-    var shape = buildTreeShapeFromPolygon(treeTraceCurrent);
-    if (shape) {
-      treeTraceShapes.push(shape);
-      mockSetInfo('Tree/shrub area completed with warm mini lights.');
+  // Add points as you drag
+  mockCanvas.addEventListener('mousemove', function (evt) {
+    if (mockMode !== 'tree-trace' || !treeTracingDrag || !mockImage) return;
+    var pt   = mockCanvasPoint(evt);
+    var last = treeTraceCurrent[treeTraceCurrent.length - 1];
+    if (!last || mockPointDistance(pt, last) >= treeTraceSpacingPixels) {
+      treeTraceCurrent.push(pt);
+      mockRedraw();
     }
-  }
+  });
+}
 
-  treeTraceCurrent = [];
-  mockRedraw();
-});
+// (no document.addEventListener block here anymore)
 
     function mockAttachRedrawControl(el) {
       if (!el) return;
