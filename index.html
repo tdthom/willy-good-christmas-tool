@@ -1699,25 +1699,39 @@
       var glowRadius = bulbHeight * 0.9;
       var showWire   = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
 
-      // LIGHT RUNS
+           // LIGHT RUNS
       for (var i = 0; i < mockSegments.length; i++) {
         var seg  = mockSegments[i];
         var from = seg.from;
         var to   = seg.to;
         if (!from || !to) continue;
 
-        var dx   = to.x - from.x;
-        var dy   = to.y - from.y;
+        var dx = to.x - from.x;
+        var dy = to.y - from.y;
         var lengthPx = Math.sqrt(dx * dx + dy * dy);
         if (lengthPx === 0) continue;
 
         var isGround = (seg.type === 'ground');
+        var isTree   = (seg.type === 'tree');  // trunk wraps & shrubs
         var isCurved = isGround && !!seg.curve;
         var angle    = Math.atan2(dy, dx);
 
         var wireColor = '#555555';
-        if (seg.type === 'ground') wireColor = '#3a7a3a';
-        else if (seg.type === 'tree') wireColor = '#8b5a2b';
+        if (isGround) wireColor = '#3a7a3a';
+        else if (isTree) wireColor = '#5d4037';  // darker “bark” wire
+
+        // Per-run bulb spacing & size:
+        // - Roof / ground: use your chosen spacing & size
+        // - Trees / shrubs: smaller, denser “mini” bulbs
+        var spacingPxSeg = spacingPx;
+        var baseSizeSeg  = baseSize;
+        if (isTree) {
+          spacingPxSeg = spacingPx * 0.55; // ~45% closer together
+          baseSizeSeg  = baseSize * 0.65;  // smaller bulb
+        }
+
+        var bulbHeightSeg = baseSizeSeg * 2.4;
+        var glowRadiusSeg = bulbHeightSeg * 0.9;
 
         // Wire
         if (showWire) {
@@ -1751,14 +1765,16 @@
           }
         }
 
-        // For bulb count: keep spacing same for straight vs curved
+        // How many bulbs on this run?
         var effectiveLength = lengthPx;
-        var count = Math.max(1, Math.round(effectiveLength / spacingPx));
+        var count = Math.max(1, Math.round(effectiveLength / spacingPxSeg));
 
         for (var b = 0; b <= count; b++) {
           var t = count === 0 ? 0 : b / count;
           var x, y;
+
           if (isCurved) {
+            // Same curved math as wire
             var p0b = from;
             var p2b = to;
             var midb = { x: (p0b.x + p2b.x) / 2, y: (p0b.y + p2b.y) / 2 };
@@ -1772,6 +1788,7 @@
             y = from.y + dy * t;
           }
 
+          // Color pattern (single / 2-color / 3-color)
           var color = c1;
           if (mode === 'two') {
             color = (b % 2 === 0) ? c1 : c2;
@@ -1783,22 +1800,23 @@
           mockCtx.save();
           mockCtx.translate(x, y);
 
-          var bulbAngle = (seg.type === 'ground') ? 0 : angle;
+          // Ground stakes are always straight up; others follow the line angle
+          var bulbAngle = isGround ? 0 : angle;
           mockCtx.rotate(bulbAngle);
 
           // Glow
           mockCtx.beginPath();
           mockCtx.globalAlpha = 0.22;
-          mockCtx.fillStyle = color;
-          mockCtx.arc(0, 0, glowRadius, 0, Math.PI * 2, false);
+          mockCtx.fillStyle   = color;
+          mockCtx.arc(0, 0, glowRadiusSeg, 0, Math.PI * 2, false);
           mockCtx.fill();
           mockCtx.globalAlpha = 1;
 
           // Bulb body
           mockCtx.beginPath();
-          mockCtx.moveTo(0, -bulbHeight / 2);
-          mockCtx.quadraticCurveTo(baseSize, 0, 0, bulbHeight / 2);
-          mockCtx.quadraticCurveTo(-baseSize, 0, 0, -bulbHeight / 2);
+          mockCtx.moveTo(0, -bulbHeightSeg / 2);
+          mockCtx.quadraticCurveTo(baseSizeSeg, 0, 0, bulbHeightSeg / 2);
+          mockCtx.quadraticCurveTo(-baseSizeSeg, 0, 0, -bulbHeightSeg / 2);
           mockCtx.closePath();
           mockCtx.fillStyle   = color;
           mockCtx.strokeStyle = '#f5f5f5';
@@ -1809,20 +1827,20 @@
           // Socket
           mockCtx.fillStyle = '#444444';
           mockCtx.fillRect(
-            -baseSize * 0.6,
-            bulbHeight / 2,
-            baseSize * 1.2,
-            baseSize * 0.6
+            -baseSizeSeg * 0.6,
+            bulbHeightSeg / 2,
+            baseSizeSeg * 1.2,
+            baseSizeSeg * 0.6
           );
 
-          // Stake for ground lights
-          if (seg.type === 'ground') {
-            var stakeHeight = bulbHeight * 0.9;
+          // Stake for ground lights only
+          if (isGround) {
+            var stakeHeight = bulbHeightSeg * 0.9;
             mockCtx.fillStyle = '#444444';
             mockCtx.fillRect(
-              -baseSize * 0.25,
-              bulbHeight / 2 + baseSize * 0.6,
-              baseSize * 0.5,
+              -baseSizeSeg * 0.25,
+              bulbHeightSeg / 2 + baseSizeSeg * 0.6,
+              baseSizeSeg * 0.5,
               stakeHeight
             );
           }
@@ -1830,6 +1848,7 @@
           mockCtx.restore();
         }
 
+        // Show move handles in Adjust mode
         if (mockMode === 'adjust') {
           mockCtx.beginPath();
           mockCtx.fillStyle   = '#00ffff';
@@ -1845,6 +1864,7 @@
           mockCtx.stroke();
         }
       }
+
 
       // DECORATIONS
       for (var d = 0; d < mockDecorations.length; d++) {
@@ -2458,20 +2478,70 @@
       });
     }
 
-    // TREE TRACE STUBS (SAFE)
+        // TREE / SHRUB LIGHTS – use line runs with mini-bulbs
     if (treeTraceBtn) {
       treeTraceBtn.addEventListener('click', function () {
-        alert('Tree/shrub free-form trace will be added in a later step. Current version focuses on roof & ground runs + decorations.');
+        if (!mockImage) {
+          mockSetInfo('Upload a front photo first, then add tree / shrub lights.');
+          return;
+        }
+        // Force run type to Trees / bushes and start a fresh run
+        if (mockRunTypeSelect) {
+          mockRunTypeSelect.value = 'tree';
+        }
+        mockLastPoint = null;
+        mockMode = 'draw';
+        mockSetInfo(
+          'Tree / shrub lights: with "Run type: Trees / bushes" selected, click along the trunk and branches, ' +
+          'or zig-zag across shrubs. These runs use smaller, denser bulbs to mimic wrap and net lights.'
+        );
+        mockRedraw();
       });
     }
+
     if (treeTraceUndoBtn) {
       treeTraceUndoBtn.addEventListener('click', function () {
-        alert('No traced trees yet in this version.');
+        if (!mockSegments.length) {
+          mockSetInfo('No tree / shrub runs to undo yet.');
+          return;
+        }
+        // Remove last segment whose type is "tree"
+        for (var i = mockSegments.length - 1; i >= 0; i--) {
+          if (mockSegments[i].type === 'tree') {
+            mockSegments.splice(i, 1);
+            mockLastPoint = null;
+            mockSetInfo('Last tree / shrub run removed.');
+            mockRedraw();
+            return;
+          }
+        }
+        mockSetInfo('No tree / shrub runs found – draw some with the Tree / shrub button first.');
       });
     }
+
     if (treeTraceClearBtn) {
       treeTraceClearBtn.addEventListener('click', function () {
-        alert('No traced trees to clear in this version.');
+        if (!mockSegments.length) {
+          mockSetInfo('No tree / shrub runs to clear.');
+          return;
+        }
+        var hadTree = false;
+        var remaining = [];
+        for (var i = 0; i < mockSegments.length; i++) {
+          if (mockSegments[i].type === 'tree') {
+            hadTree = true;
+          } else {
+            remaining.push(mockSegments[i]);
+          }
+        }
+        if (!hadTree) {
+          mockSetInfo('No tree / shrub runs found – nothing to clear.');
+          return;
+        }
+        mockSegments = remaining;
+        mockLastPoint = null;
+        mockSetInfo('All tree / shrub runs cleared. Roof and ground runs are unchanged.');
+        mockRedraw();
       });
     }
 
