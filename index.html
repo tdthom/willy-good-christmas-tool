@@ -1545,15 +1545,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         mockCtx.save();
-        mockCtx.translate(x, y);
+      mockCtx.translate(x, y);
 
-        var bulbAngle;
-        if (seg.type === 'ground') {
-          bulbAngle = -Math.PI / 2; // straight up for ground stakes
-        } else {
-          bulbAngle = angle;
-        }
-        mockCtx.rotate(bulbAngle);
+      // For roof / gutter / tree lines, bulbs follow the wire.
+      // For ground stakes, keep bulbs vertically upright.
+    var bulbAngle;
+  if (seg.type === 'ground') {
+  bulbAngle = 0; // upright (no rotation)
+} else {
+  bulbAngle = angle; // follow the line
+}
+mockCtx.rotate(bulbAngle);
 
         // glow
         mockCtx.beginPath();
