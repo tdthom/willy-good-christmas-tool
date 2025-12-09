@@ -521,9 +521,21 @@
     <p class="print-hide">
       Preview what you can send to the client. Use your browser's Print feature and choose "Save as PDF" to export.
     </p>
+      <button
+    id="refresh-proposal"
+    class="print-hide"
+    style="margin-bottom:0.5rem;"
+  >
+    Refresh from last estimate
+  </button>
 
-    <button id="refresh-proposal" style="margin-bottom:0.5rem;">Refresh from last estimate</button>
-    <button onclick="window.print();" style="margin-bottom:0.5rem; margin-left:8px;">Print / Save as PDF</button>
+  <button
+    onclick="window.print();"
+    class="print-hide"
+    style="margin-bottom:0.5rem; margin-left:8px;"
+  >
+    Print / Save as PDF
+  </button>
 
     <div id="proposal-content" class="proposal-card">
       <em>No estimate found yet. Go to the Estimate tab, fill it out, and click "Calculate estimate" first.</em>
