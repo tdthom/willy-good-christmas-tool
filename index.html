@@ -462,7 +462,13 @@
         <option value="net">Shrub / net lights</option>
         <option value="star">Star / tree topper</option>
         <option value="mini-tree">Mini yard tree</option>
+        <option value="custom">Custom image (upload below)</option>
       </select><br><br>
+
+      <label for="custom-decor-image" class="small-note">
+      Custom decoration image (for “Custom image” type):
+      </label><br>
+      <input type="file" id="custom-decor-image" accept="image/*"><br><br>
 
       <button id="mockup-decor-mode">Place decorations</button>
       <button id="mockup-decor-edit">Edit decorations</button><br><br>
@@ -478,16 +484,24 @@
       <button id="decor-rotate-left">Rotate ⟲</button>
       <button id="decor-rotate-right">Rotate ⟳</button><br><br>
 
-      <h3>Tree / shrub free-form lights</h3>
-      <p class="small-note">
-        Click <strong>Tree / shrub free-form trace</strong>, then click and drag around the shape of the tree or shrub.
-        Release the mouse to finish. Mini bulbs will fill inside the traced area.
-      </p>
+    <h3>Tree / shrub free-form lights</h3>
+    <p class="small-note">
+      Click <strong>Tree / shrub free-form trace</strong>, then click and drag around the shape of the tree or shrub.
+      Release the mouse to finish. Lights will follow the style you choose below.
+    </p>
 
-      <button id="tree-trace-button" type="button">Tree / shrub free-form trace</button>
-      <button id="tree-trace-undo" type="button">Undo last tree lights</button>
-      <button id="tree-trace-clear" type="button">Clear all tree lights</button>
-      <br><br>
+    <label for="tree-trace-style"><strong>Tree / shrub style:</strong></label><br>
+    <select id="tree-trace-style" style="width:220px;">
+      <option value="wrap" selected>Tree wrap (trunk & large branches)</option>
+      <option value="net">Shrub / hedge net lights</option>
+  </select>
+  <br><br>
+
+<button id="tree-trace-button" type="button">Tree / shrub free-form trace</button>
+<button id="tree-trace-undo" type="button">Undo last tree lights</button>
+<button id="tree-trace-clear" type="button">Clear all tree lights</button>
+<br><br>
+
     </div>
 
     <!-- Canvas column -->
@@ -1400,6 +1414,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var treeTraceBtn      = document.getElementById('tree-trace-button');
     var treeTraceUndoBtn  = document.getElementById('tree-trace-undo');
     var treeTraceClearBtn = document.getElementById('tree-trace-clear');
+    var treeTraceStyleSelect = document.getElementById('tree-trace-style');
 
     var mockCanvas = document.getElementById('mockup-canvas');
     if (!mockCanvas) return;
