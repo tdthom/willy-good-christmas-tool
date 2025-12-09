@@ -221,6 +221,10 @@
     <label for="eaves-feet"><strong>Eaves / gutters</strong> (ft)</label><br>
     <input id="eaves-feet" type="number" min="0" step="1" placeholder="e.g. 20"> ft<br><br>
 
+    <!-- NEW: ground / stake lights -->
+    <label for="ground-feet"><strong>Ground / stake lights</strong> (ft)</label><br>
+    <input id="ground-feet" type="number" min="0" step="1" placeholder="e.g. 60"> ft<br><br>
+
     <h3>Pricing</h3>
 
     <label for="rate-per-foot"><strong>Install price per foot</strong> (labor + equipment)</label><br>
@@ -276,6 +280,13 @@
     &nbsp;
     <label for="decor-treewrap-price">Price per strand</label>
     <input id="decor-treewrap-price" type="number" min="0" step="0.01" value="45.00" style="width:90px;"><br><br>
+
+    <!-- NEW: custom decorations line -->
+    <label for="decor-custom-count"><strong>Custom decorations</strong> (qty)</label><br>
+    <input id="decor-custom-count" type="number" min="0" step="1" value="0" style="width:80px;">
+    &nbsp;
+    <label for="decor-custom-price">Price each</label>
+    <input id="decor-custom-price" type="number" min="0" step="0.01" value="50.00" style="width:90px;"><br><br>
 
     <button id="calc-estimate">Calculate estimate</button>
 
@@ -430,7 +441,7 @@
 
         <label class="small-note">
           <input type="checkbox" id="ground-curve-toggle">
-          Smooth curve for ground stake runs
+          Smooth curve for new ground stake runs only
         </label><br><br>
 
         <label>
@@ -783,6 +794,7 @@
     var ridgeInput         = document.getElementById('ridge-feet');
     var hipInput           = document.getElementById('hip-feet');
     var eavesInput         = document.getElementById('eaves-feet');
+    var groundInput        = document.getElementById('ground-feet'); // NEW
     var rateInput          = document.getElementById('rate-per-foot');
     var takedownRateInput  = document.getElementById('takedown-rate');
     var equipRateInput     = document.getElementById('equipment-rate');
@@ -799,6 +811,8 @@
     var decorBowPriceInput      = document.getElementById('decor-bow-price');
     var decorTreeWrapCountInput = document.getElementById('decor-treewrap-count');
     var decorTreeWrapPriceInput = document.getElementById('decor-treewrap-price');
+    var decorCustomCountInput   = document.getElementById('decor-custom-count'); // NEW
+    var decorCustomPriceInput   = document.getElementById('decor-custom-price'); // NEW
 
     var ESTIMATE_KEY = 'wgc-last-estimate-v3';
 
@@ -841,9 +855,10 @@
 
     if (calcButton && resultBox) {
       calcButton.addEventListener('click', function () {
-        var ridge = parseNum(ridgeInput);
-        var hip   = parseNum(hipInput);
-        var eaves = parseNum(eavesInput);
+        var ridge  = parseNum(ridgeInput);
+        var hip    = parseNum(hipInput);
+        var eaves  = parseNum(eavesInput);
+        var ground = parseNum(groundInput); // NEW
 
         var rate      = parseNum(rateInput);
         var tdRate    = parseNum(takedownRateInput);
@@ -851,42 +866,47 @@
         var taxPct    = parseNum(taxRateInput);
         var container = parseNum(containerInput);
 
-        var totalFeet = ridge + hip + eaves;
+        var totalFeet = ridge + hip + eaves + ground; // includes ground stakes
 
-        var ridgePrice = ridge * rate;
-        var hipPrice   = hip * rate;
-        var eavesPrice = eaves * rate;
-        var installSub = ridgePrice + hipPrice + eavesPrice;
+        var ridgePrice  = ridge  * rate;
+        var hipPrice    = hip    * rate;
+        var eavesPrice  = eaves  * rate;
+        var groundPrice = ground * rate; // NEW
+        var installSub  = ridgePrice + hipPrice + eavesPrice + groundPrice;
         var takedownSub = totalFeet * tdRate;
-        var equipSub = totalFeet * equipRate;
+        var equipSub    = totalFeet * equipRate;
 
-        var wCount = parseInt(decorWreathCountInput && decorWreathCountInput.value, 10) || 0;
-        var wPrice = parseNum(decorWreathPriceInput);
-        var gCount = parseInt(decorGarlandCountInput && decorGarlandCountInput.value, 10) || 0;
-        var gPrice = parseNum(decorGarlandPriceInput);
-        var bCount = parseInt(decorBowCountInput && decorBowCountInput.value, 10) || 0;
-        var bPrice = parseNum(decorBowPriceInput);
+        var wCount  = parseInt(decorWreathCountInput && decorWreathCountInput.value, 10) || 0;
+        var wPrice  = parseNum(decorWreathPriceInput);
+        var gCount  = parseInt(decorGarlandCountInput && decorGarlandCountInput.value, 10) || 0;
+        var gPrice  = parseNum(decorGarlandPriceInput);
+        var bCount  = parseInt(decorBowCountInput && decorBowCountInput.value, 10) || 0;
+        var bPrice  = parseNum(decorBowPriceInput);
         var twCount = parseInt(decorTreeWrapCountInput && decorTreeWrapCountInput.value, 10) || 0;
         var twPrice = parseNum(decorTreeWrapPriceInput);
+        var cCount  = parseInt(decorCustomCountInput && decorCustomCountInput.value, 10) || 0;
+        var cPrice  = parseNum(decorCustomPriceInput);
 
-        var wreathSub   = wCount * wPrice;
-        var garlandSub  = gCount * gPrice;
-        var bowSub      = bCount * bPrice;
+        var wreathSub   = wCount  * wPrice;
+        var garlandSub  = gCount  * gPrice;
+        var bowSub      = bCount  * bPrice;
         var treeWrapSub = twCount * twPrice;
-        var decorSub    = wreathSub + garlandSub + bowSub + treeWrapSub;
+        var customSub   = cCount  * cPrice;
+        var decorSub    = wreathSub + garlandSub + bowSub + treeWrapSub + customSub;
 
         var custSubtotalBeforeTax = installSub + takedownSub + decorSub;
         var taxableBase = equipSub + container + decorSub;
         var taxRate = taxPct / 100;
         var taxAmt = taxableBase * taxRate;
         var custTotalWithTax = custSubtotalBeforeTax + taxAmt;
-        var internalPreTax = custSubtotalBeforeTax + container;
+        var internalPreTax   = custSubtotalBeforeTax + container;
 
         var snapshot = {
           timestamp: new Date().toISOString(),
           ridge: ridge,
           hip: hip,
           eaves: eaves,
+          ground: ground,            // NEW
           totalFeet: totalFeet,
           rate: rate,
           takedownRate: tdRate,
@@ -896,6 +916,7 @@
           ridgePrice: ridgePrice,
           hipPrice: hipPrice,
           eavesPrice: eavesPrice,
+          groundPrice: groundPrice,  // NEW
           installSubtotal: installSub,
           takedownSubtotal: takedownSub,
           equipmentSubtotal: equipSub,
@@ -913,6 +934,9 @@
           decorTreeWrapCount: twCount,
           decorTreeWrapPrice: twPrice,
           decorTreeWrapSubtotal: treeWrapSub,
+          decorCustomCount: cCount,          // NEW
+          decorCustomPrice: cPrice,          // NEW
+          decorCustomSubtotal: customSub,    // NEW
           decorSubtotal: decorSub,
           client: getCurrentClientInfo()
         };
@@ -920,10 +944,11 @@
         saveLastEstimate(snapshot);
 
         var html = '';
-        html += '<p><strong>Total feet:</strong> ' + totalFeet.toFixed(1) + ' ft</p>';
+        html += '<p><strong>Total feet (roof + ground):</strong> ' + totalFeet.toFixed(1) + ' ft</p>';
         html += '<p><strong>Main ridge:</strong> ' + ridge.toFixed(1) + ' ft → $' + ridgePrice.toFixed(2) + '</p>';
         html += '<p><strong>Hip ridge:</strong> ' + hip.toFixed(1) + ' ft → $' + hipPrice.toFixed(2) + '</p>';
         html += '<p><strong>Eaves / gutters:</strong> ' + eaves.toFixed(1) + ' ft → $' + eavesPrice.toFixed(2) + '</p>';
+        html += '<p><strong>Ground / stake lights:</strong> ' + ground.toFixed(1) + ' ft → $' + groundPrice.toFixed(2) + '</p>';
         html += '<hr>';
         html += '<p><strong>Install subtotal:</strong> $' + installSub.toFixed(2) + '</p>';
         html += '<p><strong>Takedown subtotal:</strong> $' + takedownSub.toFixed(2) + '</p>';
@@ -990,7 +1015,7 @@
       html += '  <p><strong>Proposal date:</strong> ' + dateStr + '</p>';
       html += clientHtml;
       html += '  <h3>Christmas Light Installation &amp; Takedown</h3>';
-      html += '  <p><strong>Total feet:</strong> ' + est.totalFeet.toFixed(1) + ' ft (ridge, hip, eaves)</p>';
+      html += '  <p><strong>Total feet (roof + ground):</strong> ' + est.totalFeet.toFixed(1) + ' ft</p>';
       html += '  <ul>';
       html += '    <li>Install: $' + est.installSubtotal.toFixed(2) +
               ' (@ $' + est.rate.toFixed(2) + '/ft)</li>';
@@ -1466,7 +1491,7 @@
     var mockResizeStartDist  = 0;
     var mockNextDecorId      = 1;
 
-    var mockGroundCurveEnabled = false;
+    var mockGroundCurveEnabled = false;   // controls new ground segments only
     var mockCustomDecorImage   = null;
 
     function mockSetInfo(msg) {
@@ -1573,6 +1598,7 @@
       var garland  = 0;
       var bow      = 0;
       var treeWrap = 0;
+      var custom   = 0;
 
       for (var i = 0; i < mockDecorations.length; i++) {
         var k = mockDecorations[i].kind;
@@ -1580,6 +1606,7 @@
         else if (k === 'garland')   garland++;
         else if (k === 'bow')       bow++;
         else if (k === 'tree-wrap') treeWrap++;
+        else if (k === 'custom-image') custom++;
       }
 
       decorWreathCountInput.value  = wreath;
@@ -1587,6 +1614,9 @@
       decorBowCountInput.value     = bow;
       if (decorTreeWrapCountInput) {
         decorTreeWrapCountInput.value = treeWrap;
+      }
+      if (decorCustomCountInput) { // NEW
+        decorCustomCountInput.value = custom;
       }
     }
 
@@ -1721,8 +1751,8 @@
           }
         }
 
+        // For bulb count: keep spacing same for straight vs curved
         var effectiveLength = lengthPx;
-        if (isCurved) effectiveLength = lengthPx * 1.1;
         var count = Math.max(1, Math.round(effectiveLength / spacingPx));
 
         for (var b = 0; b <= count; b++) {
@@ -2039,7 +2069,6 @@
           mockCtx.fill();
         }
 
-        // highlight & handle if selected
         if (selected) {
           mockCtx.beginPath();
           mockCtx.strokeStyle = '#00e5ff';
@@ -2128,7 +2157,7 @@
             type: runType
           };
           if (runType === 'ground' && mockGroundCurveEnabled) {
-            seg.curve = true;
+            seg.curve = true; // curve only for new ground runs when toggle is ON
           }
           mockSegments.push(seg);
           mockLastPoint = pt;
@@ -2394,19 +2423,14 @@
       });
     }
 
-    // GROUND CURVE TOGGLE
+    // GROUND CURVE TOGGLE – per-run only
     if (groundCurveToggle) {
       groundCurveToggle.addEventListener('change', function () {
         mockGroundCurveEnabled = !!groundCurveToggle.checked;
-        for (var i = 0; i < mockSegments.length; i++) {
-          if (mockSegments[i].type === 'ground') {
-            mockSegments[i].curve = mockGroundCurveEnabled;
-          }
-        }
         mockSetInfo(
           mockGroundCurveEnabled
-            ? 'Curve ON: ground stake runs will be drawn as smooth curves.'
-            : 'Curve OFF: ground stake runs will be drawn as straight segments.'
+            ? 'Curve ON: any new ground stake runs you draw will be curved. Existing ones stay as drawn.'
+            : 'Curve OFF: any new ground stake runs will be straight. Existing ones do not change.'
         );
         mockRedraw();
       });
@@ -2504,7 +2528,7 @@
       });
     }
 
-    console.log('Willy Good Christmas Tool script loaded (consolidated).');
+    console.log('Willy Good Christmas Tool script loaded (ground curves + estimate wiring updated).');
   });
   </script>
 </body>
