@@ -1711,24 +1711,36 @@
         var lengthPx = Math.sqrt(dx * dx + dy * dy);
         if (lengthPx === 0) continue;
 
-        var isGround = (seg.type === 'ground');
-        var isTree   = (seg.type === 'tree');  // trunk wraps & shrubs
-        var isCurved = isGround && !!seg.curve;
-        var angle    = Math.atan2(dy, dx);
+       var isGround = (seg.type === 'ground');
+      var isTree   = (seg.type === 'tree');  // trunk wraps & shrubs
+      var isCurved = isGround && !!seg.curve;
+      var angle    = Math.atan2(dy, dx);
 
-        var wireColor = '#555555';
-        if (isGround) wireColor = '#3a7a3a';
-        else if (isTree) wireColor = '#5d4037';  // darker “bark” wire
+      // wire color
+      var wireColor = '#555555';
+      if (isGround) wireColor = '#3a7a3a';
+      else if (isTree) wireColor = '#5d4037';
 
-        // Per-run bulb spacing & size:
-        // - Roof / ground: use your chosen spacing & size
-        // - Trees / shrubs: smaller, denser “mini” bulbs
-        var spacingPxSeg = spacingPx;
-        var baseSizeSeg  = baseSize;
-        if (isTree) {
-          spacingPxSeg = spacingPx * 0.55; // ~45% closer together
-          baseSizeSeg  = baseSize * 0.65;  // smaller bulb
-        }
+      // per-run spacing & size
+      var spacingPxSeg = spacingPx;
+      var baseSizeSeg  = baseSize;
+
+    // Trees / shrubs: M6-style minis
+    if (isTree) {
+      spacingPxSeg = spacingPx * 0.25;  // .25 factor for tighter spacing
+      baseSizeSeg  = baseSize * 0.40;   // smaller bulb (M6 look)
+      }
+
+      var bulbHeightSeg = baseSizeSeg * 2.4;
+      var glowRadiusSeg = bulbHeightSeg * 0.9;
+
+      // Trees / shrubs: M6-style mini lights
+      // - ~1/4 of the roof spacing (".25")
+      // - smaller bulb body so they read as minis
+      if (isTree) {
+        spacingPxSeg = spacingPx * 0.25;  // much tighter spacing for wraps/net
+        baseSizeSeg  = baseSize * 0.40;   // smaller bulb, M6-style
+      }
 
         var bulbHeightSeg = baseSizeSeg * 2.4;
         var glowRadiusSeg = bulbHeightSeg * 0.9;
