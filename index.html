@@ -1711,38 +1711,41 @@
         var lengthPx = Math.sqrt(dx * dx + dy * dy);
         if (lengthPx === 0) continue;
 
+           // What kind of run is this?
       var isGround = (seg.type === 'ground');
-var isTree   = (seg.type === 'tree');
-var isCurved = isGround && !!seg.curve;
-var angle    = Math.atan2(dy, dx);
+      var isTree   = (seg.type === 'tree');
+      var isCurved = isGround && !!seg.curve;
+      var angle    = Math.atan2(dy, dx);
 
-// wire color
-var wireColor = '#555555';
-if (isGround) wireColor = '#3a7a3a';
-else if (isTree) wireColor = '#5d4037';
+      // Wire color changes by run type
+      var wireColor = '#555555';  // default for roof/other
+      if (isGround) {
+        wireColor = '#3a7a3a';    // greenish for ground stakes
+      } else if (isTree) {
+        wireColor = '#5d4037';    // brownish for trunk/branches
+      }
 
-// per-run spacing & size
-var spacingPxSeg = spacingPx;
-var baseSizeSeg  = baseSize;
+      // Per-run spacing and bulb size (start from global)
+      var spacingPxSeg = spacingPx;  // base spacing in pixels
+      var baseSizeSeg  = baseSize;   // base half-width of bulb body
 
-// Trees / shrubs: M6-style mini bulbs
-if (isTree) {
-  // 6" look: half of the main spacing
-  spacingPxSeg = spacingPx * 0.5;
+      // Trees / shrubs: M6-style mini bulbs
+      if (isTree) {
+        // Visual spacing ≈ 6" if roof is at 12":
+        // use half the main spacing for minis
+        spacingPxSeg = spacingPx * 0.5;
 
-  // lock tree bulbs to a small absolute size (M6 style)
-  baseSizeSeg = 1.0;
-}
+        // Lock tree bulbs to a small M6 size, independent of
+        // the small/medium/large setting used for roof lines.
+        // Tweak 1.0 up/down if you want smaller/bigger:
+        //   0.8 = ultra tiny, 1.2 = slightly larger
+        baseSizeSeg = 1.0;
+      }
 
-var bulbHeightSeg = baseSizeSeg * 2.4;
-var glowRadiusSeg = bulbHeightSeg * 0.9;
+      // Now derive height and glow radius for *this* segment
+      var bulbHeightSeg = baseSizeSeg * 2.4;
+      var glowRadiusSeg = bulbHeightSeg * 0.9;
 
-  // Force a small, fixed M6-style bulb size,
-  // independent of the roof "small / medium / large" setting.
-  // You can tweak this number if needed:
-  //   1.0 = very small, 0.8 = ultra tiny, 1.2 = slightly larger
-  baseSizeSeg = 1.0;
-}
 
       // Trees / shrubs: M6-style mini lights
       // - ~1/4 of the roof spacing (".25")
