@@ -499,6 +499,25 @@
         <br><br>
       </div>
 
+      <div id="mock-controls">
+  <div class="mock-control-group">
+    <!-- existing controls here -->
+  </div>
+
+  <!-- paste your new dusk slider here -->
+  <div class="mock-control-group">
+    <label for="mockDuskRange">Time of day:</label>
+    <input
+      type="range"
+      id="mockDuskRange"
+      min="0"
+      max="100"
+      value="0"
+      step="1"
+    />
+    <span id="mockDuskLabel">Daylight</span>
+  </div>
+
       <!-- Canvas column -->
       <div style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff;">
         <canvas
@@ -2399,8 +2418,6 @@
       });
     }
 
-    if (mockClearBtn) {
-      mockClearBtn.addEventListener('click', function () {
         mockSegments = [];
         mockLastPoint = null;
         mockMode = 'draw';
@@ -2408,22 +2425,6 @@
         mockSetInfo('All light runs cleared. Decorations are untouched.');
       });
     }
-
-      //“Time of Day” / Dusk slider
-    <div class="mock-control-group">
-  <label for="mockDuskRange">
-    Time of day:
-  </label>
-  <input
-    type="range"
-    id="mockDuskRange"
-    min="0"
-    max="100"
-    value="0"
-    step="1"
-  />
-  <span id="mockDuskLabel">Daylight</span>
-</div>
 
     // DECORATION BUTTONS
     if (mockDecorPlaceBtn) {
