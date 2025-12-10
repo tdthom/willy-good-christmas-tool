@@ -1523,6 +1523,31 @@
         );
       }
     }
+    function mockRedraw() {
+  if (!mockCtx || !mockCanvas) return;
+
+  mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
+
+  // 1) draw the house photo
+  if (mockPhotoImage && mockPhotoLoaded) {
+    mockCtx.drawImage(
+      mockPhotoImage,
+      0, 0,
+      mockCanvas.width,
+      mockCanvas.height
+    );
+  }
+
+  // ⭐ NEW: dim the background/house based on slider
+  mockApplyDuskOverlay();
+
+  // 2) draw lights and decorations on top so they stay bright
+  drawMockLightStrings();
+  drawMockGroundStakes();
+  drawMockDecorations();
+
+  // (leave any of your existing code that was here)
+}
 
     function mockApplyZoom() {
       if (!mockCanvas) return;
@@ -2384,6 +2409,22 @@
       });
     }
 
+      //“Time of Day” / Dusk slider
+    <div class="mock-control-group">
+  <label for="mockDuskRange">
+    Time of day:
+  </label>
+  <input
+    type="range"
+    id="mockDuskRange"
+    min="0"
+    max="100"
+    value="0"
+    step="1"
+  />
+  <span id="mockDuskLabel">Daylight</span>
+</div>
+
     // DECORATION BUTTONS
     if (mockDecorPlaceBtn) {
       mockDecorPlaceBtn.addEventListener('click', function () {
@@ -2618,6 +2659,47 @@
         mockRedraw();
       });
     }
+    // --- Dusk / brightness control ----------------------------------
+var mockDusk = 0; // 0 = full daylight, 1 = darkest
+var mockDuskRange = document.getElementById('mockDuskRange');
+var mockDuskLabel = document.getElementById('mockDuskLabel');
+
+function mockUpdateDuskLabel() {
+  if (!mockDuskLabel) return;
+
+  if (mockDusk <= 0.05) {
+    mockDuskLabel.textContent = 'Daylight';
+  } else if (mockDusk < 0.4) {
+    mockDuskLabel.textContent = 'Late afternoon';
+  } else if (mockDusk < 0.7) {
+    mockDuskLabel.textContent = 'Dusk';
+  } else {
+    mockDuskLabel.textContent = 'Night';
+  }
+}
+
+// hook slider changes
+if (mockDuskRange) {
+  mockDuskRange.addEventListener('input', function () {
+    mockDusk = mockDuskRange.value / 100; // 0–1
+    mockUpdateDuskLabel();
+    mockRedraw(); // already exists in your app
+  });
+
+  // initial label
+  mockUpdateDuskLabel();
+}
+    function mockApplyDuskOverlay() {
+  if (!mockCanvas || !mockCtx) return;
+  if (!mockDusk || mockDusk <= 0) return; // 0 = no change
+
+  mockCtx.save();
+  // 0.65 is “how strong” dusk can get at max; tweak to taste
+  var alpha = mockDusk * 0.65;
+  mockCtx.fillStyle = 'rgba(0, 0, 0, ' + alpha.toFixed(3) + ')';
+  mockCtx.fillRect(0, 0, mockCanvas.width, mockCanvas.height);
+  mockCtx.restore();
+}
 
     // PRINT MOCKUP (hide handles)
     if (mockPrintBtn) {
