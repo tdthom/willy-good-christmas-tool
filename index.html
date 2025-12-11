@@ -1733,473 +1733,470 @@
     }
 
     function mockRedraw() {
-      if (!mockCtx || !mockCanvas) return;
-      mockDrawBase();
-      if (!mockImage) return;
+  if (!mockCtx || !mockCanvas) return;
+  mockDrawBase();
+  if (!mockImage) return;
 
-      var mode = mockColorModeSelect ? mockColorModeSelect.value : 'single';
-      var c1   = (mockColor1Input && mockColor1Input.value) || '#ffffff';
-      var c2   = (mockColor2Input && mockColor2Input.value) || '#ff0000';
-      var c3   = (mockColor3Input && mockColor3Input.value) || '#00ff00';
+  var mode = mockColorModeSelect ? mockColorModeSelect.value : 'single';
+  var c1   = (mockColor1Input && mockColor1Input.value) || '#ffffff';
+  var c2   = (mockColor2Input && mockColor2Input.value) || '#ff0000';
+  var c3   = (mockColor3Input && mockColor3Input.value) || '#00ff00';
 
-      var spacingInches = 12;
-      if (mockBulbSpacingSelect) {
-        var sval = parseFloat(mockBulbSpacingSelect.value);
-        if (!isNaN(sval) && sval > 0) spacingInches = sval;
-      }
-      var spacingPx = (spacingInches === 15) ? 28 : 22;
+  var spacingInches = 12;
+  if (mockBulbSpacingSelect) {
+    var sval = parseFloat(mockBulbSpacingSelect.value);
+    if (!isNaN(sval) && sval > 0) spacingInches = sval;
+  }
+  var spacingPx = (spacingInches === 15) ? 28 : 22;
 
-      var baseSize = 3.0;
-      if (mockBulbSizeSelect) {
-        var sizeVal = mockBulbSizeSelect.value;
-        if (sizeVal === 'small') baseSize = 2.2;
-        else if (sizeVal === 'medium') baseSize = 3.0;
-        else if (sizeVal === 'large') baseSize = 4.2;
-      }
-      var bulbHeight = baseSize * 2.4;
-      var glowRadius = bulbHeight * 0.9;
-      var showWire   = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
+  var baseSize = 3.0;
+  if (mockBulbSizeSelect) {
+    var sizeVal = mockBulbSizeSelect.value;
+    if (sizeVal === 'small') baseSize = 2.2;
+    else if (sizeVal === 'medium') baseSize = 3.0;
+    else if (sizeVal === 'large') baseSize = 4.2;
+  }
+  var showWire = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
 
-           // LIGHT RUNS
-      for (var i = 0; i < mockSegments.length; i++) {
-        var seg  = mockSegments[i];
-        var from = seg.from;
-        var to   = seg.to;
-        if (!from || !to) continue;
+  // --- Dusk-based brightness: 0 = full day, 1 = full night --------------
+  var duskFactor = mockDusk || 0; // slider 0–1
 
-        var dx = to.x - from.x;
-        var dy = to.y - from.y;
-        var lengthPx = Math.sqrt(dx * dx + dy * dy);
-        if (lengthPx === 0) continue;
+  // How bright the glow is (alpha)
+  var glowMin = 0.18;   // daytime glow
+  var glowMax = 0.85;   // night glow
+  var glowAlphaBase = glowMin + (glowMax - glowMin) * duskFactor;
 
-           // What kind of run is this?
-      var isGround = (seg.type === 'ground');
-      var isTree   = (seg.type === 'tree');
-      var isCurved = isGround && !!seg.curve;
-      var angle    = Math.atan2(dy, dx);
+  // How big the glow is
+  var glowRadiusBoost = 1 + 0.6 * duskFactor; // up to +60% at night
 
-      // Wire color changes by run type
-      var wireColor = '#555555';  // default for roof/other
-      if (isGround) {
-        wireColor = '#3a7a3a';    // greenish for ground stakes
-      } else if (isTree) {
-        wireColor = '#5d4037';    // brownish for trunk/branches
-      }
+  // Ground curve sag
+  var GROUND_CURVE_BULGE_FACTOR = 0.12;
 
-      // Per-run spacing and bulb size (start from global)
-      var spacingPxSeg = spacingPx;  // base spacing in pixels
-      var baseSizeSeg  = baseSize;   // base half-width of bulb body
+  // --- LIGHT RUNS ------------------------------------------------------
+  for (var i = 0; i < mockSegments.length; i++) {
+    var seg  = mockSegments[i];
+    var from = seg.from;
+    var to   = seg.to;
+    if (!from || !to) continue;
 
-      // Trees / shrubs: M6-style mini bulbs
-      if (isTree) {
-        // Visual spacing ≈ 6" if roof is at 12":
-        // use half the main spacing for minis
-        spacingPxSeg = spacingPx * 0.5;
+    var dx = to.x - from.x;
+    var dy = to.y - from.y;
+    var lengthPx = Math.sqrt(dx * dx + dy * dy);
+    if (lengthPx === 0) continue;
 
-        // Lock tree bulbs to a small M6 size, independent of
-        // the small/medium/large setting used for roof lines.
-        // Tweak 1.0 up/down if you want smaller/bigger:
-        //   0.8 = ultra tiny, 1.2 = slightly larger
-        baseSizeSeg = 1.0;
-      }
+    var isGround = (seg.type === 'ground');
+    var isTree   = (seg.type === 'tree');
+    var isCurved = isGround && !!seg.curve;
+    var angle    = Math.atan2(dy, dx);
 
-      // Now derive height and glow radius for *this* segment
-      var bulbHeightSeg = baseSizeSeg * 2.4;
-      var glowRadiusSeg = bulbHeightSeg * 0.9;
+    // Wire color per run type
+    var wireColor = '#555555';
+    if (isGround) {
+      wireColor = '#3a7a3a';
+    } else if (isTree) {
+      wireColor = '#5d4037';
+    }
 
+    // Per-run spacing + bulb size
+    var spacingPxSeg = spacingPx;
+    var baseSizeSeg  = baseSize;
 
-      // Trees / shrubs: M6-style mini lights
-      // - ~1/4 of the roof spacing (".25")
-      // - smaller bulb body so they read as minis
-      if (isTree) {
-        spacingPxSeg = spacingPx * 0.25;  // much tighter spacing for wraps/net
-        baseSizeSeg  = baseSize * 0.40;   // smaller bulb, M6-style
-      }
+    // Tree / shrub runs use small, dense M6-style minis
+    if (isTree) {
+      spacingPxSeg = spacingPx * 0.25; // tighter spacing
+      baseSizeSeg  = baseSize * 0.40;  // smaller bulb body
+    }
 
-        var bulbHeightSeg = baseSizeSeg * 2.4;
-        var glowRadiusSeg = bulbHeightSeg * 0.9;
+    var bulbHeightSeg = baseSizeSeg * 2.4;
+    var glowRadiusSeg = bulbHeightSeg * 0.9;
 
-        // Wire
-        if (showWire) {
-          mockCtx.beginPath();
-          if (isCurved) {
-            var p0 = from;
-            var p2 = to;
-            var mid = { x: (p0.x + p2.x) / 2, y: (p0.y + p2.y) / 2 };
-            var bulge = lengthPx * GROUND_CURVE_BULGE_FACTOR;
-            var p1 = { x: mid.x, y: mid.y + bulge };
+    // --- Wire ---------------------------------------------------------
+    if (showWire) {
+      mockCtx.beginPath();
+      if (isCurved) {
+        var p0 = from;
+        var p2 = to;
+        var mid = { x: (p0.x + p2.x) / 2, y: (p0.y + p2.y) / 2 };
+        var bulge = lengthPx * GROUND_CURVE_BULGE_FACTOR;
+        var p1 = { x: mid.x, y: mid.y + bulge };
 
-            mockCtx.strokeStyle = wireColor;
-            mockCtx.lineWidth   = 1.2;
+        mockCtx.strokeStyle = wireColor;
+        mockCtx.lineWidth   = 1.2;
 
-            mockCtx.moveTo(p0.x, p0.y);
-            var steps = 16;
-            for (var s = 1; s <= steps; s++) {
-              var tWire = s / steps;
-              var inv   = 1 - tWire;
-              var xw = inv * inv * p0.x + 2 * inv * tWire * p1.x + tWire * tWire * p2.x;
-              var yw = inv * inv * p0.y + 2 * inv * tWire * p1.y + tWire * tWire * p2.y;
-              mockCtx.lineTo(xw, yw);
-            }
-            mockCtx.stroke();
-          } else {
-            mockCtx.strokeStyle = wireColor;
-            mockCtx.lineWidth   = 1.2;
-            mockCtx.moveTo(from.x, from.y);
-            mockCtx.lineTo(to.x, to.y);
-            mockCtx.stroke();
-          }
+        mockCtx.moveTo(p0.x, p0.y);
+        var steps = 16;
+        for (var s = 1; s <= steps; s++) {
+          var tWire = s / steps;
+          var inv   = 1 - tWire;
+          var xw = inv * inv * p0.x + 2 * inv * tWire * p1.x + tWire * tWire * p2.x;
+          var yw = inv * inv * p0.y + 2 * inv * tWire * p1.y + tWire * tWire * p2.y;
+          mockCtx.lineTo(xw, yw);
         }
-
-        // How many bulbs on this run?
-        var effectiveLength = lengthPx;
-        var count = Math.max(1, Math.round(effectiveLength / spacingPxSeg));
-
-        for (var b = 0; b <= count; b++) {
-          var t = count === 0 ? 0 : b / count;
-          var x, y;
-
-          if (isCurved) {
-            // Same curved math as wire
-            var p0b = from;
-            var p2b = to;
-            var midb = { x: (p0b.x + p2b.x) / 2, y: (p0b.y + p2b.y) / 2 };
-            var bulgeb = lengthPx * GROUND_CURVE_BULGE_FACTOR;
-            var p1b = { x: midb.x, y: midb.y + bulgeb };
-            var invb = 1 - t;
-            x = invb * invb * p0b.x + 2 * invb * t * p1b.x + t * t * p2b.x;
-            y = invb * invb * p0b.y + 2 * invb * t * p1b.y + t * t * p2b.y;
-          } else {
-            x = from.x + dx * t;
-            y = from.y + dy * t;
-          }
-
-          // Color pattern (single / 2-color / 3-color)
-          var color = c1;
-          if (mode === 'two') {
-            color = (b % 2 === 0) ? c1 : c2;
-          } else if (mode === 'three') {
-            var idx = b % 3;
-            color = (idx === 0) ? c1 : (idx === 1 ? c2 : c3);
-          }
-
-          mockCtx.save();
-          mockCtx.translate(x, y);
-
-          // Ground stakes are always straight up; others follow the line angle
-          var bulbAngle = isGround ? 0 : angle;
-          mockCtx.rotate(bulbAngle);
-
-          // Glow
-          mockCtx.beginPath();
-          mockCtx.globalAlpha = 0.22;
-          mockCtx.fillStyle   = color;
-          mockCtx.arc(0, 0, glowRadiusSeg, 0, Math.PI * 2, false);
-          mockCtx.fill();
-          mockCtx.globalAlpha = 1;
-
-          // Bulb body
-          mockCtx.beginPath();
-          mockCtx.moveTo(0, -bulbHeightSeg / 2);
-          mockCtx.quadraticCurveTo(baseSizeSeg, 0, 0, bulbHeightSeg / 2);
-          mockCtx.quadraticCurveTo(-baseSizeSeg, 0, 0, -bulbHeightSeg / 2);
-          mockCtx.closePath();
-          mockCtx.fillStyle   = color;
-          mockCtx.strokeStyle = '#f5f5f5';
-          mockCtx.lineWidth   = 0.8;
-          mockCtx.fill();
-          mockCtx.stroke();
-
-          // Socket
-          mockCtx.fillStyle = '#444444';
-          mockCtx.fillRect(
-            -baseSizeSeg * 0.6,
-            bulbHeightSeg / 2,
-            baseSizeSeg * 1.2,
-            baseSizeSeg * 0.6
-          );
-
-          // Stake for ground lights only
-          if (isGround) {
-            var stakeHeight = bulbHeightSeg * 0.9;
-            mockCtx.fillStyle = '#444444';
-            mockCtx.fillRect(
-              -baseSizeSeg * 0.25,
-              bulbHeightSeg / 2 + baseSizeSeg * 0.6,
-              baseSizeSeg * 0.5,
-              stakeHeight
-            );
-          }
-
-          mockCtx.restore();
-        }
-
-        // How "saggy" curved ground runs are.
-      // 0.10 = gentle, 0.18 = medium, 0.30 = very droopy.
-      var GROUND_CURVE_BULGE_FACTOR = 0.12;  // try 0.15 first
-        
-        // Show move handles in Adjust mode
-        if (mockMode === 'adjust') {
-          mockCtx.beginPath();
-          mockCtx.fillStyle   = '#00ffff';
-          mockCtx.strokeStyle = '#004b80';
-          mockCtx.lineWidth   = 1;
-          mockCtx.arc(from.x, from.y, 3, 0, Math.PI * 2);
-          mockCtx.fill();
-          mockCtx.stroke();
-
-          mockCtx.beginPath();
-          mockCtx.arc(to.x, to.y, 3, 0, Math.PI * 2);
-          mockCtx.fill();
-          mockCtx.stroke();
-        }
-      }
-
-      // DECORATIONS
-      for (var d = 0; d < mockDecorations.length; d++) {
-        var deco = mockDecorations[d];
-        var size = deco.size || 1;
-        var selected = (deco.id === mockSelectedDecorId);
-
-        mockCtx.save();
-        mockCtx.translate(deco.x, deco.y);
-        var rotation = deco.rotation || 0;
-        if (rotation !== 0) mockCtx.rotate(rotation);
-
-        var r = getDecorationRadius(deco);
-        var innerR;
-
-        if (deco.kind === 'wreath') {
-          innerR = r * 0.55;
-          mockCtx.beginPath();
-          mockCtx.arc(0, 0, r, 0, Math.PI * 2);
-          mockCtx.strokeStyle = '#0b5b3b';
-          mockCtx.lineWidth = 6;
-          mockCtx.stroke();
-
-          mockCtx.beginPath();
-          mockCtx.arc(0, 0, innerR, 0, Math.PI * 2);
-          mockCtx.strokeStyle = '#0b3b24';
-          mockCtx.lineWidth = 4;
-          mockCtx.stroke();
-
-          mockCtx.fillStyle = '#c62828';
-          mockCtx.beginPath();
-          mockCtx.moveTo(-innerR * 0.7, innerR * 0.6);
-          mockCtx.lineTo(0, innerR * 1.1);
-          mockCtx.lineTo(innerR * 0.7, innerR * 0.6);
-          mockCtx.closePath();
-          mockCtx.fill();
-
-          mockCtx.beginPath();
-          mockCtx.moveTo(-innerR * 0.2, innerR * 0.6);
-          mockCtx.lineTo(0, innerR * 1.4);
-          mockCtx.lineTo(innerR * 0.2, innerR * 0.6);
-          mockCtx.closePath();
-          mockCtx.fill();
-
-        } else if (deco.kind === 'bow') {
-          var w = r * 1.4;
-          var h = r * 0.7;
-
-          mockCtx.fillStyle = '#c62828';
-
-          mockCtx.beginPath();
-          mockCtx.moveTo(-w * 0.5, 0);
-          mockCtx.quadraticCurveTo(-w * 0.9, -h * 0.8, -w * 0.2, -h * 0.4);
-          mockCtx.quadraticCurveTo(-w * 0.6, 0, -w * 0.5, 0);
-          mockCtx.fill();
-
-          mockCtx.beginPath();
-          mockCtx.moveTo(w * 0.5, 0);
-          mockCtx.quadraticCurveTo(w * 0.9, -h * 0.8, w * 0.2, -h * 0.4);
-          mockCtx.quadraticCurveTo(w * 0.6, 0, w * 0.5, 0);
-          mockCtx.fill();
-
-          mockCtx.beginPath();
-          mockCtx.rect(-w * 0.12, -h * 0.25, w * 0.24, h * 0.5);
-          mockCtx.fillStyle = '#8e0000';
-          mockCtx.fill();
-
-          mockCtx.fillStyle = '#c62828';
-          mockCtx.beginPath();
-          mockCtx.moveTo(-w * 0.18, h * 0.25);
-          mockCtx.lineTo(-w * 0.45, h * 0.9);
-          mockCtx.lineTo(-w * 0.05, h * 0.7);
-          mockCtx.closePath();
-          mockCtx.fill();
-
-          mockCtx.beginPath();
-          mockCtx.moveTo(w * 0.18, h * 0.25);
-          mockCtx.lineTo(w * 0.45, h * 0.9);
-          mockCtx.lineTo(w * 0.05, h * 0.7);
-          mockCtx.closePath();
-          mockCtx.fill();
-
-        } else if (deco.kind === 'garland') {
-          var swagW = r * 2.0;
-          var swagH = r * 0.8;
-
-          mockCtx.beginPath();
-          mockCtx.moveTo(-swagW / 2, -swagH * 0.1);
-          mockCtx.quadraticCurveTo(0, swagH, swagW / 2, -swagH * 0.1);
-          mockCtx.strokeStyle = '#0b5b3b';
-          mockCtx.lineWidth = 6;
-          mockCtx.stroke();
-
-          var bulbs = 7;
-          for (var bi = 0; bi < bulbs; bi++) {
-            var t2 = bulbs === 1 ? 0.5 : bi / (bulbs - 1);
-            var x2 = -swagW / 2 + swagW * t2;
-            var y2 = -swagH * 0.1 + (Math.sin(t2 * Math.PI) * swagH * 0.7);
-            mockCtx.beginPath();
-            mockCtx.fillStyle = (bi % 2 === 0) ? '#ffd54f' : '#ff5252';
-            mockCtx.arc(x2, y2, r * 0.08, 0, Math.PI * 2);
-            mockCtx.fill();
-          }
-
-        } else if (deco.kind === 'tree-wrap') {
-          var trunkH = r * 1.6;
-          var trunkW = r * 0.25;
-
-          mockCtx.fillStyle = '#5d4037';
-          mockCtx.fillRect(-trunkW / 2, -trunkH / 2, trunkW, trunkH);
-
-          var wraps = 6;
-          mockCtx.strokeStyle = '#fff59d';
-          mockCtx.lineWidth = 2;
-          for (var wi = 0; wi < wraps; wi++) {
-            var ty = -trunkH / 2 + (trunkH * wi / (wraps - 1));
-            mockCtx.beginPath();
-            mockCtx.moveTo(-trunkW * 0.6, ty);
-            mockCtx.lineTo(trunkW * 0.6, ty + trunkW * 0.4);
-            mockCtx.stroke();
-          }
-
-        } else if (deco.kind === 'star') {
-          var outer = r * 0.9;
-          var inner = outer * 0.45;
-          mockCtx.beginPath();
-          for (var si = 0; si < 10; si++) {
-            var ang = (Math.PI / 5) * si - Math.PI / 2;
-            var rad = (si % 2 === 0) ? outer : inner;
-            var sx = Math.cos(ang) * rad;
-            var sy = Math.sin(ang) * rad;
-            if (si === 0) mockCtx.moveTo(sx, sy);
-            else mockCtx.lineTo(sx, sy);
-          }
-          mockCtx.closePath();
-          mockCtx.fillStyle = '#fff176';
-          mockCtx.strokeStyle = '#fbc02d';
-          mockCtx.lineWidth = 2;
-          mockCtx.fill();
-          mockCtx.stroke();
-
-        } else if (deco.kind === 'net') {
-          var netW = r * 1.8;
-          var netH = r * 1.2;
-          mockCtx.strokeStyle = 'rgba(255,255,255,0.35)';
-          mockCtx.lineWidth = 1;
-          var cells = 4;
-
-          for (var gx = 0; gx <= cells; gx++) {
-            var xx = -netW / 2 + (netW * gx / cells);
-            mockCtx.beginPath();
-            mockCtx.moveTo(xx, -netH / 2);
-            mockCtx.lineTo(xx, netH / 2);
-            mockCtx.stroke();
-          }
-          for (var gy = 0; gy <= cells; gy++) {
-            var yy = -netH / 2 + (netH * gy / cells);
-            mockCtx.beginPath();
-            mockCtx.moveTo(-netW / 2, yy);
-            mockCtx.lineTo(netW / 2, yy);
-            mockCtx.stroke();
-          }
-
-          for (var gx2 = 0; gx2 < cells; gx2++) {
-            for (var gy2 = 0; gy2 < cells; gy2++) {
-              var px = -netW / 2 + netW * (gx2 + 0.5) / cells;
-              var py = -netH / 2 + netH * (gy2 + 0.5) / cells;
-              mockCtx.beginPath();
-              mockCtx.fillStyle = '#fff9c4';
-              mockCtx.arc(px, py, r * 0.06, 0, Math.PI * 2);
-              mockCtx.fill();
-            }
-          }
-
-        } else if (deco.kind === 'mini-tree') {
-          var treeH = r * 1.7;
-
-          mockCtx.fillStyle = '#1b5e20';
-          mockCtx.beginPath();
-          mockCtx.moveTo(0, -treeH / 2);
-          mockCtx.lineTo(-r * 0.7, treeH / 2);
-          mockCtx.lineTo(r * 0.7, treeH / 2);
-          mockCtx.closePath();
-          mockCtx.fill();
-
-          mockCtx.fillStyle = '#5d4037';
-          mockCtx.fillRect(-r * 0.15, treeH / 2, r * 0.3, treeH * 0.25);
-
-          var rows = 3;
-          var bulbsPerRow = 5;
-          for (var ry = 0; ry < rows; ry++) {
-            var rowY = -treeH / 4 + (treeH * ry / (rows + 1));
-            for (var rb = 0; rb < bulbsPerRow; rb++) {
-              var t3 = bulbsPerRow === 1 ? 0.5 : rb / (bulbsPerRow - 1);
-              var rowWidth = r * (1.1 - ry * 0.25);
-              var bx = -rowWidth / 2 + rowWidth * t3;
-              mockCtx.beginPath();
-              var colr;
-              var m = (ry * bulbsPerRow + rb) % 3;
-              if (m === 0) colr = '#ff5252';
-              else if (m === 1) colr = '#ffeb3b';
-              else colr = '#69f0ae';
-              mockCtx.fillStyle = colr;
-              mockCtx.arc(bx, rowY, r * 0.07, 0, Math.PI * 2);
-              mockCtx.fill();
-            }
-          }
-
-        } else if (deco.kind === 'custom-image' && deco.image) {
-          var img = deco.image;
-          var iw = img.width;
-          var ih = img.height;
-          var scale = (r * 2) / Math.max(iw, ih);
-          var drawW = iw * scale;
-          var drawH = ih * scale;
-          mockCtx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
-
-        } else {
-          mockCtx.beginPath();
-          mockCtx.fillStyle = '#ffffff';
-          mockCtx.arc(0, 0, r * 0.4, 0, Math.PI * 2);
-          mockCtx.fill();
-        }
-
-        if (selected) {
-          mockCtx.beginPath();
-          mockCtx.strokeStyle = '#00e5ff';
-          mockCtx.lineWidth = 2;
-          mockCtx.arc(0, 0, r + 4, 0, Math.PI * 2);
-          mockCtx.stroke();
-
-          var handle = getDecorationHandlePosition({ x: 0, y: 0, kind: deco.kind, size: size });
-          mockCtx.save();
-          mockCtx.translate(handle.x, handle.y);
-          mockCtx.beginPath();
-          mockCtx.fillStyle = '#00e5ff';
-          mockCtx.strokeStyle = '#004b80';
-          mockCtx.rect(-5, -5, 10, 10);
-          mockCtx.fill();
-          mockCtx.stroke();
-          mockCtx.restore();
-        }
-
-        mockCtx.restore();
+        mockCtx.stroke();
+      } else {
+        mockCtx.strokeStyle = wireColor;
+        mockCtx.lineWidth   = 1.2;
+        mockCtx.moveTo(from.x, from.y);
+        mockCtx.lineTo(to.x, to.y);
+        mockCtx.stroke();
       }
     }
+
+    // --- Bulb placement along run -------------------------------------
+    var effectiveLength = lengthPx;
+    var count = Math.max(1, Math.round(effectiveLength / spacingPxSeg));
+
+    for (var b = 0; b <= count; b++) {
+      var t = count === 0 ? 0 : b / count;
+      var x, y;
+
+      if (isCurved) {
+        var p0b = from;
+        var p2b = to;
+        var midb = { x: (p0b.x + p2b.x) / 2, y: (p0b.y + p2b.y) / 2 };
+        var bulgeb = lengthPx * GROUND_CURVE_BULGE_FACTOR;
+        var p1b = { x: midb.x, y: midb.y + bulgeb };
+        var invb = 1 - t;
+        x = invb * invb * p0b.x + 2 * invb * t * p1b.x + t * t * p2b.x;
+        y = invb * invb * p0b.y + 2 * invb * t * p1b.y + t * t * p2b.y;
+      } else {
+        x = from.x + dx * t;
+        y = from.y + dy * t;
+      }
+
+      // Color pattern
+      var color = c1;
+      if (mode === 'two') {
+        color = (b % 2 === 0) ? c1 : c2;
+      } else if (mode === 'three') {
+        var idx = b % 3;
+        color = (idx === 0) ? c1 : (idx === 1 ? c2 : c3);
+      }
+
+      mockCtx.save();
+      mockCtx.translate(x, y);
+
+      var bulbAngle = isGround ? 0 : angle;
+      mockCtx.rotate(bulbAngle);
+
+      // --- Glow: stronger & bigger as it gets darker -----------------
+      var dynamicGlowRadius = glowRadiusSeg * glowRadiusBoost;
+      mockCtx.beginPath();
+      mockCtx.globalAlpha = glowAlphaBase;
+      mockCtx.fillStyle   = color;
+      mockCtx.arc(0, 0, dynamicGlowRadius, 0, Math.PI * 2, false);
+      mockCtx.fill();
+      mockCtx.globalAlpha = 1;
+
+      // --- Bulb body --------------------------------------------------
+      mockCtx.beginPath();
+      mockCtx.moveTo(0, -bulbHeightSeg / 2);
+      mockCtx.quadraticCurveTo(baseSizeSeg, 0, 0, bulbHeightSeg / 2);
+      mockCtx.quadraticCurveTo(-baseSizeSeg, 0, 0, -bulbHeightSeg / 2);
+      mockCtx.closePath();
+      mockCtx.fillStyle   = color;
+      mockCtx.strokeStyle = '#f5f5f5';
+      mockCtx.lineWidth   = 0.8;
+      mockCtx.fill();
+      mockCtx.stroke();
+
+      // Small white core at dusk/night for extra punch
+      if (duskFactor > 0.3) {
+        mockCtx.beginPath();
+        mockCtx.globalAlpha = 0.18 * duskFactor;
+        mockCtx.fillStyle = '#ffffff';
+        mockCtx.arc(0, -bulbHeightSeg * 0.1, baseSizeSeg * 0.6, 0, Math.PI * 2);
+        mockCtx.fill();
+        mockCtx.globalAlpha = 1;
+      }
+
+      // Socket
+      mockCtx.fillStyle = '#444444';
+      mockCtx.fillRect(
+        -baseSizeSeg * 0.6,
+        bulbHeightSeg / 2,
+        baseSizeSeg * 1.2,
+        baseSizeSeg * 0.6
+      );
+
+      // Stake for ground lights
+      if (isGround) {
+        var stakeHeight = bulbHeightSeg * 0.9;
+        mockCtx.fillStyle = '#444444';
+        mockCtx.fillRect(
+          -baseSizeSeg * 0.25,
+          bulbHeightSeg / 2 + baseSizeSeg * 0.6,
+          baseSizeSeg * 0.5,
+          stakeHeight
+        );
+      }
+
+      mockCtx.restore();
+    }
+
+    // Handles in Adjust mode
+    if (mockMode === 'adjust') {
+      mockCtx.beginPath();
+      mockCtx.fillStyle   = '#00ffff';
+      mockCtx.strokeStyle = '#004b80';
+      mockCtx.lineWidth   = 1;
+      mockCtx.arc(from.x, from.y, 3, 0, Math.PI * 2);
+      mockCtx.fill();
+      mockCtx.stroke();
+
+      mockCtx.beginPath();
+      mockCtx.arc(to.x, to.y, 3, 0, Math.PI * 2);
+      mockCtx.fill();
+      mockCtx.stroke();
+    }
+  }
+
+  // --- DECORATIONS (unchanged) ----------------------------------------
+  for (var d = 0; d < mockDecorations.length; d++) {
+    var deco = mockDecorations[d];
+    var size = deco.size || 1;
+    var selected = (deco.id === mockSelectedDecorId);
+
+    mockCtx.save();
+    mockCtx.translate(deco.x, deco.y);
+    var rotation = deco.rotation || 0;
+    if (rotation !== 0) mockCtx.rotate(rotation);
+
+    var r = getDecorationRadius(deco);
+    var innerR;
+
+    if (deco.kind === 'wreath') {
+      innerR = r * 0.55;
+      mockCtx.beginPath();
+      mockCtx.arc(0, 0, r, 0, Math.PI * 2);
+      mockCtx.strokeStyle = '#0b5b3b';
+      mockCtx.lineWidth = 6;
+      mockCtx.stroke();
+
+      mockCtx.beginPath();
+      mockCtx.arc(0, 0, innerR, 0, Math.PI * 2);
+      mockCtx.strokeStyle = '#0b3b24';
+      mockCtx.lineWidth = 4;
+      mockCtx.stroke();
+
+      mockCtx.fillStyle = '#c62828';
+      mockCtx.beginPath();
+      mockCtx.moveTo(-innerR * 0.7, innerR * 0.6);
+      mockCtx.lineTo(0, innerR * 1.1);
+      mockCtx.lineTo(innerR * 0.7, innerR * 0.6);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+      mockCtx.beginPath();
+      mockCtx.moveTo(-innerR * 0.2, innerR * 0.6);
+      mockCtx.lineTo(0, innerR * 1.4);
+      mockCtx.lineTo(innerR * 0.2, innerR * 0.6);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+    } else if (deco.kind === 'bow') {
+      var w = r * 1.4;
+      var h = r * 0.7;
+
+      mockCtx.fillStyle = '#c62828';
+
+      mockCtx.beginPath();
+      mockCtx.moveTo(-w * 0.5, 0);
+      mockCtx.quadraticCurveTo(-w * 0.9, -h * 0.8, -w * 0.2, -h * 0.4);
+      mockCtx.quadraticCurveTo(-w * 0.6, 0, -w * 0.5, 0);
+      mockCtx.fill();
+
+      mockCtx.beginPath();
+      mockCtx.moveTo(w * 0.5, 0);
+      mockCtx.quadraticCurveTo(w * 0.9, -h * 0.8, w * 0.2, -h * 0.4);
+      mockCtx.quadraticCurveTo(w * 0.6, 0, w * 0.5, 0);
+      mockCtx.fill();
+
+      mockCtx.beginPath();
+      mockCtx.rect(-w * 0.12, -h * 0.25, w * 0.24, h * 0.5);
+      mockCtx.fillStyle = '#8e0000';
+      mockCtx.fill();
+
+      mockCtx.fillStyle = '#c62828';
+      mockCtx.beginPath();
+      mockCtx.moveTo(-w * 0.18, h * 0.25);
+      mockCtx.lineTo(-w * 0.45, h * 0.9);
+      mockCtx.lineTo(-w * 0.05, h * 0.7);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+      mockCtx.beginPath();
+      mockCtx.moveTo(w * 0.18, h * 0.25);
+      mockCtx.lineTo(w * 0.45, h * 0.9);
+      mockCtx.lineTo(w * 0.05, h * 0.7);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+    } else if (deco.kind === 'garland') {
+      var swagW = r * 2.0;
+      var swagH = r * 0.8;
+
+      mockCtx.beginPath();
+      mockCtx.moveTo(-swagW / 2, -swagH * 0.1);
+      mockCtx.quadraticCurveTo(0, swagH, swagW / 2, -swagH * 0.1);
+      mockCtx.strokeStyle = '#0b5b3b';
+      mockCtx.lineWidth = 6;
+      mockCtx.stroke();
+
+      var bulbs = 7;
+      for (var bi = 0; bi < bulbs; bi++) {
+        var t2 = bulbs === 1 ? 0.5 : bi / (bulbs - 1);
+        var x2 = -swagW / 2 + swagW * t2;
+        var y2 = -swagH * 0.1 + (Math.sin(t2 * Math.PI) * swagH * 0.7);
+        mockCtx.beginPath();
+        mockCtx.fillStyle = (bi % 2 === 0) ? '#ffd54f' : '#ff5252';
+        mockCtx.arc(x2, y2, r * 0.08, 0, Math.PI * 2);
+        mockCtx.fill();
+      }
+
+    } else if (deco.kind === 'tree-wrap') {
+      var trunkH = r * 1.6;
+      var trunkW = r * 0.25;
+
+      mockCtx.fillStyle = '#5d4037';
+      mockCtx.fillRect(-trunkW / 2, -trunkH / 2, trunkW, trunkH);
+
+      var wraps = 6;
+      mockCtx.strokeStyle = '#fff59d';
+      mockCtx.lineWidth = 2;
+      for (var wi = 0; wi < wraps; wi++) {
+        var ty = -trunkH / 2 + (trunkH * wi / (wraps - 1));
+        mockCtx.beginPath();
+        mockCtx.moveTo(-trunkW * 0.6, ty);
+        mockCtx.lineTo(trunkW * 0.6, ty + trunkW * 0.4);
+        mockCtx.stroke();
+      }
+
+    } else if (deco.kind === 'star') {
+      var outer = r * 0.9;
+      var inner = outer * 0.45;
+      mockCtx.beginPath();
+      for (var si = 0; si < 10; si++) {
+        var ang = (Math.PI / 5) * si - Math.PI / 2;
+        var rad = (si % 2 === 0) ? outer : inner;
+        var sx = Math.cos(ang) * rad;
+        var sy = Math.sin(ang) * rad;
+        if (si === 0) mockCtx.moveTo(sx, sy);
+        else mockCtx.lineTo(sx, sy);
+      }
+      mockCtx.closePath();
+      mockCtx.fillStyle = '#fff176';
+      mockCtx.strokeStyle = '#fbc02d';
+      mockCtx.lineWidth = 2;
+      mockCtx.fill();
+      mockCtx.stroke();
+
+    } else if (deco.kind === 'net') {
+      var netW = r * 1.8;
+      var netH = r * 1.2;
+      mockCtx.strokeStyle = 'rgba(255,255,255,0.35)';
+      mockCtx.lineWidth = 1;
+      var cells = 4;
+
+      for (var gx = 0; gx <= cells; gx++) {
+        var xx = -netW / 2 + (netW * gx / cells);
+        mockCtx.beginPath();
+        mockCtx.moveTo(xx, -netH / 2);
+        mockCtx.lineTo(xx, netH / 2);
+        mockCtx.stroke();
+      }
+      for (var gy = 0; gy <= cells; gy++) {
+        var yy = -netH / 2 + (netH * gy / cells);
+        mockCtx.beginPath();
+        mockCtx.moveTo(-netW / 2, yy);
+        mockCtx.lineTo(netW / 2, yy);
+        mockCtx.stroke();
+      }
+
+      for (var gx2 = 0; gx2 < cells; gx2++) {
+        for (var gy2 = 0; gy2 < cells; gy2++) {
+          var px = -netW / 2 + netW * (gx2 + 0.5) / cells;
+          var py = -netH / 2 + netH * (gy2 + 0.5) / cells;
+          mockCtx.beginPath();
+          mockCtx.fillStyle = '#fff9c4';
+          mockCtx.arc(px, py, r * 0.06, 0, Math.PI * 2);
+          mockCtx.fill();
+        }
+      }
+
+    } else if (deco.kind === 'mini-tree') {
+      var treeH = r * 1.7;
+
+      mockCtx.fillStyle = '#1b5e20';
+      mockCtx.beginPath();
+      mockCtx.moveTo(0, -treeH / 2);
+      mockCtx.lineTo(-r * 0.7, treeH / 2);
+      mockCtx.lineTo(r * 0.7, treeH / 2);
+      mockCtx.closePath();
+      mockCtx.fill();
+
+      mockCtx.fillStyle = '#5d4037';
+      mockCtx.fillRect(-r * 0.15, treeH / 2, r * 0.3, treeH * 0.25);
+
+      var rows = 3;
+      var bulbsPerRow = 5;
+      for (var ry = 0; ry < rows; ry++) {
+        var rowY = -treeH / 4 + (treeH * ry / (rows + 1));
+        for (var rb = 0; rb < bulbsPerRow; rb++) {
+          var t3 = bulbsPerRow === 1 ? 0.5 : rb / (bulbsPerRow - 1);
+          var rowWidth = r * (1.1 - ry * 0.25);
+          var bx = -rowWidth / 2 + rowWidth * t3;
+          mockCtx.beginPath();
+          var colr;
+          var m = (ry * bulbsPerRow + rb) % 3;
+          if (m === 0) colr = '#ff5252';
+          else if (m === 1) colr = '#ffeb3b';
+          else colr = '#69f0ae';
+          mockCtx.fillStyle = colr;
+          mockCtx.arc(bx, rowY, r * 0.07, 0, Math.PI * 2);
+          mockCtx.fill();
+        }
+      }
+
+    } else if (deco.kind === 'custom-image' && deco.image) {
+      var img = deco.image;
+      var iw = img.width;
+      var ih = img.height;
+      var scale = (r * 2) / Math.max(iw, ih);
+      var drawW = iw * scale;
+      var drawH = ih * scale;
+      mockCtx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+
+    } else {
+      mockCtx.beginPath();
+      mockCtx.fillStyle = '#ffffff';
+      mockCtx.arc(0, 0, r * 0.4, 0, Math.PI * 2);
+      mockCtx.fill();
+    }
+
+    if (selected) {
+      mockCtx.beginPath();
+      mockCtx.strokeStyle = '#00e5ff';
+      mockCtx.lineWidth = 2;
+      mockCtx.arc(0, 0, r + 4, 0, Math.PI * 2);
+      mockCtx.stroke();
+
+      var handle = getDecorationHandlePosition({ x: 0, y: 0, kind: deco.kind, size: size });
+      mockCtx.save();
+      mockCtx.translate(handle.x, handle.y);
+      mockCtx.beginPath();
+      mockCtx.fillStyle = '#00e5ff';
+      mockCtx.strokeStyle = '#004b80';
+      mockCtx.rect(-5, -5, 10, 10);
+      mockCtx.fill();
+      mockCtx.stroke();
+      mockCtx.restore();
+    }
+
+    mockCtx.restore();
+  }
+}
+
 
     // IMAGE LOAD
     if (mockImageInput && mockCtx && mockCanvas) {
