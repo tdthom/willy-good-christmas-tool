@@ -1733,243 +1733,222 @@
     }
 
       function mockRedraw() {
-  if (!mockCtx || !mockCanvas) return;
-  mockDrawBase();
-  if (!mockImage) return;
+      if (!mockCtx || !mockCanvas) return;
+      mockDrawBase();
+      if (!mockImage) return;
 
-  // ----- Global style / pattern settings -------------------------
-  var mode = mockColorModeSelect ? mockColorModeSelect.value : 'single';
-  var c1   = (mockColor1Input && mockColor1Input.value) || '#ffffff';
-  var c2   = (mockColor2Input && mockColor2Input.value) || '#ff0000';
-  var c3   = (mockColor3Input && mockColor3Input.value) || '#00ff00';
+      var mode = mockColorModeSelect ? mockColorModeSelect.value : 'single';
+      var c1   = (mockColor1Input && mockColor1Input.value) || '#ffffff';
+      var c2   = (mockColor2Input && mockColor2Input.value) || '#ff0000';
+      var c3   = (mockColor3Input && mockColor3Input.value) || '#00ff00';
 
-  // Spacing in inches -> pixels
-  var spacingInches = 12;
-  if (mockBulbSpacingSelect) {
-    var sval = parseFloat(mockBulbSpacingSelect.value);
-    if (!isNaN(sval) && sval > 0) spacingInches = sval;
-  }
-  var spacingPx = (spacingInches === 15) ? 28 : 22;
+      var spacingInches = 12;
+      if (mockBulbSpacingSelect) {
+        var sval = parseFloat(mockBulbSpacingSelect.value);
+        if (!isNaN(sval) && sval > 0) spacingInches = sval;
+      }
+      var spacingPx = (spacingInches === 15) ? 28 : 22;
 
-  // Base bulb size (roof / ground)
-  var baseSize = 3.0;
-  if (mockBulbSizeSelect) {
-    var sizeVal = mockBulbSizeSelect.value;
-    if (sizeVal === 'small') baseSize = 2.2;
-    else if (sizeVal === 'medium') baseSize = 3.0;
-    else if (sizeVal === 'large') baseSize = 4.2;
-  }
+      var baseSize = 3.0;
+      if (mockBulbSizeSelect) {
+        var sizeVal = mockBulbSizeSelect.value;
+        if (sizeVal === 'small') baseSize = 2.2;
+        else if (sizeVal === 'medium') baseSize = 3.0;
+        else if (sizeVal === 'large') baseSize = 4.2;
+      }
+      var bulbHeight = baseSize * 2.4;
+      var glowRadius = bulbHeight * 0.9;
+      var showWire   = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
 
-  var showWire = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
+      // LIGHT RUNS
+      for (var i = 0; i < mockSegments.length; i++) {
+        var seg  = mockSegments[i];
+        var from = seg.from;
+        var to   = seg.to;
+        if (!from || !to) continue;
 
-  // Fixed colors for certain run types
-  var TREE_ALWAYS_WHITE   = true;
-  var GROUND_ALWAYS_WHITE = true;
+        var dx = to.x - from.x;
+        var dy = to.y - from.y;
+        var lengthPx = Math.sqrt(dx * dx + dy * dy);
+        if (lengthPx === 0) continue;
 
-  var TREE_BULB_COLOR     = '#ffffff'; // change to warm white later if you like
-  var GROUND_BULB_COLOR   = '#ffffff';
+        // What kind of run is this?
+        var isGround = (seg.type === 'ground');
+        var isTree   = (seg.type === 'tree');
+        var isCurved = isGround && !!seg.curve;
+        var angle    = Math.atan2(dy, dx);
 
-  // How "saggy" smooth ground curves are
-  // 0.10 = gentle, 0.18 = medium, 0.30 = very droopy.
-  var GROUND_CURVE_BULGE_FACTOR = 0.12;
-
-  // Clamp dusk value for safety (0–1)
-  var duskVal = (typeof mockDusk === 'number') ? mockDusk : 0;
-  if (duskVal < 0) duskVal = 0;
-  if (duskVal > 1) duskVal = 1;
-
-  // ----- LIGHT RUNS ------------------------------------------------
-  for (var i = 0; i < mockSegments.length; i++) {
-    var seg  = mockSegments[i];
-    var from = seg.from;
-    var to   = seg.to;
-    if (!from || !to) continue;
-
-    var dx = to.x - from.x;
-    var dy = to.y - from.y;
-    var lengthPx = Math.sqrt(dx * dx + dy * dy);
-    if (lengthPx === 0) continue;
-
-    // What kind of run is this?
-    var isGround = (seg.type === 'ground');
-    var isTree   = (seg.type === 'tree');
-    var isCurved = isGround && !!seg.curve;
-    var angle    = Math.atan2(dy, dx);
-
-    // Wire color by run type
-    var wireColor = '#555555';  // default roof/other
-    if (isGround) {
-      wireColor = '#3a7a3a';    // greenish for ground stakes
-    } else if (isTree) {
-      wireColor = '#5d4037';    // brownish for trunk/branches
-    }
-
-    // Per-run spacing and bulb size
-    var spacingPxSeg = spacingPx;
-    var baseSizeSeg  = baseSize;
-
-    // Trees / shrubs: M6-style mini lights
-    if (isTree) {
-      spacingPxSeg = spacingPx * 0.25;   // tight wrap / net spacing
-      baseSizeSeg  = baseSize * 0.40;    // smaller bulb body
-    }
-
-    // Segment-specific dimensions
-    var bulbHeightSeg = baseSizeSeg * 2.4;
-    var glowRadiusSeg = bulbHeightSeg * 0.9;
-
-    // Wire
-    if (showWire) {
-      mockCtx.beginPath();
-      mockCtx.strokeStyle = wireColor;
-      mockCtx.lineWidth   = 1.2;
-
-      if (isCurved) {
-        var p0 = from;
-        var p2 = to;
-        var mid = {
-          x: (p0.x + p2.x) / 2,
-          y: (p0.y + p2.y) / 2
-        };
-        var bulge = lengthPx * GROUND_CURVE_BULGE_FACTOR;
-        var p1 = { x: mid.x, y: mid.y + bulge };
-
-        mockCtx.moveTo(p0.x, p0.y);
-        var steps = 16;
-        for (var s = 1; s <= steps; s++) {
-          var tWire = s / steps;
-          var inv   = 1 - tWire;
-          var xw = inv * inv * p0.x + 2 * inv * tWire * p1.x + tWire * tWire * p2.x;
-          var yw = inv * inv * p0.y + 2 * inv * tWire * p1.y + tWire * tWire * p2.y;
-          mockCtx.lineTo(xw, yw);
+        // Wire color changes by run type
+        var wireColor = '#555555';  // default for roof/other
+        if (isGround) {
+          wireColor = '#3a7a3a';    // greenish for ground stakes
+        } else if (isTree) {
+          wireColor = '#5d4037';    // brownish for trunk/branches
         }
-      } else {
-        mockCtx.moveTo(from.x, from.y);
-        mockCtx.lineTo(to.x, to.y);
-      }
-      mockCtx.stroke();
-    }
 
-    // How many bulbs on this run?
-    var effectiveLength = lengthPx;
-    var count = Math.max(1, Math.round(effectiveLength / spacingPxSeg));
+        // Per-run spacing and bulb size (start from global)
+        var spacingPxSeg = spacingPx;  // base spacing in pixels
+        var baseSizeSeg  = baseSize;   // base half-width of bulb body
 
-    for (var b = 0; b <= count; b++) {
-      var t = count === 0 ? 0 : b / count;
-      var x, y;
+        // Trees / shrubs: M6-style mini bulbs
+        if (isTree) {
+          // Visual spacing ≈ 6" if roof is at 12":
+          // use half the main spacing for minis
+          spacingPxSeg = spacingPx * 0.5;
 
-      if (isCurved) {
-        // Same curved math as wire
-        var p0b = from;
-        var p2b = to;
-        var midb = {
-          x: (p0b.x + p2b.x) / 2,
-          y: (p0b.y + p2b.y) / 2
-        };
-        var bulgeb = lengthPx * GROUND_CURVE_BULGE_FACTOR;
-        var p1b = { x: midb.x, y: midb.y + bulgeb };
-        var invb = 1 - t;
-        x = invb * invb * p0b.x + 2 * invb * t * p1b.x + t * t * p2b.x;
-        y = invb * invb * p0b.y + 2 * invb * t * p1b.y + t * t * p2b.y;
-      } else {
-        x = from.x + dx * t;
-        y = from.y + dy * t;
-      }
+          // Lock tree bulbs to a small M6 size, independent of
+          // the small/medium/large setting used for roof lines.
+          // Tweak 1.0 up/down if you want smaller/bigger:
+          //   0.8 = ultra tiny, 1.2 = slightly larger
+          baseSizeSeg = 1.0;
+        }
 
-      // ----- COLOR SELECTION ---------------------------------------
-      var color;
+        // Now derive height and glow radius for *this* segment
+        var bulbHeightSeg = baseSizeSeg * 2.4;
+        var glowRadiusSeg = bulbHeightSeg * 0.9;
 
-      // Trees: always bright white (mini lights)
-      if (isTree && TREE_ALWAYS_WHITE) {
-        color = TREE_BULB_COLOR;
-      }
-      // Ground stakes: always bright white
-      else if (isGround && GROUND_ALWAYS_WHITE) {
-        color = GROUND_BULB_COLOR;
-      }
-      // Roof / other runs: follow color mode pattern
-      else {
-        color = c1;
-        if (mode === 'two') {
-          color = (b % 2 === 0) ? c1 : c2;
-        } else if (mode === 'three') {
-          var idx = b % 3;
-          color = (idx === 0) ? c1 : (idx === 1 ? c2 : c3);
+        // Trees / shrubs: M6-style mini lights
+        // - ~1/4 of the roof spacing (".25")
+        // - smaller bulb body so they read as minis
+        if (isTree) {
+          spacingPxSeg = spacingPx * 0.25;  // much tighter spacing for wraps/net
+          baseSizeSeg  = baseSize * 0.40;   // smaller bulb, M6-style
+        }
+
+        var bulbHeightSeg = baseSizeSeg * 2.4;
+        var glowRadiusSeg = bulbHeightSeg * 0.9;
+
+        // Wire
+        if (showWire) {
+          mockCtx.beginPath();
+          if (isCurved) {
+            var p0 = from;
+            var p2 = to;
+            var mid = { x: (p0.x + p2.x) / 2, y: (p0.y + p2.y) / 2 };
+            var bulge = lengthPx * 0.3;
+            var p1 = { x: mid.x, y: mid.y + bulge };
+
+            mockCtx.strokeStyle = wireColor;
+            mockCtx.lineWidth   = 1.2;
+
+            mockCtx.moveTo(p0.x, p0.y);
+            var steps = 16;
+            for (var s = 1; s <= steps; s++) {
+              var tWire = s / steps;
+              var inv   = 1 - tWire;
+              var xw = inv * inv * p0.x + 2 * inv * tWire * p1.x + tWire * tWire * p2.x;
+              var yw = inv * inv * p0.y + 2 * inv * tWire * p1.y + tWire * tWire * p2.y;
+              mockCtx.lineTo(xw, yw);
+            }
+            mockCtx.stroke();
+          } else {
+            mockCtx.strokeStyle = wireColor;
+            mockCtx.lineWidth   = 1.2;
+            mockCtx.moveTo(from.x, from.y);
+            mockCtx.lineTo(to.x, to.y);
+            mockCtx.stroke();
+          }
+        }
+
+        // How many bulbs on this run?
+        var effectiveLength = lengthPx;
+        var count = Math.max(1, Math.round(effectiveLength / spacingPxSeg));
+
+        for (var b = 0; b <= count; b++) {
+          var t = count === 0 ? 0 : b / count;
+          var x, y;
+
+          if (isCurved) {
+            // Same curved math as wire
+            var p0b = from;
+            var p2b = to;
+            var midb = { x: (p0b.x + p2b.x) / 2, y: (p0b.y + p2b.y) / 2 };
+            var bulgeb = lengthPx * 0.3;
+            var p1b = { x: midb.x, y: midb.y + bulgeb };
+            var invb = 1 - t;
+            x = invb * invb * p0b.x + 2 * invb * t * p1b.x + t * t * p2b.x;
+            y = invb * invb * p0b.y + 2 * invb * t * p1b.y + t * t * p2b.y;
+          } else {
+            x = from.x + dx * t;
+            y = from.y + dy * t;
+          }
+
+          // Color pattern (single / 2-color / 3-color)
+          var color = c1;
+          if (mode === 'two') {
+            color = (b % 2 === 0) ? c1 : c2;
+          } else if (mode === 'three') {
+            var idx = b % 3;
+            color = (idx === 0) ? c1 : (idx === 1 ? c2 : c3);
+          }
+
+          mockCtx.save();
+          mockCtx.translate(x, y);
+
+          // Ground stakes are always straight up; others follow the line angle
+          var bulbAngle = isGround ? 0 : angle;
+          mockCtx.rotate(bulbAngle);
+
+          // Glow
+          mockCtx.beginPath();
+          mockCtx.globalAlpha = 0.22;
+          mockCtx.fillStyle   = color;
+          mockCtx.arc(0, 0, glowRadiusSeg, 0, Math.PI * 2, false);
+          mockCtx.fill();
+          mockCtx.globalAlpha = 1;
+
+          // Bulb body
+          mockCtx.beginPath();
+          mockCtx.moveTo(0, -bulbHeightSeg / 2);
+          mockCtx.quadraticCurveTo(baseSizeSeg, 0, 0, bulbHeightSeg / 2);
+          mockCtx.quadraticCurveTo(-baseSizeSeg, 0, 0, -bulbHeightSeg / 2);
+          mockCtx.closePath();
+          mockCtx.fillStyle   = color;
+          mockCtx.strokeStyle = '#f5f5f5';
+          mockCtx.lineWidth   = 0.8;
+          mockCtx.fill();
+          mockCtx.stroke();
+
+          // Socket
+          mockCtx.fillStyle = '#444444';
+          mockCtx.fillRect(
+            -baseSizeSeg * 0.6,
+            bulbHeightSeg / 2,
+            baseSizeSeg * 1.2,
+            baseSizeSeg * 0.6
+          );
+
+          // Stake for ground lights only
+          if (isGround) {
+            var stakeHeight = bulbHeightSeg * 0.9;
+            mockCtx.fillStyle = '#444444';
+            mockCtx.fillRect(
+              -baseSizeSeg * 0.25,
+              bulbHeightSeg / 2 + baseSizeSeg * 0.6,
+              baseSizeSeg * 0.5,
+              stakeHeight
+            );
+          }
+
+          mockCtx.restore();
+        }
+
+        // Show move handles in Adjust mode
+        if (mockMode === 'adjust') {
+          mockCtx.beginPath();
+          mockCtx.fillStyle   = '#00ffff';
+          mockCtx.strokeStyle = '#004b80';
+          mockCtx.lineWidth   = 1;
+          mockCtx.arc(from.x, from.y, 3, 0, Math.PI * 2);
+          mockCtx.fill();
+          mockCtx.stroke();
+
+          mockCtx.beginPath();
+          mockCtx.arc(to.x, to.y, 3, 0, Math.PI * 2);
+          mockCtx.fill();
+          mockCtx.stroke();
         }
       }
-
-      // ----- DRAW BULB AT (x, y) -----------------------------------
-      mockCtx.save();
-      mockCtx.translate(x, y);
-
-      // Ground stakes straight up; others follow line angle
-      var bulbAngle = isGround ? 0 : angle;
-      mockCtx.rotate(bulbAngle);
-
-      // Glow: stronger at night (higher mockDusk)
-      var glowAlpha       = 0.18 + duskVal * 0.35;   // up to ~0.53 at full night
-      if (glowAlpha > 1) glowAlpha = 1;
-      var glowRadiusBoost = 1 + duskVal * 0.40;      // up to 40% larger radius
-
-      mockCtx.beginPath();
-      mockCtx.globalAlpha = glowAlpha;
-      mockCtx.fillStyle   = color;
-      mockCtx.arc(0, 0, glowRadiusSeg * glowRadiusBoost, 0, Math.PI * 2, false);
-      mockCtx.fill();
-      mockCtx.globalAlpha = 1;
-
-      // Bulb body
-      mockCtx.beginPath();
-      mockCtx.moveTo(0, -bulbHeightSeg / 2);
-      mockCtx.quadraticCurveTo(baseSizeSeg, 0, 0, bulbHeightSeg / 2);
-      mockCtx.quadraticCurveTo(-baseSizeSeg, 0, 0, -bulbHeightSeg / 2);
-      mockCtx.closePath();
-      mockCtx.fillStyle   = color;
-      mockCtx.strokeStyle = '#f5f5f5';
-      mockCtx.lineWidth   = 0.8;
-      mockCtx.fill();
-      mockCtx.stroke();
-
-      // Socket
-      mockCtx.fillStyle = '#444444';
-      mockCtx.fillRect(
-        -baseSizeSeg * 0.6,
-        bulbHeightSeg / 2,
-        baseSizeSeg * 1.2,
-        baseSizeSeg * 0.6
-      );
-
-      // Stake for ground lights only
-      if (isGround) {
-        var stakeHeight = bulbHeightSeg * 0.9;
-        mockCtx.fillStyle = '#444444';
-        mockCtx.fillRect(
-          -baseSizeSeg * 0.25,
-          bulbHeightSeg / 2 + baseSizeSeg * 0.6,
-          baseSizeSeg * 0.5,
-          stakeHeight
-        );
-      }
-
-      mockCtx.restore();
-    }
-
-    // Move handles in Adjust mode
-    if (mockMode === 'adjust') {
-      mockCtx.beginPath();
-      mockCtx.fillStyle   = '#00ffff';
-      mockCtx.strokeStyle = '#004b80';
-      mockCtx.lineWidth   = 1;
-      mockCtx.arc(from.x, from.y, 3, 0, Math.PI * 2);
-      mockCtx.fill();
-      mockCtx.stroke();
-
-      mockCtx.beginPath();
-      mockCtx.arc(to.x, to.y, 3, 0, Math.PI * 2);
-      mockCtx.fill();
-      mockCtx.stroke();
-    }
-  }
 }
 
       // DECORATIONS
