@@ -2691,18 +2691,17 @@
     return; // slider not in DOM (safety)
   }
 
-  mockDuskRange.addEventListener('input', function () {
-    // Convert 0–100 slider to 0–1
-    mockDusk = Number(mockDuskRange.value) / 100;
-    mockUpdateDuskLabel();
+ mockDuskRange.addEventListener('input', function () {
+  mockDusk = Number(mockDuskRange.value) / 100;
+  console.log('Slider moved, mockDusk =', mockDusk);
+  mockUpdateDuskLabel();
 
-    // Redraw the full mockup so the overlay updates
-    if (typeof mockRedraw === 'function') {
-      mockRedraw();          // use your existing main redraw function
-    } else if (typeof mockDrawBase === 'function') {
-      mockDrawBase();        // fallback if needed
-    }
-  });
+  if (typeof mockRedraw === 'function') {
+    mockRedraw();
+  } else if (typeof mockDrawBase === 'function') {
+    mockDrawBase();
+  }
+});
 
   // Initialize the label on load
   mockUpdateDuskLabel();
