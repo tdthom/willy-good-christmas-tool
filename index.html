@@ -453,6 +453,19 @@
         <button id="mockup-new-run">End run / start new run</button>
         <button id="mockup-adjust-mode">Adjust lines</button>
         <button id="mockup-clear">Clear all lines</button><br><br>
+       
+      <div class="mock-control-group">          
+        <label for="mockDuskRange">Time of day:</label>
+        <input
+          type="range"
+          id="mockDuskRange"
+          min="0"
+          max="100"
+          value="0"
+          step="1"
+        />
+        <span id="mockDuskLabel">Daylight</span>
+      </div>
 
         <h3 style="margin-top:0.5rem;">Decorations</h3>
         <p class="small-note">
@@ -1491,6 +1504,37 @@
     var MOCK_ZOOM_MIN   = 0.5;
     var MOCK_ZOOM_MAX   = 3;
 
+    // --- Dusk / time-of-day control (globals + helpers) -------------
+    var mockDusk = 0;           // 0 = full daylight, 1 = darkest
+    var mockDuskRange = null;
+    var mockDuskLabel = null;
+
+    function mockUpdateDuskLabel() {
+      if (!mockDuskLabel) return;
+
+      if (mockDusk <= 0.05) {
+        mockDuskLabel.textContent = 'Daylight';
+      } else if (mockDusk < 0.4) {
+        mockDuskLabel.textContent = 'Late afternoon';
+      } else if (mockDusk < 0.7) {
+        mockDuskLabel.textContent = 'Dusk';
+      } else {
+        mockDuskLabel.textContent = 'Night';
+      }
+    }
+
+  function mockApplyDuskOverlay() {
+  if (!mockCanvas || !mockCtx) return;
+  if (!mockDusk || mockDusk <= 0) return; // 0 = no dimming
+
+  mockCtx.save();
+  var alpha = mockDusk * 0.65; // controls how dark "night" gets
+  mockCtx.fillStyle = 'rgba(0, 0, 0, ' + alpha.toFixed(3) + ')';
+  mockCtx.fillRect(0, 0, mockCanvas.width, mockCanvas.height);
+  mockCtx.restore();
+}
+
+
     var mockIsDraggingSegment = false;
     var mockDragSegmentIndex  = -1;
     var mockDragSegmentEnd    = null; // 'from' | 'to'
@@ -1511,18 +1555,23 @@
     }
 
     function mockDrawBase() {
-      if (!mockCtx || !mockCanvas) return;
-      mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
-      if (mockImage && mockDrawParams) {
-        mockCtx.drawImage(
-          mockImage,
-          mockDrawParams.x,
-          mockDrawParams.y,
-          mockDrawParams.w,
-          mockDrawParams.h
-        );
-      }
-    }
+  if (!mockCtx || !mockCanvas) return;
+  mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
+
+  if (mockImage && mockDrawParams) {
+    mockCtx.drawImage(
+      mockImage,
+      mockDrawParams.x,
+      mockDrawParams.y,
+      mockDrawParams.w,
+      mockDrawParams.h
+    );
+  }
+
+  // Apply dusk overlay to the house/background
+  mockApplyDuskOverlay();
+}
+
 
     function mockApplyZoom() {
       if (!mockCanvas) return;
@@ -2634,6 +2683,33 @@
         mockRedraw();
       });
     }
+    // --- Time-of-day slider wiring ----------------------------------
+document.addEventListener('DOMContentLoaded', function () {
+  mockDuskRange = document.getElementById('mockDuskRange');
+  mockDuskLabel = document.getElementById('mockDuskLabel');
+
+  if (!mockDuskRange) {
+    // Slider not present; nothing to do
+    return;
+  }
+
+  mockDuskRange.addEventListener('input', function () {
+    mockDusk = Number(mockDuskRange.value) / 100; // 0–1
+    mockUpdateDuskLabel();
+
+    // Re-render mockup. Use your main redraw function here.
+    // If your code uses a different name, replace mockRedraw() accordingly.
+    if (typeof mockRedraw === 'function') {
+      mockRedraw();
+    } else if (typeof mockDrawBase === 'function') {
+      // fallback if you don't have a combined redraw function
+      mockDrawBase();
+    }
+  });
+
+  // Set initial label text
+  mockUpdateDuskLabel();
+});
 
     console.log('Willy Good Christmas Tool script loaded (ground curves + estimate wiring updated).');
   });
