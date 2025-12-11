@@ -1786,6 +1786,14 @@
         wireColor = '#5d4037';    // brownish for trunk/branches
       }
 
+        // Fixed colors for certain run types
+      var TREE_ALWAYS_WHITE   = true;
+      var GROUND_ALWAYS_WHITE = true;
+
+      // You can tweak these if you want a warmer white later:
+      var TREE_BULB_COLOR   = '#ffffff';
+      var GROUND_BULB_COLOR = '#ffffff';
+
       // Per-run spacing and bulb size (start from global)
       var spacingPxSeg = spacingPx;  // base spacing in pixels
       var baseSizeSeg  = baseSize;   // base half-width of bulb body
@@ -1875,28 +1883,44 @@
           }
 
           // Color pattern (single / 2-color / 3-color)
-          var color = c1;
-          if (mode === 'two') {
-            color = (b % 2 === 0) ? c1 : c2;
-          } else if (mode === 'three') {
-            var idx = b % 3;
-            color = (idx === 0) ? c1 : (idx === 1 ? c2 : c3);
-          }
+        var color;
 
-          mockCtx.save();
-          mockCtx.translate(x, y);
+        // Trees: lock to bright white, ignore roof pattern
+        if (isTree && TREE_ALWAYS_WHITE) {
+        color = TREE_BULB_COLOR;
+        }
+        // Ground stakes: lock to bright white, ignore roof pattern
+        else if (isGround && GROUND_ALWAYS_WHITE) {
+          color = GROUND_BULB_COLOR;
+        }
+        // Roof / other runs: follow the selected pattern
+        else {
+        color = c1;
+
+        if (mode === 'two') {
+          color = (b % 2 === 0) ? c1 : c2;
+        } else if (mode === 'three') {
+          var idx = b % 3;
+          color = (idx === 0) ? c1 : (idx === 1 ? c2 : c3);
+        }
+      }
 
           // Ground stakes are always straight up; others follow the line angle
           var bulbAngle = isGround ? 0 : angle;
           mockCtx.rotate(bulbAngle);
 
-          // Glow
+          // Glow - gets stronger as it gets darker
           mockCtx.beginPath();
-          mockCtx.globalAlpha = 0.22;
-          mockCtx.fillStyle   = color;
-          mockCtx.arc(0, 0, glowRadiusSeg, 0, Math.PI * 2, false);
-          mockCtx.fill();
-          mockCtx.globalAlpha = 1;
+
+        // Base glow a bit lower, then boost by mockDusk (0–1)
+        var glowAlpha        = 0.18 + mockDusk * 0.35;    // 0.18 → 0.53 at full "night"
+        var glowRadiusBoost  = 1 + mockDusk * 0.40;       // up to 40% larger radius at night
+
+        mockCtx.globalAlpha = glowAlpha;
+        mockCtx.fillStyle   = color;
+        mockCtx.arc(0, 0, glowRadiusSeg * glowRadiusBoost, 0, Math.PI * 2, false);
+        mockCtx.fill();
+        mockCtx.globalAlpha = 1;
 
           // Bulb body
           mockCtx.beginPath();
