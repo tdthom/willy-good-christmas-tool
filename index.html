@@ -612,6 +612,23 @@
     // Shared reference to mockup canvas
     var mockCanvas = document.getElementById('mockup-canvas');
 
+    window.addEventListener('load', function () {
+  // Find the slider elements once the page has loaded
+  mockDuskRange = document.getElementById('mockDuskRange');
+  mockDuskLabel = document.getElementById('mockDuskLabel');
+
+  if (mockDuskRange) {
+    mockDuskRange.addEventListener('input', function () {
+      mockDusk = mockDuskRange.value / 100; // 0–1
+      mockUpdateDuskLabel();
+      mockRedraw(); // use your existing redraw function
+    });
+
+    // Set initial label text
+    mockUpdateDuskLabel();
+  }
+});
+
     // ------------------------------------------------------------------
     // CLIENTS
     // ------------------------------------------------------------------
@@ -1565,7 +1582,23 @@
   drawMockGroundStakes();
   drawMockDecorations();
 
-  // (leave any of your existing code that was here)
+ // --- Dusk / time-of-day control ---------------------------------
+var mockDusk = 0;           // 0 = full daylight, 1 = darkest
+var mockDuskRange = null;
+var mockDuskLabel = null;
+
+function mockUpdateDuskLabel() {
+  if (!mockDuskLabel) return;
+
+  if (mockDusk <= 0.05) {
+    mockDuskLabel.textContent = 'Daylight';
+  } else if (mockDusk < 0.4) {
+    mockDuskLabel.textContent = 'Late afternoon';
+  } else if (mockDusk < 0.7) {
+    mockDuskLabel.textContent = 'Dusk';
+  } else {
+    mockDuskLabel.textContent = 'Night';
+  }
 }
 
     function mockApplyZoom() {
