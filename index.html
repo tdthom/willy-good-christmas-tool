@@ -1525,10 +1525,11 @@
 
  function mockApplyDuskOverlay() {
   if (!mockCanvas || !mockCtx) return;
+  if (!mockDusk || mockDusk <= 0) return; // 0 = no dimming
 
   mockCtx.save();
-  // Always dim the background by 50% just for this test
-  mockCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  var alpha = mockDusk * 0.65;
+  mockCtx.fillStyle = 'rgba(0, 0, 0, ' + alpha.toFixed(3) + ')';
   mockCtx.fillRect(0, 0, mockCanvas.width, mockCanvas.height);
   mockCtx.restore();
 }
@@ -2681,31 +2682,29 @@
         mockRedraw();
       });
     }
-    // --- Time-of-day slider wiring ----------------------------------
-document.addEventListener('DOMContentLoaded', function () {
+// --- Time-of-day slider wiring ----------------------------------
+  document.addEventListener('DOMContentLoaded', function () {
   mockDuskRange = document.getElementById('mockDuskRange');
   mockDuskLabel = document.getElementById('mockDuskLabel');
 
   if (!mockDuskRange) {
-    // Slider not present; nothing to do
-    return;
+    return; // slider not in DOM (safety)
   }
 
   mockDuskRange.addEventListener('input', function () {
-    mockDusk = Number(mockDuskRange.value) / 100; // 0–1
+    // Convert 0–100 slider to 0–1
+    mockDusk = Number(mockDuskRange.value) / 100;
     mockUpdateDuskLabel();
 
-    // Re-render mockup. Use your main redraw function here.
-    // If your code uses a different name, replace mockRedraw() accordingly.
+    // Redraw the full mockup so the overlay updates
     if (typeof mockRedraw === 'function') {
-      mockRedraw();
+      mockRedraw();          // use your existing main redraw function
     } else if (typeof mockDrawBase === 'function') {
-      // fallback if you don't have a combined redraw function
-      mockDrawBase();
+      mockDrawBase();        // fallback if needed
     }
   });
 
-  // Set initial label text
+  // Initialize the label on load
   mockUpdateDuskLabel();
 });
 
