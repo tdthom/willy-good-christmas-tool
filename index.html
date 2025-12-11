@@ -2683,27 +2683,35 @@
       });
     }
 // --- Time-of-day slider wiring ----------------------------------
-  document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function () {
+  console.log('Dusk wiring: DOMContentLoaded fired');
+
   mockDuskRange = document.getElementById('mockDuskRange');
   mockDuskLabel = document.getElementById('mockDuskLabel');
 
+  console.log('Dusk wiring: elements found =', mockDuskRange, mockDuskLabel);
+
   if (!mockDuskRange) {
-    return; // slider not in DOM (safety)
+    console.log('Dusk wiring: slider not found, aborting');
+    return;
   }
 
- mockDuskRange.addEventListener('input', function () {
-  mockDusk = Number(mockDuskRange.value) / 100;
-  console.log('Slider moved, mockDusk =', mockDusk);
-  mockUpdateDuskLabel();
+  mockDuskRange.addEventListener('input', function () {
+    mockDusk = Number(mockDuskRange.value) / 100; // 0–1
+    console.log('Dusk wiring: slider moved, mockDusk =', mockDusk);
 
-  if (typeof mockRedraw === 'function') {
-    mockRedraw();
-  } else if (typeof mockDrawBase === 'function') {
-    mockDrawBase();
-  }
-});
+    mockUpdateDuskLabel();
 
-  // Initialize the label on load
+    // Call your main redraw function here.
+    // If your main function is named differently, change mockRedraw() to that name.
+    if (typeof mockRedraw === 'function') {
+      mockRedraw();
+    } else if (typeof mockDrawBase === 'function') {
+      mockDrawBase();
+    }
+  });
+
+  // Set initial label text
   mockUpdateDuskLabel();
 });
 
