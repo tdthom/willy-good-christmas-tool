@@ -2197,41 +2197,43 @@
       }
     }
 
-    // IMAGE LOAD
-    if (mockImageInput && mockCtx && mockCanvas) {
-      mockImageInput.addEventListener('change', function (e) {
-        var file = e.target.files && e.target.files[0];
+        // IMAGE LOAD
+    if (mockImageInput) {
+      mockImageInput.addEventListener('change', function (evt) {
+        var file = evt.target.files && evt.target.files[0];
         if (!file) return;
 
         var reader = new FileReader();
-        reader.onload = function (ev) {
-          var img = new Image();
-          img.onload = function () {
-            mockImage = img;
+        reader.onload = function (loadEvt) {
+          mockImage = new Image();
+          mockImage.onload = function () {
+            if (!mockCanvas) return;
+
+            var iw = mockImage.width;
+            var ih = mockImage.height;
             var cw = mockCanvas.width;
             var ch = mockCanvas.height;
-            var iw = img.width;
-            var ih = img.height;
-            var scale = Math.min(cw / iw, ch / ih);
-            var drawW = iw * scale;
-            var drawH = ih * scale;
-            var offsetX = (cw - drawW) / 2;
-            var offsetY = (ch - drawH) / 2;
 
-            mockDrawParams = { x: offsetX, y: offsetY, w: drawW, h: drawH };
-            mockSegments   = [];
-            mockDecorations = [];
-            mockSelectedDecorId = null;
-            mockLastPoint   = null;
-            mockMode        = 'draw';
-            mockZoom        = 1;
-            mockApplyZoom();
-            mockDrawBase();
-            mockSyncDecorationsToEstimate();
-            mockSetInfo('Photo loaded. Draw runs, place decorations, or adjust.');
+            // Fit the image into the canvas while preserving aspect ratio
+            var scale = Math.min(cw / iw, ch / ih);
+            var w = iw * scale;
+            var h = ih * scale;
+            var x = (cw - w) / 2;
+            var y = (ch - h) / 2;
+
+            mockDrawParams = { x: x, y: y, w: w, h: h };
+
+            // Redraw with the new photo
+            if (typeof mockRedraw === 'function') {
+              mockRedraw();
+            } else if (typeof mockDrawBase === 'function') {
+              mockDrawBase();
+            }
           };
-          img.src = ev.target.result;
+
+          mockImage.src = loadEvt.target.result;
         };
+
         reader.readAsDataURL(file);
       });
     }
