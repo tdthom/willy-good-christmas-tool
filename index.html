@@ -2418,13 +2418,16 @@
       });
     }
 
-        mockSegments = [];
-        mockLastPoint = null;
-        mockMode = 'draw';
-        mockRedraw();
-        mockSetInfo('All light runs cleared. Decorations are untouched.');
-      });
-    }
+    // CLEAR ALL LIGHT RUNS BUTTON
+if (mockClearAllRunsBtn) {
+  mockClearAllRunsBtn.addEventListener('click', function () {
+    mockSegments = [];
+    mockLastPoint = null;
+    mockMode = 'draw';
+    mockRedraw();
+    mockSetInfo('All light runs cleared. Decorations are untouched.');
+  });
+}
 
     // DECORATION BUTTONS
     if (mockDecorPlaceBtn) {
