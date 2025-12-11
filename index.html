@@ -598,6 +598,29 @@
         return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
       });
     }
+      
+    // --- Color helpers for bulb glow ---------------------------------
+    function hexToRgb(hex) {
+      if (!hex) return { r: 255, g: 255, b: 255 };
+      hex = String(hex).replace('#', '');
+      if (hex.length === 3) {
+        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+      }
+      var num = parseInt(hex, 16);
+      if (isNaN(num)) return { r: 255, g: 255, b: 255 };
+      return {
+        r: (num >> 16) & 255,
+        g: (num >> 8) & 255,
+        b: num & 255
+      };
+    }
+
+    function rgbaString(rgb, alpha) {
+      if (!rgb) rgb = { r: 255, g: 255, b: 255 };
+      if (alpha < 0) alpha = 0;
+      if (alpha > 1) alpha = 1;
+      return 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha.toFixed(3) + ')';
+    }
 
     function parseNum(el) {
       return el ? (parseFloat(el.value) || 0) : 0;
@@ -1879,37 +1902,38 @@
       var bulbAngle = isGround ? 0 : angle;
       mockCtx.rotate(bulbAngle);
 
-                // Glow – larger & brighter as it gets darker
+                // Glow – soft radial gradient, brighter at night but not a big blob
           var nightFactor = mockDusk || 0;  // 0 = day, 1 = full night
 
-          // Base radii for glow (around the bulb)
-          var outerRadius = glowRadiusSeg * (1.6 + 0.8 * nightFactor);  // 1.6–2.4x
-          var innerRadius = glowRadiusSeg * (1.1 + 0.4 * nightFactor);  // 1.1–1.5x
+          // Slightly larger radius at night
+          var glowRadius = glowRadiusSeg * (1.2 + 0.6 * nightFactor); // ~1.2x day → 1.8x night
 
-          // Alpha gets stronger as it gets darker
-          var outerAlpha  = 0.06 + 0.20 * nightFactor;  // 0.06–0.26
-          var innerAlpha  = 0.14 + 0.28 * nightFactor;  // 0.14–0.42
+          // Convert bulb color (c1 / c2 / c3) to RGB for the gradient
+          var rgb = hexToRgb(color);
 
-          // Use additive blending so glows "bloom" instead of looking like flat circles
-          mockCtx.globalCompositeOperation = 'lighter';
+          // Build a radial gradient: bright center → soft edge → transparent
+          var grad = mockCtx.createRadialGradient(0, 0, 0, 0, 0, glowRadius);
+          grad.addColorStop(
+            0.0,
+            rgbaString(rgb, 0.45 + 0.25 * nightFactor)  // center, 0.45 → 0.70
+          );
+          grad.addColorStop(
+            0.5,
+            rgbaString(rgb, 0.18 + 0.12 * nightFactor)  // mid ring, 0.18 → 0.30
+          );
+          grad.addColorStop(
+            1.0,
+            rgbaString(rgb, 0.0)                        // fade to transparent
+          );
 
-          // Outer soft glow
+          mockCtx.save();
+          mockCtx.fillStyle = grad;
+          mockCtx.globalAlpha = 1;  // alpha is in the gradient
           mockCtx.beginPath();
-          mockCtx.globalAlpha = outerAlpha;
-          mockCtx.fillStyle   = color;
-          mockCtx.arc(0, 0, outerRadius, 0, Math.PI * 2, false);
+          mockCtx.arc(0, 0, glowRadius, 0, Math.PI * 2, false);
           mockCtx.fill();
-
-          // Inner brighter glow
-          mockCtx.beginPath();
-          mockCtx.globalAlpha = innerAlpha;
-          mockCtx.arc(0, 0, innerRadius, 0, Math.PI * 2, false);
-          mockCtx.fill();
-
-          // Reset state for the solid bulb body that comes next
-          mockCtx.globalAlpha = 1;
-          mockCtx.globalCompositeOperation = 'source-over';
-
+          mockCtx.restore();
+  
 
       // --- Bulb body --------------------------------------------------
       mockCtx.beginPath();
