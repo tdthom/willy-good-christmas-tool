@@ -1523,17 +1523,15 @@
       }
     }
 
-  function mockApplyDuskOverlay() {
+ function mockApplyDuskOverlay() {
   if (!mockCanvas || !mockCtx) return;
-  if (!mockDusk || mockDusk <= 0) return; // 0 = no dimming
 
   mockCtx.save();
-  var alpha = mockDusk * 0.65; // controls how dark "night" gets
-  mockCtx.fillStyle = 'rgba(0, 0, 0, ' + alpha.toFixed(3) + ')';
+  // Always dim the background by 50% just for this test
+  mockCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
   mockCtx.fillRect(0, 0, mockCanvas.width, mockCanvas.height);
   mockCtx.restore();
 }
-
 
     var mockIsDraggingSegment = false;
     var mockDragSegmentIndex  = -1;
