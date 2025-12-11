@@ -1902,37 +1902,37 @@
       var bulbAngle = isGround ? 0 : angle;
       mockCtx.rotate(bulbAngle);
 
-                // Glow – soft radial gradient, brighter at night but not a big blob
-          var nightFactor = mockDusk || 0;  // 0 = day, 1 = full night
+               // Glow – tight glow that gets stronger at night (no huge halo)
+      var nightFactor = mockDusk || 0;  // 0 = day, 1 = full night
 
-          // Slightly larger radius at night
-          var glowRadius = glowRadiusSeg * (1.2 + 0.6 * nightFactor); // ~1.2x day → 1.8x night
+      // Keep the glow fairly compact: small bump in size at night
+      var glowOuterR = glowRadiusSeg * (1.0 + 0.40 * nightFactor); // 1.0x day → 1.4x night
 
-          // Convert bulb color (c1 / c2 / c3) to RGB for the gradient
-          var rgb = hexToRgb(color);
+      // Convert bulb color (c1 / c2 / c3) to RGB for the gradient
+      var rgb = hexToRgb(color);
 
-          // Build a radial gradient: bright center → soft edge → transparent
-          var grad = mockCtx.createRadialGradient(0, 0, 0, 0, 0, glowRadius);
-          grad.addColorStop(
-            0.0,
-            rgbaString(rgb, 0.45 + 0.25 * nightFactor)  // center, 0.45 → 0.70
-          );
-          grad.addColorStop(
-            0.5,
-            rgbaString(rgb, 0.18 + 0.12 * nightFactor)  // mid ring, 0.18 → 0.30
-          );
-          grad.addColorStop(
-            1.0,
-            rgbaString(rgb, 0.0)                        // fade to transparent
-          );
+      // Radial gradient: bright core → softer edge → transparent
+      var grad = mockCtx.createRadialGradient(0, 0, 0, 0, 0, glowOuterR);
+      grad.addColorStop(
+        0.0,
+        rgbaString(rgb, 0.35 + 0.35 * nightFactor)   // center, 0.35 → 0.70
+      );
+      grad.addColorStop(
+        0.5,
+        rgbaString(rgb, 0.10 + 0.10 * nightFactor)   // mid ring, 0.10 → 0.20
+      );
+      grad.addColorStop(
+        1.0,
+        rgbaString(rgb, 0.0)                         // fade out to nothing
+      );
 
-          mockCtx.save();
-          mockCtx.fillStyle = grad;
-          mockCtx.globalAlpha = 1;  // alpha is in the gradient
-          mockCtx.beginPath();
-          mockCtx.arc(0, 0, glowRadius, 0, Math.PI * 2, false);
-          mockCtx.fill();
-          mockCtx.restore();
+      mockCtx.save();
+      mockCtx.fillStyle = grad;
+      mockCtx.globalAlpha = 1; // alpha controlled by the gradient
+      mockCtx.beginPath();
+      mockCtx.arc(0, 0, glowOuterR, 0, Math.PI * 2, false);
+      mockCtx.fill();
+      mockCtx.restore();
   
 
       // --- Bulb body --------------------------------------------------
@@ -1948,11 +1948,12 @@
       mockCtx.stroke();
 
       // Small white core at dusk/night for extra punch
+      var duskFactor = nightFactor;  // reuse the same 0–1 value
       if (duskFactor > 0.3) {
         mockCtx.beginPath();
-        mockCtx.globalAlpha = 0.18 * duskFactor;
+        mockCtx.globalAlpha = 0.10 + 0.18 * (duskFactor - 0.3) / 0.7; // ramps from ~0.10 to ~0.28
         mockCtx.fillStyle = '#ffffff';
-        mockCtx.arc(0, -bulbHeightSeg * 0.1, baseSizeSeg * 0.6, 0, Math.PI * 2);
+        mockCtx.arc(0, -bulbHeightSeg * 0.1, baseSizeSeg * 0.55, 0, Math.PI * 2);
         mockCtx.fill();
         mockCtx.globalAlpha = 1;
       }
