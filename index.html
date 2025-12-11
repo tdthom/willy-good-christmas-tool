@@ -1732,7 +1732,7 @@
       return deco;
     }
 
-      function mockRedraw() {
+    function mockRedraw() {
       if (!mockCtx || !mockCanvas) return;
       mockDrawBase();
       if (!mockImage) return;
@@ -1760,7 +1760,7 @@
       var glowRadius = bulbHeight * 0.9;
       var showWire   = !mockShowWireCheckbox || mockShowWireCheckbox.checked;
 
-      // LIGHT RUNS
+           // LIGHT RUNS
       for (var i = 0; i < mockSegments.length; i++) {
         var seg  = mockSegments[i];
         var from = seg.from;
@@ -1772,48 +1772,49 @@
         var lengthPx = Math.sqrt(dx * dx + dy * dy);
         if (lengthPx === 0) continue;
 
-        // What kind of run is this?
-        var isGround = (seg.type === 'ground');
-        var isTree   = (seg.type === 'tree');
-        var isCurved = isGround && !!seg.curve;
-        var angle    = Math.atan2(dy, dx);
+           // What kind of run is this?
+      var isGround = (seg.type === 'ground');
+      var isTree   = (seg.type === 'tree');
+      var isCurved = isGround && !!seg.curve;
+      var angle    = Math.atan2(dy, dx);
 
-        // Wire color changes by run type
-        var wireColor = '#555555';  // default for roof/other
-        if (isGround) {
-          wireColor = '#3a7a3a';    // greenish for ground stakes
-        } else if (isTree) {
-          wireColor = '#5d4037';    // brownish for trunk/branches
-        }
+      // Wire color changes by run type
+      var wireColor = '#555555';  // default for roof/other
+      if (isGround) {
+        wireColor = '#3a7a3a';    // greenish for ground stakes
+      } else if (isTree) {
+        wireColor = '#5d4037';    // brownish for trunk/branches
+      }
 
-        // Per-run spacing and bulb size (start from global)
-        var spacingPxSeg = spacingPx;  // base spacing in pixels
-        var baseSizeSeg  = baseSize;   // base half-width of bulb body
+      // Per-run spacing and bulb size (start from global)
+      var spacingPxSeg = spacingPx;  // base spacing in pixels
+      var baseSizeSeg  = baseSize;   // base half-width of bulb body
 
-        // Trees / shrubs: M6-style mini bulbs
-        if (isTree) {
-          // Visual spacing ≈ 6" if roof is at 12":
-          // use half the main spacing for minis
-          spacingPxSeg = spacingPx * 0.5;
+      // Trees / shrubs: M6-style mini bulbs
+      if (isTree) {
+        // Visual spacing ≈ 6" if roof is at 12":
+        // use half the main spacing for minis
+        spacingPxSeg = spacingPx * 0.5;
 
-          // Lock tree bulbs to a small M6 size, independent of
-          // the small/medium/large setting used for roof lines.
-          // Tweak 1.0 up/down if you want smaller/bigger:
-          //   0.8 = ultra tiny, 1.2 = slightly larger
-          baseSizeSeg = 1.0;
-        }
+        // Lock tree bulbs to a small M6 size, independent of
+        // the small/medium/large setting used for roof lines.
+        // Tweak 1.0 up/down if you want smaller/bigger:
+        //   0.8 = ultra tiny, 1.2 = slightly larger
+        baseSizeSeg = 1.0;
+      }
 
-        // Now derive height and glow radius for *this* segment
-        var bulbHeightSeg = baseSizeSeg * 2.4;
-        var glowRadiusSeg = bulbHeightSeg * 0.9;
+      // Now derive height and glow radius for *this* segment
+      var bulbHeightSeg = baseSizeSeg * 2.4;
+      var glowRadiusSeg = bulbHeightSeg * 0.9;
 
-        // Trees / shrubs: M6-style mini lights
-        // - ~1/4 of the roof spacing (".25")
-        // - smaller bulb body so they read as minis
-        if (isTree) {
-          spacingPxSeg = spacingPx * 0.25;  // much tighter spacing for wraps/net
-          baseSizeSeg  = baseSize * 0.40;   // smaller bulb, M6-style
-        }
+
+      // Trees / shrubs: M6-style mini lights
+      // - ~1/4 of the roof spacing (".25")
+      // - smaller bulb body so they read as minis
+      if (isTree) {
+        spacingPxSeg = spacingPx * 0.25;  // much tighter spacing for wraps/net
+        baseSizeSeg  = baseSize * 0.40;   // smaller bulb, M6-style
+      }
 
         var bulbHeightSeg = baseSizeSeg * 2.4;
         var glowRadiusSeg = bulbHeightSeg * 0.9;
@@ -1825,7 +1826,7 @@
             var p0 = from;
             var p2 = to;
             var mid = { x: (p0.x + p2.x) / 2, y: (p0.y + p2.y) / 2 };
-            var bulge = lengthPx * 0.3;
+            var bulge = lengthPx * GROUND_CURVE_BULGE_FACTOR;
             var p1 = { x: mid.x, y: mid.y + bulge };
 
             mockCtx.strokeStyle = wireColor;
@@ -1863,7 +1864,7 @@
             var p0b = from;
             var p2b = to;
             var midb = { x: (p0b.x + p2b.x) / 2, y: (p0b.y + p2b.y) / 2 };
-            var bulgeb = lengthPx * 0.3;
+            var bulgeb = lengthPx * GROUND_CURVE_BULGE_FACTOR;
             var p1b = { x: midb.x, y: midb.y + bulgeb };
             var invb = 1 - t;
             x = invb * invb * p0b.x + 2 * invb * t * p1b.x + t * t * p2b.x;
@@ -1933,6 +1934,10 @@
           mockCtx.restore();
         }
 
+        // How "saggy" curved ground runs are.
+      // 0.10 = gentle, 0.18 = medium, 0.30 = very droopy.
+      var GROUND_CURVE_BULGE_FACTOR = 0.12;  // try 0.15 first
+        
         // Show move handles in Adjust mode
         if (mockMode === 'adjust') {
           mockCtx.beginPath();
@@ -1949,7 +1954,6 @@
           mockCtx.stroke();
         }
       }
-}
 
       // DECORATIONS
       for (var d = 0; d < mockDecorations.length; d++) {
@@ -2197,47 +2201,44 @@
       }
     }
 
-          // IMAGE LOAD
-    if (mockImageInput) {
-      mockImageInput.addEventListener('change', function (evt) {
-        var file = evt.target.files && evt.target.files[0];
+    // IMAGE LOAD
+    if (mockImageInput && mockCtx && mockCanvas) {
+      mockImageInput.addEventListener('change', function (e) {
+        var file = e.target.files && e.target.files[0];
         if (!file) return;
 
         var reader = new FileReader();
-        reader.onload = function (loadEvt) {
-          mockImage = new Image();
-          mockImage.onload = function () {
-            if (!mockCanvas) return;
-
-            var iw = mockImage.width;
-            var ih = mockImage.height;
+        reader.onload = function (ev) {
+          var img = new Image();
+          img.onload = function () {
+            mockImage = img;
             var cw = mockCanvas.width;
             var ch = mockCanvas.height;
-
-            // Fit the image into the canvas while preserving aspect ratio
+            var iw = img.width;
+            var ih = img.height;
             var scale = Math.min(cw / iw, ch / ih);
-            var w = iw * scale;
-            var h = ih * scale;
-            var x = (cw - w) / 2;
-            var y = (ch - h) / 2;
+            var drawW = iw * scale;
+            var drawH = ih * scale;
+            var offsetX = (cw - drawW) / 2;
+            var offsetY = (ch - drawH) / 2;
 
-            mockDrawParams = { x: x, y: y, w: w, h: h };
-
-            // Redraw with the new photo
-            if (typeof mockRedraw === 'function') {
-              mockRedraw();
-            } else if (typeof mockDrawBase === 'function') {
-              mockDrawBase();
-            }
+            mockDrawParams = { x: offsetX, y: offsetY, w: drawW, h: drawH };
+            mockSegments   = [];
+            mockDecorations = [];
+            mockSelectedDecorId = null;
+            mockLastPoint   = null;
+            mockMode        = 'draw';
+            mockZoom        = 1;
+            mockApplyZoom();
+            mockDrawBase();
+            mockSyncDecorationsToEstimate();
+            mockSetInfo('Photo loaded. Draw runs, place decorations, or adjust.');
           };
-
-          mockImage.src = loadEvt.target.result;
+          img.src = ev.target.result;
         };
-
         reader.readAsDataURL(file);
       });
     }
-
 
     if (mockCanvas && mockCtx) {
       mockCanvas.addEventListener('click', function (evt) {
