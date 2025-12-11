@@ -499,37 +499,6 @@
         <br><br>
       </div>
 
-      <div id="mock-controls">
-  <div class="mock-control-group">
-    <!-- existing controls here -->
-  </div>
-
-  <!-- paste your new dusk slider here -->
-  <div class="mock-control-group">
-    <label for="mockDuskRange">Time of day:</label>
-    <input
-      type="range"
-      id="mockDuskRange"
-      min="0"
-      max="100"
-      value="0"
-      step="1"
-    />
-    <span id="mockDuskLabel">Daylight</span>
-  </div>
-  <div class="mock-control-group">
-  <label for="mockDuskRange">Time of day:</label>
-  <input
-    type="range"
-    id="mockDuskRange"
-    min="0"
-    max="100"
-    value="0"
-    step="1"
-  />
-  <span id="mockDuskLabel">Daylight</span>
-</div>
-
       <!-- Canvas column -->
       <div style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff;">
         <canvas
@@ -623,23 +592,6 @@
 
     // Shared reference to mockup canvas
     var mockCanvas = document.getElementById('mockup-canvas');
-
-    window.addEventListener('load', function () {
-  // Find the slider elements once the page has loaded
-  mockDuskRange = document.getElementById('mockDuskRange');
-  mockDuskLabel = document.getElementById('mockDuskLabel');
-
-  if (mockDuskRange) {
-    mockDuskRange.addEventListener('input', function () {
-      mockDusk = mockDuskRange.value / 100; // 0–1
-      mockUpdateDuskLabel();
-      mockRedraw(); // use your existing redraw function
-    });
-
-    // Set initial label text
-    mockUpdateDuskLabel();
-  }
-});
 
     // ------------------------------------------------------------------
     // CLIENTS
@@ -1538,35 +1490,6 @@
     var mockZoom        = 1;
     var MOCK_ZOOM_MIN   = 0.5;
     var MOCK_ZOOM_MAX   = 3;
-    // --- Dusk / time-of-day control (globals + helpers) -------------
-var mockDusk = 0;           // 0 = full daylight, 1 = darkest
-var mockDuskRange = null;
-var mockDuskLabel = null;
-
-function mockUpdateDuskLabel() {
-  if (!mockDuskLabel) return;
-
-  if (mockDusk <= 0.05) {
-    mockDuskLabel.textContent = 'Daylight';
-  } else if (mockDusk < 0.4) {
-    mockDuskLabel.textContent = 'Late afternoon';
-  } else if (mockDusk < 0.7) {
-    mockDuskLabel.textContent = 'Dusk';
-  } else {
-    mockDuskLabel.textContent = 'Night';
-  }
-}
-
-function mockApplyDuskOverlay() {
-  if (!mockCanvas || !mockCtx) return;
-  if (!mockDusk || mockDusk <= 0) return; // 0 = no dimming
-
-  mockCtx.save();
-  var alpha = mockDusk * 0.65; // how dark "night" gets; tweak as needed
-  mockCtx.fillStyle = 'rgba(0, 0, 0, ' + alpha.toFixed(3) + ')';
-  mockCtx.fillRect(0, 0, mockCanvas.width, mockCanvas.height);
-  mockCtx.restore();
-}
 
     var mockIsDraggingSegment = false;
     var mockDragSegmentIndex  = -1;
@@ -1600,47 +1523,6 @@ function mockApplyDuskOverlay() {
         );
       }
     }
-    function mockRedraw() {
-  if (!mockCtx || !mockCanvas) return;
-
-  mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
-
-  // 1) draw the house photo
-  if (mockPhotoImage && mockPhotoLoaded) {
-    mockCtx.drawImage(
-      mockPhotoImage,
-      0, 0,
-      mockCanvas.width,
-      mockCanvas.height
-    );
-  }
-
-  // ⭐ NEW: dim the background/house based on slider
-  mockApplyDuskOverlay();
-
-  // 2) draw lights and decorations on top so they stay bright
-  drawMockLightStrings();
-  drawMockGroundStakes();
-  drawMockDecorations();
-
- // --- Dusk / time-of-day control ---------------------------------
-var mockDusk = 0;           // 0 = full daylight, 1 = darkest
-var mockDuskRange = null;
-var mockDuskLabel = null;
-
-function mockUpdateDuskLabel() {
-  if (!mockDuskLabel) return;
-
-  if (mockDusk <= 0.05) {
-    mockDuskLabel.textContent = 'Daylight';
-  } else if (mockDusk < 0.4) {
-    mockDuskLabel.textContent = 'Late afternoon';
-  } else if (mockDusk < 0.7) {
-    mockDuskLabel.textContent = 'Dusk';
-  } else {
-    mockDuskLabel.textContent = 'Night';
-  }
-}
 
     function mockApplyZoom() {
       if (!mockCanvas) return;
@@ -2446,81 +2328,315 @@ function mockUpdateDuskLabel() {
       document.addEventListener('mouseup', handleMockCanvasMouseUpOrLeave);
     }
 
-      // LIGHT RUNS CONTROL BUTTONS
-  if (mockUndoBtn) {
-    mockUndoBtn.addEventListener('click', function () {
-      if (!mockSegments.length) {
-        mockSetInfo('No segments to undo.');
-        return;
-      }
-      mockSegments.pop();
-      if (mockSegments.length > 0) {
-        var lastSeg = mockSegments[mockSegments.length - 1];
-        mockLastPoint = { x: lastSeg.to.x, y: lastSeg.to.y };
-      } else {
+    // LIGHT RUNS CONTROL BUTTONS
+    if (mockUndoBtn) {
+      mockUndoBtn.addEventListener('click', function () {
+        if (!mockSegments.length) {
+          mockSetInfo('No segments to undo.');
+          return;
+        }
+        mockSegments.pop();
+        if (mockSegments.length > 0) {
+          var lastSeg = mockSegments[mockSegments.length - 1];
+          mockLastPoint = { x: lastSeg.to.x, y: lastSeg.to.y };
+        } else {
+          mockLastPoint = null;
+        }
+        mockMode = 'draw';
+        mockRedraw();
+        mockSetInfo('Last segment removed. Back in draw mode.');
+      });
+    }
+
+    if (mockNewRunBtn) {
+      mockNewRunBtn.addEventListener('click', function () {
         mockLastPoint = null;
-      }
-      mockMode = 'draw';
-      mockRedraw();
-      mockSetInfo('Last segment removed. Back in draw mode.');
-    });
-  }
+        mockMode = 'draw';
+        mockSetInfo('New run started. Next click will begin a fresh light run.');
+        mockRedraw();
+      });
+    }
 
-  if (mockNewRunBtn) {
-    mockNewRunBtn.addEventListener('click', function () {
-      mockLastPoint = null;
-      mockMode = 'draw';
-      mockSetInfo('New run started. Next click will begin a fresh light run.');
-      mockRedraw();
-    });
-  }
+    if (mockAdjustBtn) {
+      mockAdjustBtn.addEventListener('click', function () {
+        if (!mockImage) {
+          mockSetInfo('Upload a photo first.');
+          return;
+        }
+        if (!mockSegments.length) {
+          mockSetInfo('Draw some runs first, then adjust.');
+          return;
+        }
+        mockMode = 'adjust';
+        mockLastPoint = null;
+        mockSetInfo('Adjust mode: drag the cyan end points to fine-tune your runs.');
+        mockRedraw();
+      });
+    }
 
-  if (mockAdjustBtn) {
-    mockAdjustBtn.addEventListener('click', function () {
-      if (!mockImage) {
-        mockSetInfo('Upload a photo first.');
-        return;
-      }
-      if (!mockSegments.length) {
-        mockSetInfo('Draw some runs first, then adjust.');
-        return;
-      }
-      mockMode = 'adjust';
-      mockLastPoint = null;
-      mockSetInfo('Adjust mode: drag the cyan end points to fine-tune your runs.');
-      mockRedraw();
-    });
-  }
+    if (mockClearBtn) {
+      mockClearBtn.addEventListener('click', function () {
+        mockSegments = [];
+        mockLastPoint = null;
+        mockMode = 'draw';
+        mockRedraw();
+        mockSetInfo('All light runs cleared. Decorations are untouched.');
+      });
+    }
 
-  // CLEAR ALL LIGHT RUNS BUTTON
-  if (mockClearAllRunsBtn) {
-    mockClearAllRunsBtn.addEventListener('click', function () {
-      mockSegments = [];
-      mockLastPoint = null;
-      mockMode = 'draw';
-      mockRedraw();
-      mockSetInfo('All light runs cleared. Decorations are untouched.');
-    });
-  }
+    // DECORATION BUTTONS
+    if (mockDecorPlaceBtn) {
+      mockDecorPlaceBtn.addEventListener('click', function () {
+        if (!mockImage) {
+          mockSetInfo('Upload a photo first.');
+          return;
+        }
+        mockMode = 'decor-add';
+        mockLastPoint = null;
+        mockSetInfo('Decoration placement mode: click on the photo to drop icons.');
+      });
+    }
 
-  // --- Dusk / time-of-day control wiring -------------------------
-  mockDuskRange = document.getElementById('mockDuskRange');
-  mockDuskLabel = document.getElementById('mockDuskLabel');
+    if (mockDecorEditBtn) {
+      mockDecorEditBtn.addEventListener('click', function () {
+        if (!mockImage) {
+          mockSetInfo('Upload a photo first.');
+          return;
+        }
+        if (!mockDecorations.length) {
+          mockSetInfo('No decorations yet. Use "Place decorations" first.');
+          return;
+        }
+        mockMode = 'decor-edit';
+        mockLastPoint = null;
+        mockSetInfo('Edit decorations: click/drag to move, drag the cyan square to resize.');
+        mockRedraw();
+      });
+    }
 
-  if (mockDuskRange) {
-    mockDuskRange.addEventListener('input', function () {
-      mockDusk = mockDuskRange.value / 100; // 0–1
-      mockUpdateDuskLabel();
-      mockRedraw(); // update the canvas
-    });
+    if (mockDecorDeleteBtn) {
+      mockDecorDeleteBtn.addEventListener('click', deleteSelectedDecoration);
+    }
 
-    // initial label
-    mockUpdateDuskLabel();
-  }
+    if (mockDecorClearBtn) {
+      mockDecorClearBtn.addEventListener('click', function () {
+        if (!mockDecorations.length) {
+          mockSetInfo('There are no decorations to clear.');
+          return;
+        }
+        mockDecorations = [];
+        mockSelectedDecorId = null;
+        mockSyncDecorationsToEstimate();
+        mockRedraw();
+        mockSetInfo('All decorations cleared.');
+      });
+    }
 
-  console.log('Willy Good Christmas Tool script loaded (ground curves + estimate wiring updated).');
-}); // <-- closes document.addEventListener('DOMContentLoaded', ...)
+    if (decorSmallerBtn) {
+      decorSmallerBtn.addEventListener('click', function () {
+        var deco = getSelectedDecoration();
+        if (!deco) return;
+        var size = deco.size || 1;
+        size -= 0.15;
+        if (size < 0.4) size = 0.4;
+        deco.size = size;
+        mockRedraw();
+        mockSetInfo('Decoration made smaller.');
+      });
+    }
 
+    if (decorBiggerBtn) {
+      decorBiggerBtn.addEventListener('click', function () {
+        var deco = getSelectedDecoration();
+        if (!deco) return;
+        var size = deco.size || 1;
+        size += 0.15;
+        if (size > 3.0) size = 3.0;
+        deco.size = size;
+        mockRedraw();
+        mockSetInfo('Decoration made bigger.');
+      });
+    }
+
+    if (decorRotateLeftBtn) {
+      decorRotateLeftBtn.addEventListener('click', function () {
+        var deco = getSelectedDecoration();
+        if (!deco) return;
+        var current = deco.rotation || 0;
+        deco.rotation = current - Math.PI / 12;
+        mockRedraw();
+        mockSetInfo('Decoration rotated left.');
+      });
+    }
+
+    if (decorRotateRightBtn) {
+      decorRotateRightBtn.addEventListener('click', function () {
+        var deco = getSelectedDecoration();
+        if (!deco) return;
+        var current = deco.rotation || 0;
+        deco.rotation = current + Math.PI / 12;
+        mockRedraw();
+        mockSetInfo('Decoration rotated right.');
+      });
+    }
+
+    // GROUND CURVE TOGGLE – per-run only
+    if (groundCurveToggle) {
+      groundCurveToggle.addEventListener('change', function () {
+        mockGroundCurveEnabled = !!groundCurveToggle.checked;
+        mockSetInfo(
+          mockGroundCurveEnabled
+            ? 'Curve ON: any new ground stake runs you draw will be curved. Existing ones stay as drawn.'
+            : 'Curve OFF: any new ground stake runs will be straight. Existing ones do not change.'
+        );
+        mockRedraw();
+      });
+    }
+
+    // CUSTOM DECOR IMAGE
+    if (decorImageInput) {
+      decorImageInput.addEventListener('change', function (e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) {
+          mockCustomDecorImage = null;
+          mockSetInfo('Custom decoration image cleared.');
+          return;
+        }
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+          var img = new Image();
+          img.onload = function () {
+            mockCustomDecorImage = img;
+            mockSetInfo('Custom decoration image loaded. Choose "Custom image decoration" and place it on the photo.');
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+        // TREE / SHRUB LIGHTS – use line runs with mini-bulbs
+    if (treeTraceBtn) {
+      treeTraceBtn.addEventListener('click', function () {
+        if (!mockImage) {
+          mockSetInfo('Upload a front photo first, then add tree / shrub lights.');
+          return;
+        }
+        // Force run type to Trees / bushes and start a fresh run
+        if (mockRunTypeSelect) {
+          mockRunTypeSelect.value = 'tree';
+        }
+        mockLastPoint = null;
+        mockMode = 'draw';
+        mockSetInfo(
+          'Tree / shrub lights: with "Run type: Trees / bushes" selected, click along the trunk and branches, ' +
+          'or zig-zag across shrubs. These runs use smaller, denser bulbs to mimic wrap and net lights.'
+        );
+        mockRedraw();
+      });
+    }
+
+    if (treeTraceUndoBtn) {
+      treeTraceUndoBtn.addEventListener('click', function () {
+        if (!mockSegments.length) {
+          mockSetInfo('No tree / shrub runs to undo yet.');
+          return;
+        }
+        // Remove last segment whose type is "tree"
+        for (var i = mockSegments.length - 1; i >= 0; i--) {
+          if (mockSegments[i].type === 'tree') {
+            mockSegments.splice(i, 1);
+            mockLastPoint = null;
+            mockSetInfo('Last tree / shrub run removed.');
+            mockRedraw();
+            return;
+          }
+        }
+        mockSetInfo('No tree / shrub runs found – draw some with the Tree / shrub button first.');
+      });
+    }
+
+    if (treeTraceClearBtn) {
+      treeTraceClearBtn.addEventListener('click', function () {
+        if (!mockSegments.length) {
+          mockSetInfo('No tree / shrub runs to clear.');
+          return;
+        }
+        var hadTree = false;
+        var remaining = [];
+        for (var i = 0; i < mockSegments.length; i++) {
+          if (mockSegments[i].type === 'tree') {
+            hadTree = true;
+          } else {
+            remaining.push(mockSegments[i]);
+          }
+        }
+        if (!hadTree) {
+          mockSetInfo('No tree / shrub runs found – nothing to clear.');
+          return;
+        }
+        mockSegments = remaining;
+        mockLastPoint = null;
+        mockSetInfo('All tree / shrub runs cleared. Roof and ground runs are unchanged.');
+        mockRedraw();
+      });
+    }
+
+    // ZOOM
+    if (mockZoomInBtn) {
+      mockZoomInBtn.addEventListener('click', function () {
+        mockZoom = Math.min(mockZoom + 0.25, MOCK_ZOOM_MAX);
+        mockApplyZoom();
+      });
+    }
+
+    if (mockZoomOutBtn) {
+      mockZoomOutBtn.addEventListener('click', function () {
+        mockZoom = Math.max(mockZoom - 0.25, MOCK_ZOOM_MIN);
+        mockApplyZoom();
+      });
+    }
+
+    // REDRAW ON STYLE CHANGES
+    function mockAttachRedrawControl(el) {
+      if (!el) return;
+      el.addEventListener('change', mockRedraw);
+    }
+    mockAttachRedrawControl(mockColorModeSelect);
+    mockAttachRedrawControl(mockColor1Input);
+    mockAttachRedrawControl(mockColor2Input);
+    mockAttachRedrawControl(mockColor3Input);
+    mockAttachRedrawControl(mockBulbSpacingSelect);
+    mockAttachRedrawControl(mockBulbSizeSelect);
+    mockAttachRedrawControl(mockShowWireCheckbox);
+
+    if (mockRunTypeSelect) {
+      mockRunTypeSelect.addEventListener('change', function () {
+        mockLastPoint = null;
+        mockMode = 'draw';
+        mockSetInfo('Run type changed. Next click will start a new run with this type.');
+        mockRedraw();
+      });
+    }
+
+    // PRINT MOCKUP (hide handles)
+    if (mockPrintBtn) {
+      mockPrintBtn.addEventListener('click', function () {
+        if (!mockCanvas) {
+          window.print();
+          return;
+        }
+        var prevMode = mockMode;
+        mockMode = 'draw';
+        mockRedraw();
+        window.print();
+        mockMode = prevMode;
+        mockRedraw();
+      });
+    }
+
+    console.log('Willy Good Christmas Tool script loaded (ground curves + estimate wiring updated).');
+  });
   </script>
 </body>
 </html>
