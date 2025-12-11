@@ -1525,6 +1525,7 @@
 
  function mockApplyDuskOverlay() {
   if (!mockCanvas || !mockCtx) return;
+   
   if (!mockDusk || mockDusk <= 0) return; // 0 = no dimming
 
   mockCtx.save();
@@ -1554,10 +1555,10 @@
     }
 
     function mockDrawBase() {
-  if (!mockCtx || !mockCanvas) return;
-  mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
+    if (!mockCtx || !mockCanvas) return;
+    mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
 
-  if (mockImage && mockDrawParams) {
+    if (mockImage && mockDrawParams) {
     mockCtx.drawImage(
       mockImage,
       mockDrawParams.x,
@@ -2682,28 +2683,29 @@
         mockRedraw();
       });
     }
-// --- Time-of-day slider wiring ----------------------------------
-document.addEventListener('DOMContentLoaded', function () {
-  console.log('Dusk wiring: DOMContentLoaded fired');
+    
+// --- Time-of-day slider initialization --------------------------
+function mockInitDuskSlider() {
+  console.log('mockInitDuskSlider running, readyState =', document.readyState);
 
   mockDuskRange = document.getElementById('mockDuskRange');
   mockDuskLabel = document.getElementById('mockDuskLabel');
 
-  console.log('Dusk wiring: elements found =', mockDuskRange, mockDuskLabel);
+  console.log('mockInitDuskSlider elements =', mockDuskRange, mockDuskLabel);
 
   if (!mockDuskRange) {
-    console.log('Dusk wiring: slider not found, aborting');
+    console.log('mockInitDuskSlider: slider not found, aborting');
     return;
   }
 
   mockDuskRange.addEventListener('input', function () {
     mockDusk = Number(mockDuskRange.value) / 100; // 0–1
-    console.log('Dusk wiring: slider moved, mockDusk =', mockDusk);
+    console.log('mockInitDuskSlider: slider moved, mockDusk =', mockDusk);
 
     mockUpdateDuskLabel();
 
-    // Call your main redraw function here.
-    // If your main function is named differently, change mockRedraw() to that name.
+    // Use your main redraw function here.
+    // If your main redraw is named differently, change this line:
     if (typeof mockRedraw === 'function') {
       mockRedraw();
     } else if (typeof mockDrawBase === 'function') {
@@ -2711,9 +2713,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  // Set initial label text
+  // Initialize label once
   mockUpdateDuskLabel();
-});
+}
+
+// Run the init function whether DOM is ready or not
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', mockInitDuskSlider);
+} else {
+  mockInitDuskSlider();
+}
 
     console.log('Willy Good Christmas Tool script loaded (ground curves + estimate wiring updated).');
   });
