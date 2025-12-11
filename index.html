@@ -1826,7 +1826,7 @@
             var p0 = from;
             var p2 = to;
             var mid = { x: (p0.x + p2.x) / 2, y: (p0.y + p2.y) / 2 };
-            var bulge = lengthPx * 0.3;
+            var bulge = lengthPx * GROUND_CURVE_BULGE_FACTOR;
             var p1 = { x: mid.x, y: mid.y + bulge };
 
             mockCtx.strokeStyle = wireColor;
@@ -1864,7 +1864,7 @@
             var p0b = from;
             var p2b = to;
             var midb = { x: (p0b.x + p2b.x) / 2, y: (p0b.y + p2b.y) / 2 };
-            var bulgeb = lengthPx * 0.3;
+            var bulgeb = lengthPx * GROUND_CURVE_BULGE_FACTOR;
             var p1b = { x: midb.x, y: midb.y + bulgeb };
             var invb = 1 - t;
             x = invb * invb * p0b.x + 2 * invb * t * p1b.x + t * t * p2b.x;
@@ -1934,6 +1934,10 @@
           mockCtx.restore();
         }
 
+        // How "saggy" curved ground runs are.
+      // 0.10 = gentle, 0.18 = medium, 0.30 = very droopy.
+      var GROUND_CURVE_BULGE_FACTOR = 0.15;  // try 0.15 first
+        
         // Show move handles in Adjust mode
         if (mockMode === 'adjust') {
           mockCtx.beginPath();
