@@ -82,8 +82,49 @@
 
     /* Allow optional panning on the mockup canvas when toggled on */
     #mockup-canvas.pan-enabled {
-      touch-action: pan-x pan-y;
+      touch-action: pan-x pan-y pinch-zoom;
       cursor: grab;
+    }
+
+    /* On-canvas floating controls for mobile panning/zooming */
+    .mockup-floating-controls {
+      position: sticky;
+      top: 8px;
+      left: 8px;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-start;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid #d0d0d0;
+      border-radius: 12px;
+      padding: 8px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+      backdrop-filter: blur(2px);
+    }
+
+    .mockup-floating-controls .chip-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .mockup-floating-controls button {
+      min-width: 72px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #bfc6cc;
+      background: #ffffff;
+      font-size: 0.95rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .mockup-floating-controls button.active {
+      background: #e2f1ff;
+      border-color: #0c66b0;
+      font-weight: 600;
+      color: #0c3c66;
     }
     nav button.active {
       border-color: #004b80;
@@ -662,7 +703,19 @@
       </div>
 
       <!-- Canvas column -->
-      <div id="mockup-canvas-wrapper" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff;">
+      <div id="mockup-canvas-wrapper" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
+        <div class="mockup-floating-controls" aria-label="Quick canvas controls">
+          <div class="chip-row">
+            <button id="mockup-mode-draw" type="button" class="active">Draw</button>
+            <button id="mockup-mode-adjust" type="button">Adjust</button>
+            <button id="mockup-mode-decor" type="button">Decorate</button>
+          </div>
+          <div class="chip-row">
+            <button id="mockup-pan-inline" type="button">Pan</button>
+            <button id="mockup-zoom-in-inline" type="button">Zoom +</button>
+            <button id="mockup-zoom-out-inline" type="button">Zoom −</button>
+          </div>
+        </div>
         <canvas
           id="mockup-canvas"
           width="1000"
@@ -1710,9 +1763,16 @@
     var mockClearBtn      = document.getElementById('mockup-clear');
     var mockZoomInBtn     = document.getElementById('mockup-zoom-in');
     var mockZoomOutBtn    = document.getElementById('mockup-zoom-out');
+    var mockZoomInInline  = document.getElementById('mockup-zoom-in-inline');
+    var mockZoomOutInline = document.getElementById('mockup-zoom-out-inline');
     var mockPanBtn        = document.getElementById('mockup-pan');
+    var mockPanInlineBtn  = document.getElementById('mockup-pan-inline');
     var mockCanvasWrapper = document.getElementById('mockup-canvas-wrapper');
     var mockPrintBtn      = document.getElementById('mockup-print');
+
+    var mockModeDrawBtn   = document.getElementById('mockup-mode-draw');
+    var mockModeAdjustBtn = document.getElementById('mockup-mode-adjust');
+    var mockModeDecorBtn  = document.getElementById('mockup-mode-decor');
 
     var mockDecorTypeSelect   = document.getElementById('mockup-decor-type');
     var mockDecorPlaceBtn     = document.getElementById('mockup-decor-mode');
@@ -1747,6 +1807,9 @@
     var MOCK_ZOOM_MAX   = 3;
     var mockIsPanMode   = false;
     var mockModeBeforePan = 'draw';
+    var mockIsPinching    = false;
+    var mockPinchStartDist = 0;
+    var mockPinchStartZoom = 1;
 
     // --- Mobile click guard (prevents touch -> delayed click double fire) ---
     var mockIgnoreClickUntil = 0;
@@ -1804,15 +1867,31 @@
       if (mockInfo) mockInfo.textContent = msg || '';
     }
 
+    function mockUpdateModeButtons() {
+      var mode = mockIsPanMode ? 'pan' : mockMode;
+      var isDraw   = mode === 'draw';
+      var isAdjust = mode === 'adjust';
+      var isDecor  = mode === 'decor-add' || mode === 'decor-edit';
+
+      if (mockModeDrawBtn)   mockModeDrawBtn.classList.toggle('active', isDraw);
+      if (mockModeAdjustBtn) mockModeAdjustBtn.classList.toggle('active', isAdjust);
+      if (mockModeDecorBtn)  mockModeDecorBtn.classList.toggle('active', isDecor);
+    }
+
     function mockUpdatePanStateUI() {
       if (mockPanBtn) {
         if (mockIsPanMode) mockPanBtn.classList.add('active');
         else mockPanBtn.classList.remove('active');
       }
+      if (mockPanInlineBtn) {
+        if (mockIsPanMode) mockPanInlineBtn.classList.add('active');
+        else mockPanInlineBtn.classList.remove('active');
+      }
       if (mockCanvas) {
         if (mockIsPanMode) mockCanvas.classList.add('pan-enabled');
         else mockCanvas.classList.remove('pan-enabled');
       }
+      mockUpdateModeButtons();
     }
 
     function mockSetPanMode(on, silent) {
@@ -1863,6 +1942,19 @@
       if (!mockCanvas) return;
       mockCanvas.style.transformOrigin = '0 0';
       mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
+    }
+
+    function mockSetZoom(nextZoom, silent) {
+      var clamped = Math.max(MOCK_ZOOM_MIN, Math.min(MOCK_ZOOM_MAX, nextZoom));
+      mockZoom = clamped;
+      mockApplyZoom();
+      if (!silent) {
+        mockSetInfo('Zoom ' + Math.round(clamped * 100) + '%. Tap Pan to reposition.');
+      }
+    }
+
+    function mockZoomBy(delta) {
+      mockSetZoom(mockZoom + delta);
     }
 
     function mockCanvasPoint(evt) {
@@ -2029,6 +2121,7 @@
 
     function mockRedraw() {
   if (!mockCtx || !mockCanvas) return;
+  mockUpdateModeButtons();
   mockDrawBase();
   if (!mockImage) return;
 
@@ -2565,8 +2658,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
             mockLastPoint   = null;
             mockSetPanMode(false);
             mockMode        = 'draw';
-            mockZoom        = 1;
-            mockApplyZoom();
+            mockSetZoom(1, true);
             mockDrawBase();
             mockSyncDecorationsToEstimate();
             mockSetInfo('Photo loaded. Draw runs, place decorations, or adjust.');
@@ -2607,6 +2699,13 @@ if (glowFactor > 0.15) { // appears around mid-dusk
           x: (clientX - rect.left) * scaleX,
           y: (clientY - rect.top)  * scaleY
         };
+      }
+
+      function getPinchDistance(touches) {
+        if (!touches || touches.length < 2) return 0;
+        var dx = touches[0].clientX - touches[1].clientX;
+        var dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
       }
 
     // CLICK / TAP = add line segments or decorations (mouse + touch)
@@ -2661,6 +2760,14 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       // Shared DOWN handler (mouse + touch)
       function handleMockDown(evt) {
         if (!mockImage) return;
+
+        if (evt.touches && evt.touches.length > 1) {
+          mockIsPinching = true;
+          mockPinchStartDist = getPinchDistance(evt.touches);
+          mockPinchStartZoom = mockZoom;
+          if (evt.cancelable) evt.preventDefault();
+          return;
+        }
 
         if (mockIsPanMode) {
           if (evt.type === 'touchstart') {
@@ -2735,6 +2842,21 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       // Shared MOVE handler (mouse + touch)
       function handleMockMove(evt) {
         if (!mockImage) return;
+
+        if (mockIsPinching && evt.touches && evt.touches.length > 1) {
+          var dist = getPinchDistance(evt.touches);
+          if (mockPinchStartDist > 0) {
+            var ratio = dist / mockPinchStartDist;
+            mockSetZoom(mockPinchStartZoom * ratio, true);
+          }
+          if (evt.cancelable) evt.preventDefault();
+          return;
+        }
+
+        if (mockIsPinching && (!evt.touches || evt.touches.length < 2)) {
+          mockIsPinching = false;
+          mockPinchStartDist = 0;
+        }
         if (mockIsPanMode) return;
         var pt = getPointerPoint(evt);
 
@@ -2777,6 +2899,10 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
       // Shared UP handler (mouse + touch)
       function handleMockUp(evt) {
+        if (mockIsPinching) {
+          mockIsPinching = false;
+          mockPinchStartDist = 0;
+        }
         if (mockIsDraggingSegment) {
           mockIsDraggingSegment = false;
           mockDragSegmentIndex  = -1;
@@ -2876,6 +3002,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         mockMode = 'decor-add';
         mockLastPoint = null;
         mockSetInfo('Decoration placement mode: click on the photo to drop icons.');
+        mockUpdateModeButtons();
       });
     }
 
@@ -2894,6 +3021,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         mockLastPoint = null;
         mockSetInfo('Edit decorations: click/drag to move, drag the cyan square to resize.');
         mockRedraw();
+        mockUpdateModeButtons();
       });
     }
 
@@ -3108,15 +3236,25 @@ if (glowFactor > 0.15) { // appears around mid-dusk
     // ZOOM
     if (mockZoomInBtn) {
       mockZoomInBtn.addEventListener('click', function () {
-        mockZoom = Math.min(mockZoom + 0.25, MOCK_ZOOM_MAX);
-        mockApplyZoom();
+        mockZoomBy(0.25);
       });
     }
 
     if (mockZoomOutBtn) {
       mockZoomOutBtn.addEventListener('click', function () {
-        mockZoom = Math.max(mockZoom - 0.25, MOCK_ZOOM_MIN);
-        mockApplyZoom();
+        mockZoomBy(-0.25);
+      });
+    }
+
+    if (mockZoomInInline) {
+      mockZoomInInline.addEventListener('click', function () {
+        mockZoomBy(0.25);
+      });
+    }
+
+    if (mockZoomOutInline) {
+      mockZoomOutInline.addEventListener('click', function () {
+        mockZoomBy(-0.25);
       });
     }
 
@@ -3127,6 +3265,59 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         if (enable && mockCanvasWrapper) {
           mockCanvasWrapper.scrollLeft += 0; // keep wrapper reference alive for mobile scrolling
         }
+      });
+    }
+
+    if (mockPanInlineBtn && mockCanvas) {
+      mockPanInlineBtn.addEventListener('click', function () {
+        var enable = !mockIsPanMode;
+        mockSetPanMode(enable);
+      });
+    }
+
+    // QUICK MODE BUTTONS (floating panel on the canvas)
+    function ensurePhotoLoaded() {
+      if (!mockImage) {
+        mockSetInfo('Upload a photo first.');
+        return false;
+      }
+      return true;
+    }
+
+    if (mockModeDrawBtn) {
+      mockModeDrawBtn.addEventListener('click', function () {
+        if (!ensurePhotoLoaded()) return;
+        mockEnsurePanOff();
+        mockMode = 'draw';
+        mockLastPoint = null;
+        mockSetInfo('Draw mode: tap to place points. Use Pan to reposition the photo.');
+        mockRedraw();
+      });
+    }
+
+    if (mockModeAdjustBtn) {
+      mockModeAdjustBtn.addEventListener('click', function () {
+        if (!ensurePhotoLoaded()) return;
+        mockEnsurePanOff();
+        if (!mockSegments.length) {
+          mockSetInfo('Draw some runs first, then adjust the endpoints.');
+          return;
+        }
+        mockMode = 'adjust';
+        mockLastPoint = null;
+        mockSetInfo('Adjust mode: drag cyan endpoints.');
+        mockRedraw();
+      });
+    }
+
+    if (mockModeDecorBtn) {
+      mockModeDecorBtn.addEventListener('click', function () {
+        if (!ensurePhotoLoaded()) return;
+        mockEnsurePanOff();
+        mockMode = 'decor-add';
+        mockLastPoint = null;
+        mockSetInfo('Decorate mode: tap to place icons. Use Edit decorations to move/resize.');
+        mockRedraw();
       });
     }
 
