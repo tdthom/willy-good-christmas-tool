@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Willy Good – Christmas Lights</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -136,6 +137,45 @@
         display: none !important;
       }
     }
+
+    /* ---------- Mobile layout tweaks ---------- */
+@media (max-width: 900px) {
+
+  body {
+    font-size: 14px;
+  }
+
+  nav {
+    flex-wrap: wrap;
+  }
+
+  /* Stack the two-column layouts on Roof & Mockup screens */
+  #screen-roof > div,
+  #screen-mockup > div {
+    display: block !important;         /* override inline flex */
+  }
+
+  #screen-roof > div > div,
+  #screen-mockup > div > div {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Make canvases fit the phone width */
+  #roof-canvas,
+  #mockup-canvas {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+  }
+
+  /* Give the control column a little breathing room */
+  #screen-roof > div > div:first-child,
+  #screen-mockup > div > div:first-child {
+    margin-bottom: 12px;
+  }
+}
   </style>
 </head>
 <body>
@@ -1140,15 +1180,23 @@
       if (roofInfo) roofInfo.textContent = msg;
     }
 
-    function roofCanvasPoint(evt) {
-      var rect = roofCanvas.getBoundingClientRect();
-      var sx   = roofCanvas.width  / rect.width;
-      var sy   = roofCanvas.height / rect.height;
-      return {
-        x: (evt.clientX - rect.left) * sx,
-        y: (evt.clientY - rect.top)  * sy
-      };
-    }
+   function roofCanvasPoint(evt) {
+  var rect = roofCanvas.getBoundingClientRect();
+
+  var clientX = evt.clientX;
+  var clientY = evt.clientY;
+  if (evt.touches && evt.touches.length) {
+    clientX = evt.touches[0].clientX;
+    clientY = evt.touches[0].clientY;
+  }
+
+  var sx   = roofCanvas.width  / rect.width;
+  var sy   = roofCanvas.height / rect.height;
+  return {
+    x: (clientX - rect.left) * sx,
+    y: (clientY - rect.top)  * sy
+  };
+}
 
     function roofDist(a, b) {
       var dx = a.x - b.x;
@@ -1603,14 +1651,23 @@
     }
 
     function mockCanvasPoint(evt) {
-      var rect   = mockCanvas.getBoundingClientRect();
-      var scaleX = mockCanvas.width  / rect.width;
-      var scaleY = mockCanvas.height / rect.height;
-      return {
-        x: (evt.clientX - rect.left) * scaleX,
-        y: (evt.clientY - rect.top)  * scaleY
-      };
-    }
+  var rect   = mockCanvas.getBoundingClientRect();
+
+  // Support both mouse and touch
+  var clientX = evt.clientX;
+  var clientY = evt.clientY;
+  if (evt.touches && evt.touches.length) {
+    clientX = evt.touches[0].clientX;
+    clientY = evt.touches[0].clientY;
+  }
+
+  var scaleX = mockCanvas.width  / rect.width;
+  var scaleY = mockCanvas.height / rect.height;
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top)  * scaleY
+  };
+}
 
     function mockPointDistance(a, b) {
       var dx = a.x - b.x;
@@ -2248,7 +2305,6 @@ if (glowFactor > 0.15) { // appears around mid-dusk
   }
 }
 
-
     // IMAGE LOAD
     if (mockImageInput && mockCtx && mockCanvas) {
       mockImageInput.addEventListener('change', function (e) {
@@ -2288,10 +2344,42 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       });
     }
 
+       // --- MOUSE + TOUCH HANDLING FOR MOCKUP CANVAS --------------------
     if (mockCanvas && mockCtx) {
+
+      // Normalize mouse/touch into a single canvas point
+      function getPointerPoint(evt) {
+        var clientX, clientY;
+
+        // Touchstart / touchmove
+        if (evt.touches && evt.touches.length) {
+          clientX = evt.touches[0].clientX;
+          clientY = evt.touches[0].clientY;
+        }
+        // Touchend / touchcancel
+        else if (evt.changedTouches && evt.changedTouches.length) {
+          clientX = evt.changedTouches[0].clientX;
+          clientY = evt.changedTouches[0].clientY;
+        }
+        // Regular mouse event
+        else {
+          clientX = evt.clientX;
+          clientY = evt.clientY;
+        }
+
+        var rect   = mockCanvas.getBoundingClientRect();
+        var scaleX = mockCanvas.width  / rect.width;
+        var scaleY = mockCanvas.height / rect.height;
+        return {
+          x: (clientX - rect.left) * scaleX,
+          y: (clientY - rect.top)  * scaleY
+        };
+      }
+
+      // CLICK = add line segments or decorations (desktop + tap)
       mockCanvas.addEventListener('click', function (evt) {
         if (!mockImage) return;
-        var pt = mockCanvasPoint(evt);
+        var pt = mockCanvasPoint(evt); // existing helper is fine for click
 
         if (mockMode === 'decor-add') {
           addDecorationAtPoint(pt);
@@ -2322,14 +2410,16 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         mockRedraw();
       });
 
-      mockCanvas.addEventListener('mousedown', function (evt) {
+      // Shared DOWN handler (mouse + touch)
+      function handleMockDown(evt) {
         if (!mockImage) return;
-        var pt = mockCanvasPoint(evt);
+        var pt = getPointerPoint(evt);
 
         mockIsDraggingSegment = false;
         mockIsDraggingDecor   = false;
         mockIsResizingDecor   = false;
 
+        // Adjust mode: pick up a segment endpoint
         if (mockMode === 'adjust' && mockSegments.length) {
           var hitThreshold = 14;
           for (var i = 0; i < mockSegments.length; i++) {
@@ -2348,9 +2438,11 @@ if (glowFactor > 0.15) { // appears around mid-dusk
               break;
             }
           }
+          if (evt.cancelable) evt.preventDefault();
           return;
         }
 
+        // Decoration edit mode: select/move/resize
         if (mockMode === 'decor-edit') {
           var hit = hitTestDecoration(pt);
           if (hit && hit.deco) {
@@ -2369,21 +2461,26 @@ if (glowFactor > 0.15) { // appears around mid-dusk
             mockSelectedDecorId = null;
             mockRedraw();
           }
+          if (evt.cancelable) evt.preventDefault();
         }
-      });
+      }
 
-      mockCanvas.addEventListener('mousemove', function (evt) {
+      // Shared MOVE handler (mouse + touch)
+      function handleMockMove(evt) {
         if (!mockImage) return;
-        var pt = mockCanvasPoint(evt);
+        var pt = getPointerPoint(evt);
 
+        // Drag segment endpoints
         if (mockMode === 'adjust' && mockIsDraggingSegment && mockDragSegmentIndex >= 0) {
           var seg = mockSegments[mockDragSegmentIndex];
           if (!seg) return;
           seg[mockDragSegmentEnd] = pt;
           mockRedraw();
+          if (evt.cancelable) evt.preventDefault();
           return;
         }
 
+        // Drag or resize decorations
         if (mockMode === 'decor-edit' &&
             (mockIsDraggingDecor || mockIsResizingDecor) &&
             mockSelectedDecorId != null) {
@@ -2406,10 +2503,12 @@ if (glowFactor > 0.15) { // appears around mid-dusk
               mockRedraw();
             }
           }
+          if (evt.cancelable) evt.preventDefault();
         }
-      });
+      }
 
-      function handleMockCanvasMouseUpOrLeave() {
+      // Shared UP handler (mouse + touch)
+      function handleMockUp(evt) {
         if (mockIsDraggingSegment) {
           mockIsDraggingSegment = false;
           mockDragSegmentIndex  = -1;
@@ -2423,9 +2522,18 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         mockRedraw();
       }
 
-      mockCanvas.addEventListener('mouseup', handleMockCanvasMouseUpOrLeave);
-      mockCanvas.addEventListener('mouseleave', handleMockCanvasMouseUpOrLeave);
-      document.addEventListener('mouseup', handleMockCanvasMouseUpOrLeave);
+      // Mouse events → shared handlers
+      mockCanvas.addEventListener('mousedown',  handleMockDown);
+      mockCanvas.addEventListener('mousemove',  handleMockMove);
+      mockCanvas.addEventListener('mouseup',    handleMockUp);
+      mockCanvas.addEventListener('mouseleave', handleMockUp);
+      document.addEventListener('mouseup',      handleMockUp);
+
+      // Touch events → shared handlers (for Apple / phones)
+      mockCanvas.addEventListener('touchstart', handleMockDown, { passive: false });
+      mockCanvas.addEventListener('touchmove',  handleMockMove, { passive: false });
+      mockCanvas.addEventListener('touchend',   handleMockUp);
+      mockCanvas.addEventListener('touchcancel',handleMockUp);
     }
 
     // LIGHT RUNS CONTROL BUTTONS
