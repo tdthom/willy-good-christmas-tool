@@ -170,6 +170,11 @@
     max-width: 100% !important;
   }
 
+  /* Prevent iOS/phone gestures from fighting canvas interactions */
+#mockup-canvas, #roof-canvas {
+  touch-action: none;
+}
+
   /* Give the control column a little breathing room */
   #screen-roof > div > div:first-child,
   #screen-mockup > div > div:first-child {
@@ -1585,6 +1590,12 @@
     var MOCK_ZOOM_MIN   = 0.5;
     var MOCK_ZOOM_MAX   = 3;
 
+    // --- Mobile click guard (prevents touch -> delayed click double fire) ---
+    var mockIgnoreClickUntil = 0;
+
+    // --- Decoration resize stability (prevents compounding during drag) ------
+    var mockResizeStartSize = 1;
+
     // --- Dusk / time-of-day control (globals + helpers) -------------
     var mockDusk = 0;           // 0 = full daylight, 1 = darkest
     var mockDuskRange = null;
@@ -2387,48 +2398,58 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       }
 
       // CLICK = add line segments or decorations (desktop + tap)
-      mockCanvas.addEventListener('click', function (evt) {
-        if (!mockImage) return;
-        var pt = mockCanvasPoint(evt); // existing helper is fine for click
+     mockCanvas.addEventListener('click', function (evt) {
+  // Prevent "ghost click" after touch on mobile
+  if (Date.now() < mockIgnoreClickUntil) return;
 
-        if (mockMode === 'decor-add') {
-          addDecorationAtPoint(pt);
-          return;
-        }
-        if (mockMode === 'adjust' || mockMode === 'decor-edit') {
-          return;
-        }
-        if (mockMode !== 'draw') {
-          mockMode = 'draw';
-        }
+  if (!mockImage) return;
+  var pt = mockCanvasPoint(evt); // existing helper is fine for click
 
-        if (!mockLastPoint) {
-          mockLastPoint = pt;
-        } else {
-          var runType = mockRunTypeSelect ? mockRunTypeSelect.value : 'roof';
-          var seg = {
-            from: mockLastPoint,
-            to: pt,
-            type: runType
-          };
-          if (runType === 'ground' && mockGroundCurveEnabled) {
-            seg.curve = true; // curve only for new ground runs when toggle is ON
-          }
-          mockSegments.push(seg);
-          mockLastPoint = pt;
-        }
-        mockRedraw();
-      });
+  if (mockMode === 'decor-add') {
+    addDecorationAtPoint(pt);
+    return;
+  }
+  if (mockMode === 'adjust' || mockMode === 'decor-edit') {
+    return;
+  }
+  if (mockMode !== 'draw') {
+    mockMode = 'draw';
+  }
+
+  if (!mockLastPoint) {
+    mockLastPoint = pt;
+  } else {
+    var runType = mockRunTypeSelect ? mockRunTypeSelect.value : 'roof';
+    var seg = {
+      from: mockLastPoint,
+      to: pt,
+      type: runType
+    };
+    if (runType === 'ground' && mockGroundCurveEnabled) {
+      seg.curve = true; // curve only for new ground runs when toggle is ON
+    }
+    mockSegments.push(seg);
+    mockLastPoint = pt;
+  }
+  mockRedraw();
+});
+
 
       // Shared DOWN handler (mouse + touch)
       function handleMockDown(evt) {
         if (!mockImage) return;
+
+         if (evt.type === 'touchstart') {
+        // Ignore the delayed click that iOS may fire after touch
+        mockIgnoreClickUntil = Date.now() + 600;
+      }
         var pt = getPointerPoint(evt);
 
         mockIsDraggingSegment = false;
         mockIsDraggingDecor   = false;
         mockIsResizingDecor   = false;
 
+       
         // Adjust mode: pick up a segment endpoint
         if (mockMode === 'adjust' && mockSegments.length) {
           var hitThreshold = 14;
@@ -2458,10 +2479,11 @@ if (glowFactor > 0.15) { // appears around mid-dusk
           if (hit && hit.deco) {
             mockSelectedDecorId = hit.deco.id;
             if (hit.mode === 'handle') {
-              mockIsResizingDecor = true;
-              var center = { x: hit.deco.x, y: hit.deco.y };
-              mockResizeStartDist = mockPointDistance(pt, center);
-            } else {
+            mockIsResizingDecor = true;
+          var center = { x: hit.deco.x, y: hit.deco.y };
+            mockResizeStartDist = mockPointDistance(pt, center);
+            mockResizeStartSize = hit.deco.size || 1; // NEW: lock initial size
+          } else {
               mockIsDraggingDecor = true;
               mockDecorDragOffset.x = pt.x - hit.deco.x;
               mockDecorDragOffset.y = pt.y - hit.deco.y;
@@ -2505,12 +2527,12 @@ if (glowFactor > 0.15) { // appears around mid-dusk
             var center = { x: deco.x, y: deco.y };
             var dist = mockPointDistance(pt, center);
             if (dist > 4 && mockResizeStartDist > 0) {
-              var scale = dist / mockResizeStartDist;
-              var newSize = (deco.size || 1) * scale;
-              if (newSize < 0.4) newSize = 0.4;
-              if (newSize > 3.0) newSize = 3.0;
-              deco.size = newSize;
-              mockRedraw();
+           var scale = dist / mockResizeStartDist;
+          var newSize = mockResizeStartSize * scale; // NEW: stable sizing
+          if (newSize < 0.4) newSize = 0.4;
+          if (newSize > 3.0) newSize = 3.0;
+          deco.size = newSize;
+          mockRedraw();
             }
           }
           if (evt.cancelable) evt.preventDefault();
@@ -2527,7 +2549,8 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         if (mockIsDraggingDecor || mockIsResizingDecor) {
           mockIsDraggingDecor = false;
           mockIsResizingDecor = false;
-          mockResizeStartDist = 0;
+         mockResizeStartDist = 0;
+        mockResizeStartSize = 1;
         }
         mockRedraw();
       }
@@ -2817,9 +2840,11 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
     // REDRAW ON STYLE CHANGES
     function mockAttachRedrawControl(el) {
-      if (!el) return;
-      el.addEventListener('change', mockRedraw);
-    }
+  if (!el) return;
+  el.addEventListener('change', mockRedraw);
+  el.addEventListener('input', mockRedraw); // NEW: live updates (color sliders, etc.)
+}
+
     mockAttachRedrawControl(mockColorModeSelect);
     mockAttachRedrawControl(mockColor1Input);
     mockAttachRedrawControl(mockColor2Input);
