@@ -5,16 +5,27 @@
   <title>Willy Good – Christmas Lights</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    :root {
+      -webkit-text-size-adjust: 100%;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
       background: #f7f7f7;
+      overflow-x: hidden;
+      overscroll-behavior-y: contain;
     }
     header {
       background: #004b80;
       color: #ffffff;
       padding: 10px 16px;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
     }
     .header-left {
       display: flex;
@@ -36,22 +47,42 @@
     }
     nav {
       background: #eeeeee;
-      padding: 8px 16px;
+      padding: 10px 12px;
       display: flex;
       gap: 8px;
       border-bottom: 1px solid #cccccc;
+      overflow-x: auto;
+      position: sticky;
+      top: 0;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+      z-index: 10;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      overscroll-behavior-x: contain;
     }
     nav button {
-      padding: 6px 12px;
+      padding: 12px 16px;
       border: 1px solid #cccccc;
       background: #ffffff;
       cursor: pointer;
-      border-radius: 4px;
-      font-size: 0.9rem;
+      border-radius: 10px;
+      font-size: 1rem;
+      flex: 1 0 140px;
+      white-space: nowrap;
+      touch-action: manipulation;
+      scroll-snap-align: start;
+    }
+
+    /* Stop page panning while adjusting canvases on touch devices */
+    #mockup-canvas,
+    #roof-canvas {
+      touch-action: none;
     }
     nav button.active {
       border-color: #004b80;
       font-weight: bold;
+      background: #e2f1ff;
     }
     .screen {
       display: none;
@@ -73,18 +104,29 @@
     textarea,
     select {
       font-family: inherit;
-      font-size: 0.9rem;
-      padding: 4px;
+      font-size: 1rem;
+      padding: 10px 12px;
       width: 260px;
       max-width: 100%;
       box-sizing: border-box;
+      border-radius: 8px;
+      border: 1px solid #bfbfbf;
+      min-height: 48px;
     }
     textarea {
       resize: vertical;
     }
     button {
       font-family: inherit;
-      font-size: 0.9rem;
+      font-size: 1rem;
+      touch-action: manipulation;
+    }
+
+    input,
+    select,
+    textarea,
+    label {
+      touch-action: manipulation;
     }
     #clients-list {
       list-style: none;
@@ -147,6 +189,21 @@
 
   nav {
     flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body {
+    overscroll-behavior-y: auto;
+  }
+
+  nav button {
+    flex: 1 0 46%;
+    font-size: 1rem;
+    text-align: center;
+    min-height: 52px;
   }
 
   /* Stack the two-column layouts on Roof & Mockup screens */
@@ -170,10 +227,18 @@
     max-width: 100% !important;
   }
 
-  /* Prevent iOS/phone gestures from fighting canvas interactions */
-#mockup-canvas, #roof-canvas {
-  touch-action: none;
-}
+  /* Prevent Safari zoom on focus by ensuring 16px+ form text */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  textarea,
+  select,
+  button,
+  label {
+    font-size: 16px;
+    line-height: 1.2;
+  }
 
   /* Give the control column a little breathing room */
   #screen-roof > div > div:first-child,
@@ -633,6 +698,7 @@
           if (s.id === 'screen-' + target) s.classList.add('active');
           else s.classList.remove('active');
         });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       });
     });
 
@@ -1181,28 +1247,34 @@
     var roofIsDragging   = false;
     var roofDragIndex    = -1;
     var roofDragEnd      = null;
+    var roofIgnoreClickUntil = 0; // guard against delayed iOS clicks
 
     function roofSetInfo(msg) {
       if (roofInfo) roofInfo.textContent = msg;
     }
 
-   function roofCanvasPoint(evt) {
-  var rect = roofCanvas.getBoundingClientRect();
+    function roofCanvasPoint(evt) {
+      var clientX, clientY;
 
-  var clientX = evt.clientX;
-  var clientY = evt.clientY;
-  if (evt.touches && evt.touches.length) {
-    clientX = evt.touches[0].clientX;
-    clientY = evt.touches[0].clientY;
-  }
+      if (evt.touches && evt.touches.length) {
+        clientX = evt.touches[0].clientX;
+        clientY = evt.touches[0].clientY;
+      } else if (evt.changedTouches && evt.changedTouches.length) {
+        clientX = evt.changedTouches[0].clientX;
+        clientY = evt.changedTouches[0].clientY;
+      } else {
+        clientX = evt.clientX;
+        clientY = evt.clientY;
+      }
 
-  var sx   = roofCanvas.width  / rect.width;
-  var sy   = roofCanvas.height / rect.height;
-  return {
-    x: (clientX - rect.left) * sx,
-    y: (clientY - rect.top)  * sy
-  };
-}
+      var rect = roofCanvas.getBoundingClientRect();
+      var sx   = roofCanvas.width  / rect.width;
+      var sy   = roofCanvas.height / rect.height;
+      return {
+        x: (clientX - rect.left) * sx,
+        y: (clientY - rect.top)  * sy
+      };
+    }
 
     function roofDist(a, b) {
       var dx = a.x - b.x;
@@ -1410,8 +1482,16 @@
     }
 
     if (roofCanvas && roofCtx) {
-      roofCanvas.addEventListener('click', function (evt) {
+      function handleRoofTap(evt) {
         if (!roofImage) return;
+
+        if (evt.type === 'touchstart') {
+          roofIgnoreClickUntil = Date.now() + 700;
+        }
+        if (evt.type === 'click' && Date.now() < roofIgnoreClickUntil) {
+          return; // ignore ghost click after touch
+        }
+
         var pt = roofCanvasPoint(evt);
 
         if (roofMode === 'scale') {
@@ -1432,6 +1512,7 @@
           }
           roofRedraw();
           roofUpdateTotals();
+          if (evt.cancelable) evt.preventDefault();
           return;
         }
 
@@ -1448,11 +1529,15 @@
             roofUpdateTotals();
           }
           roofRedraw();
+          if (evt.cancelable) evt.preventDefault();
           return;
         }
-      });
+      }
 
-      roofCanvas.addEventListener('mousedown', function (evt) {
+      roofCanvas.addEventListener('click', handleRoofTap);
+      roofCanvas.addEventListener('touchstart', handleRoofTap, { passive: false });
+
+      function roofHandleDown(evt) {
         if (roofMode !== 'adjust' || !roofSegments.length) return;
         var pt = roofCanvasPoint(evt);
         var best = { index: -1, end: null, dist: 12 };
@@ -1468,10 +1553,11 @@
           roofIsDragging = true;
           roofDragIndex  = best.index;
           roofDragEnd    = best.end;
+          if (evt.cancelable) evt.preventDefault();
         }
-      });
+      }
 
-      roofCanvas.addEventListener('mousemove', function (evt) {
+      function roofHandleMove(evt) {
         if (!roofIsDragging || roofDragIndex < 0) return;
         var seg = roofSegments[roofDragIndex];
         if (!seg) return;
@@ -1482,16 +1568,26 @@
         }
         roofRedraw();
         roofUpdateTotals();
-      });
+        if (evt.cancelable) evt.preventDefault();
+      }
 
-      window.addEventListener('mouseup', function () {
+      function roofHandleUp() {
         if (roofIsDragging) {
           roofIsDragging = false;
           roofDragIndex  = -1;
           roofDragEnd    = null;
           roofSetInfo('Endpoint adjusted.');
         }
-      });
+      }
+
+      roofCanvas.addEventListener('mousedown', roofHandleDown);
+      roofCanvas.addEventListener('mousemove', roofHandleMove);
+      window.addEventListener('mouseup', roofHandleUp);
+
+      roofCanvas.addEventListener('touchstart', roofHandleDown, { passive: false });
+      roofCanvas.addEventListener('touchmove', roofHandleMove, { passive: false });
+      roofCanvas.addEventListener('touchend', roofHandleUp);
+      roofCanvas.addEventListener('touchcancel', roofHandleUp);
     }
 
     if (roofSendBtn) {
@@ -2397,59 +2493,73 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         };
       }
 
-      // CLICK = add line segments or decorations (desktop + tap)
-     mockCanvas.addEventListener('click', function (evt) {
-  // Prevent "ghost click" after touch on mobile
-  if (Date.now() < mockIgnoreClickUntil) return;
+    // CLICK / TAP = add line segments or decorations (mouse + touch)
+      function handleMockTap(evt) {
+        if (!mockImage) return;
 
-  if (!mockImage) return;
-  var pt = mockCanvasPoint(evt); // existing helper is fine for click
+        if (evt.type === 'touchstart') {
+          mockIgnoreClickUntil = Date.now() + 700;
+        }
+        if (evt.type === 'click' && Date.now() < mockIgnoreClickUntil) {
+          return; // ignore ghost click after touch
+        }
 
-  if (mockMode === 'decor-add') {
-    addDecorationAtPoint(pt);
-    return;
-  }
-  if (mockMode === 'adjust' || mockMode === 'decor-edit') {
-    return;
-  }
-  if (mockMode !== 'draw') {
-    mockMode = 'draw';
-  }
+        var pt = getPointerPoint(evt);
 
-  if (!mockLastPoint) {
-    mockLastPoint = pt;
-  } else {
-    var runType = mockRunTypeSelect ? mockRunTypeSelect.value : 'roof';
-    var seg = {
-      from: mockLastPoint,
-      to: pt,
-      type: runType
-    };
-    if (runType === 'ground' && mockGroundCurveEnabled) {
-      seg.curve = true; // curve only for new ground runs when toggle is ON
-    }
-    mockSegments.push(seg);
-    mockLastPoint = pt;
-  }
-  mockRedraw();
-});
+        if (mockMode === 'decor-add') {
+          addDecorationAtPoint(pt);
+          if (evt.cancelable) evt.preventDefault();
+          return;
+        }
+        if (mockMode === 'adjust' || mockMode === 'decor-edit') {
+          return;
+        }
+        if (mockMode !== 'draw') {
+          mockMode = 'draw';
+        }
+
+        if (!mockLastPoint) {
+          mockLastPoint = pt;
+        } else {
+          var runType = mockRunTypeSelect ? mockRunTypeSelect.value : 'roof';
+          var seg = {
+            from: mockLastPoint,
+            to: pt,
+            type: runType
+          };
+          if (runType === 'ground' && mockGroundCurveEnabled) {
+            seg.curve = true; // curve only for new ground runs when toggle is ON
+          }
+          mockSegments.push(seg);
+          mockLastPoint = pt;
+        }
+        mockRedraw();
+        if (evt.cancelable) evt.preventDefault();
+      }
+
+      mockCanvas.addEventListener('click', handleMockTap);
 
 
       // Shared DOWN handler (mouse + touch)
       function handleMockDown(evt) {
         if (!mockImage) return;
 
-         if (evt.type === 'touchstart') {
-        // Ignore the delayed click that iOS may fire after touch
-        mockIgnoreClickUntil = Date.now() + 600;
-      }
+        if (evt.type === 'touchstart') {
+          // Ignore the delayed click that iOS may fire after touch
+          mockIgnoreClickUntil = Date.now() + 700;
+        }
         var pt = getPointerPoint(evt);
 
         mockIsDraggingSegment = false;
         mockIsDraggingDecor   = false;
         mockIsResizingDecor   = false;
 
-       
+        // Draw / add modes: treat touchstart as a tap to place points
+        if ((mockMode === 'draw' || mockMode === 'decor-add') && evt.type === 'touchstart') {
+          handleMockTap(evt);
+          return;
+        }
+
         // Adjust mode: pick up a segment endpoint
         if (mockMode === 'adjust' && mockSegments.length) {
           var hitThreshold = 14;
@@ -2479,11 +2589,11 @@ if (glowFactor > 0.15) { // appears around mid-dusk
           if (hit && hit.deco) {
             mockSelectedDecorId = hit.deco.id;
             if (hit.mode === 'handle') {
-            mockIsResizingDecor = true;
-          var center = { x: hit.deco.x, y: hit.deco.y };
-            mockResizeStartDist = mockPointDistance(pt, center);
-            mockResizeStartSize = hit.deco.size || 1; // NEW: lock initial size
-          } else {
+              mockIsResizingDecor = true;
+              var center = { x: hit.deco.x, y: hit.deco.y };
+              mockResizeStartDist = mockPointDistance(pt, center);
+              mockResizeStartSize = hit.deco.size || 1; // NEW: lock initial size
+            } else {
               mockIsDraggingDecor = true;
               mockDecorDragOffset.x = pt.x - hit.deco.x;
               mockDecorDragOffset.y = pt.y - hit.deco.y;
