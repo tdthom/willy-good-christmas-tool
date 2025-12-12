@@ -75,57 +75,67 @@
     }
 
     /* Stop page panning while adjusting canvases on touch devices */
-    #mockup-canvas,
-    #roof-canvas {
-      touch-action: none;
-    }
+      #mockup-canvas,
+      #roof-canvas {
+        touch-action: none;
+      }
 
-    /* Allow optional panning on the mockup canvas when toggled on */
-    #mockup-canvas.pan-enabled {
-      touch-action: pan-x pan-y pinch-zoom;
-      cursor: grab;
-    }
+      /* Allow optional panning on the mockup canvas when toggled on */
+      #mockup-canvas.pan-enabled {
+        touch-action: pan-x pan-y pinch-zoom;
+        cursor: grab;
+      }
 
-    /* On-canvas floating controls for mobile panning/zooming */
-    .mockup-floating-controls {
-      position: sticky;
-      top: 8px;
-      left: 8px;
-      z-index: 5;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      align-items: flex-start;
-      background: rgba(255, 255, 255, 0.92);
-      border: 1px solid #d0d0d0;
-      border-radius: 12px;
-      padding: 8px;
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
-      backdrop-filter: blur(2px);
-    }
+      /* Allow optional panning on the roof canvas when toggled on */
+      #roof-canvas.pan-enabled {
+        touch-action: pan-x pan-y pinch-zoom;
+        cursor: grab;
+      }
 
-    .mockup-floating-controls .chip-row {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
+      /* Shared floating control pad overlay (does not shrink the canvas) */
+      .canvas-floating-pad {
+        position: absolute;
+        right: 10px;
+        bottom: 10px;
+        z-index: 6;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: flex-end;
+        pointer-events: none;
+        max-width: calc(100% - 20px);
+      }
 
-    .mockup-floating-controls button {
-      min-width: 72px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid #bfc6cc;
-      background: #ffffff;
-      font-size: 0.95rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    }
+      .canvas-floating-pad .chip-row {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
 
-    .mockup-floating-controls button.active {
-      background: #e2f1ff;
-      border-color: #0c66b0;
-      font-weight: 600;
-      color: #0c3c66;
-    }
+      .canvas-floating-pad button {
+        pointer-events: auto;
+        min-width: 44px;
+        height: 44px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid #bfc6cc;
+        background: rgba(255, 255, 255, 0.9);
+        font-size: 0.95rem;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+        backdrop-filter: blur(6px);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+      }
+
+      .canvas-floating-pad button.active {
+        background: #e2f1ff;
+        border-color: #0c66b0;
+        font-weight: 600;
+        color: #0c3c66;
+      }
     nav button.active {
       border-color: #004b80;
       font-weight: bold;
@@ -228,7 +238,7 @@
     }
 
     /* ---------- Mobile layout tweaks ---------- */
-@media (max-width: 900px) {
+  @media (max-width: 900px) {
 
   body {
     font-size: 14px;
@@ -246,12 +256,26 @@
     overscroll-behavior-y: auto;
   }
 
-  nav button {
-    flex: 1 0 46%;
-    font-size: 1rem;
-    text-align: center;
-    min-height: 52px;
-  }
+    nav button {
+      flex: 1 0 46%;
+      font-size: 1rem;
+      text-align: center;
+      min-height: 52px;
+    }
+
+    .canvas-floating-pad {
+      right: 8px;
+      bottom: 8px;
+      gap: 4px;
+    }
+
+    .canvas-floating-pad button {
+      min-width: 40px;
+      height: 40px;
+      padding: 6px 10px;
+      font-size: 0.9rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
 
   /* Stack the two-column layouts on Roof & Mockup screens */
   #screen-roof > div,
@@ -522,14 +546,26 @@
       </div>
 
       <!-- RIGHT COLUMN: canvas -->
-      <div style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff;">
-        <canvas
-          id="roof-canvas"
-          width="800"
-          height="500"
-          style="border:1px solid #ccc; max-width:none; transform-origin:0 0;"
-        ></canvas>
-      </div>
+        <div style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
+          <div class="canvas-floating-pad roof-floating-controls" aria-label="Roof quick controls">
+            <div class="chip-row">
+              <button id="roof-mode-scale-inline" type="button">Scale</button>
+              <button id="roof-mode-measure-inline" type="button">Measure</button>
+              <button id="roof-mode-adjust-inline" type="button">Adjust</button>
+            </div>
+            <div class="chip-row">
+              <button id="roof-pan-inline" type="button">Pan</button>
+              <button id="roof-zoom-in-inline" type="button">Zoom +</button>
+              <button id="roof-zoom-out-inline" type="button">Zoom −</button>
+            </div>
+          </div>
+          <canvas
+            id="roof-canvas"
+            width="800"
+            height="500"
+            style="border:1px solid #ccc; max-width:none; transform-origin:0 0;"
+          ></canvas>
+        </div>
 
     </div>
   </section>
@@ -703,13 +739,13 @@
       </div>
 
       <!-- Canvas column -->
-      <div id="mockup-canvas-wrapper" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
-        <div class="mockup-floating-controls" aria-label="Quick canvas controls">
-          <div class="chip-row">
-            <button id="mockup-mode-draw" type="button" class="active">Draw</button>
-            <button id="mockup-mode-adjust" type="button">Adjust</button>
-            <button id="mockup-mode-decor" type="button">Decorate</button>
-          </div>
+        <div id="mockup-canvas-wrapper" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
+          <div class="canvas-floating-pad mockup-floating-controls" aria-label="Quick canvas controls">
+            <div class="chip-row">
+              <button id="mockup-mode-draw" type="button" class="active">Draw</button>
+              <button id="mockup-mode-adjust" type="button">Adjust</button>
+              <button id="mockup-mode-decor" type="button">Decorate</button>
+            </div>
           <div class="chip-row">
             <button id="mockup-pan-inline" type="button">Pan</button>
             <button id="mockup-zoom-in-inline" type="button">Zoom +</button>
@@ -1335,6 +1371,12 @@
 
     var roofZoomInBtn   = document.getElementById('roof-zoom-in');
     var roofZoomOutBtn  = document.getElementById('roof-zoom-out');
+    var roofZoomInInlineBtn  = document.getElementById('roof-zoom-in-inline');
+    var roofZoomOutInlineBtn = document.getElementById('roof-zoom-out-inline');
+    var roofPanInlineBtn     = document.getElementById('roof-pan-inline');
+    var roofScaleInlineBtn   = document.getElementById('roof-mode-scale-inline');
+    var roofMeasureInlineBtn = document.getElementById('roof-mode-measure-inline');
+    var roofAdjustInlineBtn  = document.getElementById('roof-mode-adjust-inline');
     var roofZoom        = 1;
     var ROOF_ZOOM_MIN   = 0.5;
     var ROOF_ZOOM_MAX   = 3;
@@ -1350,10 +1392,45 @@
     var roofDragIndex    = -1;
     var roofDragEnd      = null;
     var roofIgnoreClickUntil = 0; // guard against delayed iOS clicks
+    var roofIsPanMode    = false;
 
-    function roofSetInfo(msg) {
-      if (roofInfo) roofInfo.textContent = msg;
-    }
+      function roofSetInfo(msg) {
+        if (roofInfo) roofInfo.textContent = msg;
+      }
+
+      function roofUpdateModeButtons() {
+        var mode = roofIsPanMode ? 'pan' : roofMode;
+        var isScale   = mode === 'scale';
+        var isMeasure = mode === 'measure';
+        var isAdjust  = mode === 'adjust';
+
+        if (roofScaleInlineBtn)   roofScaleInlineBtn.classList.toggle('active', isScale);
+        if (roofMeasureInlineBtn) roofMeasureInlineBtn.classList.toggle('active', isMeasure);
+        if (roofAdjustInlineBtn)  roofAdjustInlineBtn.classList.toggle('active', isAdjust);
+        if (roofPanInlineBtn)     roofPanInlineBtn.classList.toggle('active', roofIsPanMode);
+      }
+
+      function roofSetPanMode(enable) {
+        roofIsPanMode = !!enable;
+        if (roofCanvas) {
+          roofCanvas.classList.toggle('pan-enabled', roofIsPanMode);
+        }
+        if (roofIsPanMode) {
+          roofMode = 'none';
+          roofSetInfo('Pan enabled: drag to reposition the roof photo. Tap Pan again to resume.');
+        } else {
+          roofSetInfo('Pan off. Pick Scale, Measure, or Adjust to keep working.');
+        }
+        roofUpdateModeButtons();
+      }
+
+      function roofEnsurePanOff() {
+        if (roofIsPanMode) {
+          roofIsPanMode = false;
+          if (roofCanvas) roofCanvas.classList.remove('pan-enabled');
+          roofUpdateModeButtons();
+        }
+      }
 
     function roofCanvasPoint(evt) {
       var clientX, clientY;
@@ -1384,11 +1461,16 @@
       return Math.sqrt(dx * dx + dy * dy);
     }
 
-    function roofApplyZoom() {
-      if (!roofCanvas) return;
-      roofCanvas.style.transformOrigin = '0 0';
-      roofCanvas.style.transform = 'scale(' + roofZoom.toFixed(2) + ')';
-    }
+      function roofApplyZoom() {
+        if (!roofCanvas) return;
+        roofCanvas.style.transformOrigin = '0 0';
+        roofCanvas.style.transform = 'scale(' + roofZoom.toFixed(2) + ')';
+      }
+
+      function roofZoomBy(delta) {
+        roofZoom = Math.min(Math.max(roofZoom + delta, ROOF_ZOOM_MIN), ROOF_ZOOM_MAX);
+        roofApplyZoom();
+      }
 
     function roofDrawBase() {
       if (!roofCtx || !roofCanvas) return;
@@ -1514,41 +1596,47 @@
             roofMode         = 'none';
             roofLastPoint    = null;
 
-            roofZoom = 1;
-            roofApplyZoom();
-            roofDrawBase();
-            roofUpdateTotals();
-            roofSetInfo('Image loaded. Step 1: click "Set scale" and draw a known distance.');
+              roofZoom = 1;
+              roofApplyZoom();
+              roofDrawBase();
+              roofUpdateTotals();
+              roofSetInfo('Image loaded. Step 1: click "Set scale" and draw a known distance.');
+              roofEnsurePanOff();
+              roofUpdateModeButtons();
+            };
+            img.src = ev.target.result;
           };
-          img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
+          reader.readAsDataURL(file);
+        });
     }
 
-    if (roofSetScaleBtn) {
-      roofSetScaleBtn.addEventListener('click', function () {
-        if (!roofImage) { roofSetInfo('Upload an image first.'); return; }
-        roofMode         = 'scale';
-        roofScalePoints  = [];
-        roofLastPoint    = null;
-        roofSegments     = [];
-        roofFeetPerPixel = null;
-        roofRedraw();
-        roofUpdateTotals();
-        roofSetInfo('Scale mode: click two points on a known distance.');
-      });
-    }
+      if (roofSetScaleBtn) {
+        roofSetScaleBtn.addEventListener('click', function () {
+          if (!roofImage) { roofSetInfo('Upload an image first.'); return; }
+          roofEnsurePanOff();
+          roofMode         = 'scale';
+          roofScalePoints  = [];
+          roofLastPoint    = null;
+          roofSegments     = [];
+          roofFeetPerPixel = null;
+          roofRedraw();
+          roofUpdateTotals();
+          roofSetInfo('Scale mode: click two points on a known distance.');
+          roofUpdateModeButtons();
+        });
+      }
 
-    if (roofMeasureBtn) {
-      roofMeasureBtn.addEventListener('click', function () {
-        if (!roofImage)       { roofSetInfo('Upload an image first.'); return; }
-        if (!roofFeetPerPixel){ roofSetInfo('Set scale first.');      return; }
-        roofMode      = 'measure';
-        roofLastPoint = null;
-        roofSetInfo('Measure mode: choose run type, then click along each run.');
-      });
-    }
+      if (roofMeasureBtn) {
+        roofMeasureBtn.addEventListener('click', function () {
+          if (!roofImage)       { roofSetInfo('Upload an image first.'); return; }
+          if (!roofFeetPerPixel){ roofSetInfo('Set scale first.');      return; }
+          roofEnsurePanOff();
+          roofMode      = 'measure';
+          roofLastPoint = null;
+          roofSetInfo('Measure mode: choose run type, then click along each run.');
+          roofUpdateModeButtons();
+        });
+      }
 
     if (roofUndoBtn) {
       roofUndoBtn.addEventListener('click', function () {
@@ -1571,25 +1659,54 @@
       });
     }
 
-    if (roofAdjustBtn) {
-      roofAdjustBtn.addEventListener('click', function () {
-        if (!roofImage)       { roofSetInfo('Upload an image first.');       return; }
-        if (!roofFeetPerPixel){ roofSetInfo('Set scale first.');            return; }
-        if (!roofSegments.length) { roofSetInfo('No segments yet – measure first.'); return; }
-        roofMode      = 'adjust';
-        roofLastPoint = null;
-        roofSetInfo('Adjust mode: drag cyan endpoints to tweak lines.');
-        roofRedraw();
-      });
-    }
+      if (roofAdjustBtn) {
+        roofAdjustBtn.addEventListener('click', function () {
+          if (!roofImage)       { roofSetInfo('Upload an image first.');       return; }
+          if (!roofFeetPerPixel){ roofSetInfo('Set scale first.');            return; }
+          if (!roofSegments.length) { roofSetInfo('No segments yet – measure first.'); return; }
+          roofEnsurePanOff();
+          roofMode      = 'adjust';
+          roofLastPoint = null;
+          roofSetInfo('Adjust mode: drag cyan endpoints to tweak lines.');
+          roofRedraw();
+          roofUpdateModeButtons();
+        });
+      }
 
-    if (roofCanvas && roofCtx) {
-      function handleRoofTap(evt) {
-        if (!roofImage) return;
+      if (roofScaleInlineBtn && roofSetScaleBtn) {
+        roofScaleInlineBtn.addEventListener('click', function () {
+          roofSetScaleBtn.click();
+        });
+      }
 
-        if (evt.type === 'touchstart') {
-          roofIgnoreClickUntil = Date.now() + 700;
-        }
+      if (roofMeasureInlineBtn && roofMeasureBtn) {
+        roofMeasureInlineBtn.addEventListener('click', function () {
+          roofMeasureBtn.click();
+        });
+      }
+
+      if (roofAdjustInlineBtn && roofAdjustBtn) {
+        roofAdjustInlineBtn.addEventListener('click', function () {
+          roofAdjustBtn.click();
+        });
+      }
+
+      if (roofPanInlineBtn && roofCanvas) {
+        roofPanInlineBtn.addEventListener('click', function () {
+          roofSetPanMode(!roofIsPanMode);
+        });
+      }
+
+      roofUpdateModeButtons();
+
+      if (roofCanvas && roofCtx) {
+        function handleRoofTap(evt) {
+          if (!roofImage) return;
+          if (roofIsPanMode) return;
+
+          if (evt.type === 'touchstart') {
+            roofIgnoreClickUntil = Date.now() + 700;
+          }
         if (evt.type === 'click' && Date.now() < roofIgnoreClickUntil) {
           return; // ignore ghost click after touch
         }
@@ -1636,13 +1753,14 @@
         }
       }
 
-      roofCanvas.addEventListener('click', handleRoofTap);
-      roofCanvas.addEventListener('touchstart', handleRoofTap, { passive: false });
+        roofCanvas.addEventListener('click', handleRoofTap);
+        roofCanvas.addEventListener('touchstart', handleRoofTap, { passive: false });
 
-      function roofHandleDown(evt) {
-        if (roofMode !== 'adjust' || !roofSegments.length) return;
-        var pt = roofCanvasPoint(evt);
-        var best = { index: -1, end: null, dist: 12 };
+        function roofHandleDown(evt) {
+          if (roofIsPanMode) return;
+          if (roofMode !== 'adjust' || !roofSegments.length) return;
+          var pt = roofCanvasPoint(evt);
+          var best = { index: -1, end: null, dist: 12 };
 
         roofSegments.forEach(function (seg, idx) {
           var df = roofDist(pt, seg.from);
@@ -1659,10 +1777,11 @@
         }
       }
 
-      function roofHandleMove(evt) {
-        if (!roofIsDragging || roofDragIndex < 0) return;
-        var seg = roofSegments[roofDragIndex];
-        if (!seg) return;
+        function roofHandleMove(evt) {
+          if (roofIsPanMode) return;
+          if (!roofIsDragging || roofDragIndex < 0) return;
+          var seg = roofSegments[roofDragIndex];
+          if (!seg) return;
         var pt = roofCanvasPoint(evt);
         seg[roofDragEnd] = pt;
         if (roofFeetPerPixel) {
@@ -1725,15 +1844,25 @@
 
     if (roofZoomInBtn && roofCanvas) {
       roofZoomInBtn.addEventListener('click', function () {
-        roofZoom = Math.min(roofZoom + 0.25, ROOF_ZOOM_MAX);
-        roofApplyZoom();
+        roofZoomBy(0.25);
       });
     }
 
     if (roofZoomOutBtn && roofCanvas) {
       roofZoomOutBtn.addEventListener('click', function () {
-        roofZoom = Math.max(roofZoom - 0.25, ROOF_ZOOM_MIN);
-        roofApplyZoom();
+        roofZoomBy(-0.25);
+      });
+    }
+
+    if (roofZoomInInlineBtn && roofCanvas) {
+      roofZoomInInlineBtn.addEventListener('click', function () {
+        roofZoomBy(0.25);
+      });
+    }
+
+    if (roofZoomOutInlineBtn && roofCanvas) {
+      roofZoomOutInlineBtn.addEventListener('click', function () {
+        roofZoomBy(-0.25);
       });
     }
 
