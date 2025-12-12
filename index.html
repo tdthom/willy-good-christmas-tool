@@ -79,6 +79,12 @@
     #roof-canvas {
       touch-action: none;
     }
+
+    /* Allow optional panning on the mockup canvas when toggled on */
+    #mockup-canvas.pan-enabled {
+      touch-action: pan-x pan-y;
+      cursor: grab;
+    }
     nav button.active {
       border-color: #004b80;
       font-weight: bold;
@@ -505,6 +511,7 @@
 
     <button id="mockup-zoom-in" type="button">Zoom in</button>
     <button id="mockup-zoom-out" type="button">Zoom out</button>
+    <button id="mockup-pan" type="button">Pan / move photo</button>
     <button id="mockup-print" type="button">Print / Save this mockup as PDF</button>
     <br><br>
 
@@ -624,7 +631,7 @@
       </div>
 
       <!-- Canvas column -->
-      <div style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff;">
+      <div id="mockup-canvas-wrapper" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff;">
         <canvas
           id="mockup-canvas"
           width="1000"
@@ -1657,6 +1664,8 @@
     var mockClearBtn      = document.getElementById('mockup-clear');
     var mockZoomInBtn     = document.getElementById('mockup-zoom-in');
     var mockZoomOutBtn    = document.getElementById('mockup-zoom-out');
+    var mockPanBtn        = document.getElementById('mockup-pan');
+    var mockCanvasWrapper = document.getElementById('mockup-canvas-wrapper');
     var mockPrintBtn      = document.getElementById('mockup-print');
 
     var mockDecorTypeSelect   = document.getElementById('mockup-decor-type');
@@ -1681,10 +1690,12 @@
     var mockDrawParams  = null;
     var mockSegments    = []; // {from:{x,y}, to:{x,y}, type, curve?}
     var mockLastPoint   = null;
-    var mockMode        = 'draw'; // 'draw','adjust','decor-add','decor-edit'
+    var mockMode        = 'draw'; // 'draw','adjust','decor-add','decor-edit','pan'
     var mockZoom        = 1;
     var MOCK_ZOOM_MIN   = 0.5;
     var MOCK_ZOOM_MAX   = 3;
+    var mockIsPanMode   = false;
+    var mockModeBeforePan = 'draw';
 
     // --- Mobile click guard (prevents touch -> delayed click double fire) ---
     var mockIgnoreClickUntil = 0;
@@ -1740,6 +1751,42 @@
 
     function mockSetInfo(msg) {
       if (mockInfo) mockInfo.textContent = msg || '';
+    }
+
+    function mockUpdatePanStateUI() {
+      if (mockPanBtn) {
+        if (mockIsPanMode) mockPanBtn.classList.add('active');
+        else mockPanBtn.classList.remove('active');
+      }
+      if (mockCanvas) {
+        if (mockIsPanMode) mockCanvas.classList.add('pan-enabled');
+        else mockCanvas.classList.remove('pan-enabled');
+      }
+    }
+
+    function mockSetPanMode(on, silent) {
+      if (on && !mockIsPanMode) {
+        mockModeBeforePan = mockMode;
+        mockMode = 'pan';
+        mockIsPanMode = true;
+        mockUpdatePanStateUI();
+        if (!silent) {
+          mockSetInfo('Pan enabled: drag or swipe to reposition the photo, then tap Pan again to keep drawing.');
+        }
+      } else if (!on && mockIsPanMode) {
+        mockIsPanMode = false;
+        mockMode = mockModeBeforePan || 'draw';
+        mockUpdatePanStateUI();
+        if (!silent) {
+          mockSetInfo('Pan off. Tap to draw, adjust, or place decorations again.');
+        }
+      }
+    }
+
+    function mockEnsurePanOff() {
+      if (mockIsPanMode) {
+        mockSetPanMode(false, true);
+      }
     }
 
     function mockDrawBase() {
@@ -2448,6 +2495,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
             mockDecorations = [];
             mockSelectedDecorId = null;
             mockLastPoint   = null;
+            mockSetPanMode(false);
             mockMode        = 'draw';
             mockZoom        = 1;
             mockApplyZoom();
@@ -2497,6 +2545,8 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       function handleMockTap(evt) {
         if (!mockImage) return;
 
+        if (mockIsPanMode) return; // allow native scroll when panning
+
         if (evt.type === 'touchstart') {
           mockIgnoreClickUntil = Date.now() + 700;
         }
@@ -2543,6 +2593,13 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       // Shared DOWN handler (mouse + touch)
       function handleMockDown(evt) {
         if (!mockImage) return;
+
+        if (mockIsPanMode) {
+          if (evt.type === 'touchstart') {
+            mockIgnoreClickUntil = Date.now() + 700;
+          }
+          return; // let the wrapper scroll naturally
+        }
 
         if (evt.type === 'touchstart') {
           // Ignore the delayed click that iOS may fire after touch
@@ -2610,6 +2667,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       // Shared MOVE handler (mouse + touch)
       function handleMockMove(evt) {
         if (!mockImage) return;
+        if (mockIsPanMode) return;
         var pt = getPointerPoint(evt);
 
         // Drag segment endpoints
@@ -2682,6 +2740,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
     // LIGHT RUNS CONTROL BUTTONS
     if (mockUndoBtn) {
       mockUndoBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         if (!mockSegments.length) {
           mockSetInfo('No segments to undo.');
           return;
@@ -2701,6 +2760,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
     if (mockNewRunBtn) {
       mockNewRunBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         mockLastPoint = null;
         mockMode = 'draw';
         mockSetInfo('New run started. Next click will begin a fresh light run.');
@@ -2710,6 +2770,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
     if (mockAdjustBtn) {
       mockAdjustBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         if (!mockImage) {
           mockSetInfo('Upload a photo first.');
           return;
@@ -2727,6 +2788,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
     if (mockClearBtn) {
       mockClearBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         mockSegments = [];
         mockLastPoint = null;
         mockMode = 'draw';
@@ -2738,6 +2800,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
     // DECORATION BUTTONS
     if (mockDecorPlaceBtn) {
       mockDecorPlaceBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         if (!mockImage) {
           mockSetInfo('Upload a photo first.');
           return;
@@ -2750,6 +2813,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
     if (mockDecorEditBtn) {
       mockDecorEditBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         if (!mockImage) {
           mockSetInfo('Upload a photo first.');
           return;
@@ -2766,7 +2830,10 @@ if (glowFactor > 0.15) { // appears around mid-dusk
     }
 
     if (mockDecorDeleteBtn) {
-      mockDecorDeleteBtn.addEventListener('click', deleteSelectedDecoration);
+      mockDecorDeleteBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
+        deleteSelectedDecoration();
+      });
     }
 
     if (mockDecorClearBtn) {
@@ -2869,6 +2936,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         // TREE / SHRUB LIGHTS – use line runs with mini-bulbs
     if (treeTraceBtn) {
       treeTraceBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         if (!mockImage) {
           mockSetInfo('Upload a front photo first, then add tree / shrub lights.');
           return;
@@ -2889,6 +2957,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
     if (treeTraceUndoBtn) {
       treeTraceUndoBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         if (!mockSegments.length) {
           mockSetInfo('No tree / shrub runs to undo yet.');
           return;
@@ -2909,6 +2978,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
     if (treeTraceClearBtn) {
       treeTraceClearBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         if (!mockSegments.length) {
           mockSetInfo('No tree / shrub runs to clear.');
           return;
@@ -2945,6 +3015,16 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       mockZoomOutBtn.addEventListener('click', function () {
         mockZoom = Math.max(mockZoom - 0.25, MOCK_ZOOM_MIN);
         mockApplyZoom();
+      });
+    }
+
+    if (mockPanBtn && mockCanvas) {
+      mockPanBtn.addEventListener('click', function () {
+        var enable = !mockIsPanMode;
+        mockSetPanMode(enable);
+        if (enable && mockCanvasWrapper) {
+          mockCanvasWrapper.scrollLeft += 0; // keep wrapper reference alive for mobile scrolling
+        }
       });
     }
 
