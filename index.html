@@ -380,12 +380,13 @@
         <button id="roof-zoom-in">Zoom in</button>
         <button id="roof-zoom-out">Zoom out</button><br><br>
 
-        <label for="roof-run-type"><strong>Run type:</strong></label><br>
+      <label for="roof-run-type"><strong>Run type:</strong></label><br>
         <select id="roof-run-type" style="width:100%;">
-          <option value="ridge">Ridge / hip / shingle</option>
-          <option value="eaves">Eaves / gutters</option>
-          <option value="gable">Gable returns / other</option>
-        </select><br><br>
+        <option value="ridge">Ridge / hip / shingle</option>
+        <option value="eaves">Eaves / gutters</option>
+        <option value="gable">Gable returns / other</option>
+        <option value="ground">Ground / stake lights</option>
+      </select><br><br>
 
         <p class="small-note" style="margin-top:0;">
           Gable returns are measured separately so you can calculate extra wire and tie-ins.
@@ -1231,14 +1232,15 @@
         return;
       }
 
-      var totals = { ridge: 0, eaves: 0, gable: 0 };
+      var totals = { ridge: 0, eaves: 0, gable: 0, ground: 0 };
       roofSegments.forEach(function (seg) {
-        if (totals.hasOwnProperty(seg.type)) {
-          totals[seg.type] += seg.feet || 0;
-        }
-      });
+      if (totals.hasOwnProperty(seg.type)) {
+        totals[seg.type] += seg.feet || 0;
+      }
+    });
 
-      var all = totals.ridge + totals.eaves + totals.gable;
+      var all = totals.ridge + totals.eaves + totals.gable + totals.ground;
+
       var gableWasteFactor = 1.10;
       var gableWithWaste   = totals.gable * gableWasteFactor;
 
@@ -1246,18 +1248,22 @@
       if (roofFeetPerPixel) {
         html += '<p>Scale: 1 pixel ≈ ' + roofFeetPerPixel.toFixed(4) + ' ft</p>';
       }
+
       html += '<ul>';
       html += '<li><strong>Ridge / hip / shingle:</strong> ' +
-              totals.ridge.toFixed(1) + ' ft</li>';
+        totals.ridge.toFixed(1) + ' ft</li>';
       html += '<li><strong>Eaves / gutters:</strong> ' +
-              totals.eaves.toFixed(1) + ' ft</li>';
+        totals.eaves.toFixed(1) + ' ft</li>';
       html += '<li><strong>Gable returns / other:</strong> ' +
-              totals.gable.toFixed(1) + ' ft</li>';
+        totals.gable.toFixed(1) + ' ft</li>';
+      html += '<li><strong>Ground / stake lights:</strong> ' +
+        totals.ground.toFixed(1) + ' ft</li>';
       html += '</ul>';
       html += '<p><strong>Gable w/ 10% waste (extra wire, tie-ins):</strong> ' +
-              gableWithWaste.toFixed(1) + ' ft</p>';
+        gableWithWaste.toFixed(1) + ' ft</p>';
       html += '<p><strong>Total measured (all segments, before waste):</strong> ' +
-              all.toFixed(1) + ' ft</p>';
+        all.toFixed(1) + ' ft</p>';
+
       roofTotals.innerHTML = html;
     }
 
@@ -1274,19 +1280,20 @@
         roofCtx.stroke();
       }
 
-      roofSegments.forEach(function (seg) {
-        var color = '#ff0000';
-        if (seg.type === 'eaves')  color = '#0000ff';
-        if (seg.type === 'gable')  color = '#008000';
+     roofSegments.forEach(function (seg) {
+      var color = '#ff0000';          // ridge default
+      if (seg.type === 'eaves')  color = '#0000ff';
+      if (seg.type === 'gable')  color = '#008000';
+      if (seg.type === 'ground') color = '#ffa500';  // orange for ground runs
 
-        roofCtx.beginPath();
-        roofCtx.strokeStyle = color;
-        roofCtx.lineWidth   = 3;
-        roofCtx.moveTo(seg.from.x, seg.from.y);
-        roofCtx.lineTo(seg.to.x,   seg.to.y);
-        roofCtx.stroke();
+      roofCtx.beginPath();
+      roofCtx.strokeStyle = color;
+      roofCtx.lineWidth   = 3;
+      roofCtx.moveTo(seg.from.x, seg.from.y);
+      roofCtx.lineTo(seg.to.x,   seg.to.y);
+      roofCtx.stroke();
 
-        if (roofMode === 'adjust') {
+         if (roofMode === 'adjust') {
           roofCtx.beginPath();
           roofCtx.fillStyle = '#00ffff';
           roofCtx.arc(seg.from.x, seg.from.y, 4, 0, Math.PI * 2);
@@ -1483,32 +1490,35 @@
     }
 
     if (roofSendBtn) {
-      roofSendBtn.addEventListener('click', function () {
-        if (!roofSegments.length || !roofFeetPerPixel) {
-          alert('Measure some runs first.');
-          return;
-        }
-
-        var totals = { ridge: 0, eaves: 0, gable: 0 };
-        roofSegments.forEach(function (seg) {
-          if (totals.hasOwnProperty(seg.type)) {
-            totals[seg.type] += seg.feet || 0;
-          }
-        });
-
-        var ridgeWithGable = totals.ridge + totals.gable;
-        var eavesOnly      = totals.eaves;
-
-        if (ridgeInput) ridgeInput.value = ridgeWithGable.toFixed(1);
-        if (eavesInput) eavesInput.value = eavesOnly.toFixed(1);
-
-        roofSetInfo(
-          'Sent ridge (' + ridgeWithGable.toFixed(1) +
-          ' ft, incl. gable returns) and eaves (' +
-          eavesOnly.toFixed(1) + ' ft) to Estimate.'
-        );
-      });
+  roofSendBtn.addEventListener('click', function () {
+    if (!roofSegments.length || !roofFeetPerPixel) {
+      alert('Measure some runs first.');
+      return;
     }
+
+    var totals = { ridge: 0, eaves: 0, gable: 0, ground: 0 };
+    roofSegments.forEach(function (seg) {
+      if (totals.hasOwnProperty(seg.type)) {
+        totals[seg.type] += seg.feet || 0;
+      }
+    });
+
+    var ridgeWithGable = totals.ridge + totals.gable;
+    var eavesOnly      = totals.eaves;
+    var groundFeet     = totals.ground;
+
+    if (ridgeInput)  ridgeInput.value  = ridgeWithGable.toFixed(1);
+    if (eavesInput)  eavesInput.value  = eavesOnly.toFixed(1);
+    if (groundInput) groundInput.value = groundFeet.toFixed(1);
+
+    roofSetInfo(
+      'Sent ridge (' + ridgeWithGable.toFixed(1) +
+      ' ft, incl. gable returns), eaves (' +
+      eavesOnly.toFixed(1) + ' ft), and ground / stake lights (' +
+      groundFeet.toFixed(1) + ' ft) to Estimate.'
+    );
+  });
+}
 
     if (roofZoomInBtn && roofCanvas) {
       roofZoomInBtn.addEventListener('click', function () {
