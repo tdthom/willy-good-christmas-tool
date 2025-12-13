@@ -111,6 +111,26 @@
         max-width: calc(100% - 20px);
       }
 
+      .mockup-floating-controls {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        bottom: auto;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+        pointer-events: none;
+      }
+
+      .mockup-floating-controls .chip-row {
+        pointer-events: auto;
+        justify-content: flex-start;
+      }
+
+      .mockup-floating-controls .chip-row:last-child {
+        justify-content: flex-end;
+      }
+
       .canvas-docked-toolbar {
         display: none;
         gap: 8px;
@@ -653,9 +673,6 @@
 
     <input type="file" id="mockup-image-input" accept="image/*"><br><br>
 
-    <button id="mockup-zoom-in" type="button">Zoom in</button>
-    <button id="mockup-zoom-out" type="button">Zoom out</button>
-    <button id="mockup-pan" type="button">Pan / move photo</button>
     <button id="mockup-print" type="button">Print / Save this mockup as PDF</button>
     <br><br>
 
@@ -837,12 +854,13 @@
               <button id="mockup-mode-adjust" type="button">Adjust</button>
               <button id="mockup-mode-decor" type="button">Decorate</button>
             </div>
-          <div class="chip-row">
-            <button id="mockup-pan-inline" type="button">Pan</button>
-            <button id="mockup-zoom-in-inline" type="button">Zoom +</button>
-            <button id="mockup-zoom-out-inline" type="button">Zoom −</button>
+            <div class="chip-row">
+              <button id="mockup-pan-inline" type="button">Pan</button>
+              <button id="mockup-center-inline" type="button">Center</button>
+              <button id="mockup-zoom-in-inline" type="button">Zoom +</button>
+              <button id="mockup-zoom-out-inline" type="button">Zoom −</button>
+            </div>
           </div>
-        </div>
         <canvas
           id="mockup-canvas"
           width="1000"
@@ -855,6 +873,7 @@
             <button id="mockup-mode-adjust-mobile" type="button">Adjust</button>
             <button id="mockup-mode-decor-mobile" type="button">Decorate</button>
             <button id="mockup-pan-inline-mobile" type="button">Pan</button>
+            <button id="mockup-center-inline-mobile" type="button">Center</button>
             <button id="mockup-zoom-in-inline-mobile" type="button">Zoom +</button>
             <button id="mockup-zoom-out-inline-mobile" type="button">Zoom −</button>
           </div>
@@ -2053,10 +2072,12 @@
     var mockZoomOutBtn    = document.getElementById('mockup-zoom-out');
     var mockZoomInInline  = document.getElementById('mockup-zoom-in-inline');
     var mockZoomOutInline = document.getElementById('mockup-zoom-out-inline');
+    var mockCenterInline  = document.getElementById('mockup-center-inline');
     var mockPanBtn        = document.getElementById('mockup-pan');
     var mockPanInlineBtn  = document.getElementById('mockup-pan-inline');
     var mockZoomInInlineMobile  = document.getElementById('mockup-zoom-in-inline-mobile');
     var mockZoomOutInlineMobile = document.getElementById('mockup-zoom-out-inline-mobile');
+    var mockCenterInlineMobile  = document.getElementById('mockup-center-inline-mobile');
     var mockPanInlineMobile     = document.getElementById('mockup-pan-inline-mobile');
     var mockCanvasWrapper = document.getElementById('mockup-canvas-wrapper');
     var mockPrintBtn      = document.getElementById('mockup-print');
@@ -2256,6 +2277,15 @@
 
     function mockZoomBy(delta) {
       mockSetZoom(mockZoom + delta);
+    }
+
+    function mockCenterCanvas() {
+      if (!mockCanvasWrapper || !mockCanvas) return;
+      var displayW = mockCanvas.width * mockZoom;
+      var displayH = mockCanvas.height * mockZoom;
+      var targetLeft = Math.max(0, (displayW - mockCanvasWrapper.clientWidth) / 2);
+      var targetTop  = Math.max(0, (displayH - mockCanvasWrapper.clientHeight) / 2);
+      mockCanvasWrapper.scrollTo({ left: targetLeft, top: targetTop, behavior: 'smooth' });
     }
 
     function mockCanvasPoint(evt) {
@@ -3618,6 +3648,18 @@ if (glowFactor > 0.15) { // appears around mid-dusk
     if (mockZoomOutInlineMobile) {
       mockZoomOutInlineMobile.addEventListener('click', function () {
         mockZoomBy(-0.25);
+      });
+    }
+
+    if (mockCenterInline && mockCanvasWrapper) {
+      mockCenterInline.addEventListener('click', function () {
+        mockCenterCanvas();
+      });
+    }
+
+    if (mockCenterInlineMobile && mockCanvasWrapper) {
+      mockCenterInlineMobile.addEventListener('click', function () {
+        mockCenterCanvas();
       });
     }
 
