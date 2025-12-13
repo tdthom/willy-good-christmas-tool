@@ -111,7 +111,8 @@
         max-width: calc(100% - 20px);
       }
 
-      .mockup-floating-controls {
+      .mockup-floating-controls,
+      .roof-floating-controls {
         top: 10px;
         left: 10px;
         right: 10px;
@@ -122,12 +123,14 @@
         pointer-events: none;
       }
 
-      .mockup-floating-controls .chip-row {
+      .mockup-floating-controls .chip-row,
+      .roof-floating-controls .chip-row {
         pointer-events: auto;
         justify-content: flex-start;
       }
 
-      .mockup-floating-controls .chip-row:last-child {
+      .mockup-floating-controls .chip-row:last-child,
+      .roof-floating-controls .chip-row:last-child {
         justify-content: flex-end;
       }
 
@@ -595,8 +598,9 @@
         <button id="roof-adjust-mode">Adjust</button>
         <button id="roof-clear">Clear</button><br><br>
 
-        <button id="roof-zoom-in">Zoom in</button>
-        <button id="roof-zoom-out">Zoom out</button><br><br>
+        <button id="roof-print" type="button" style="width:100%; margin-bottom:0.5rem;">
+          Print / Save roof canvas
+        </button>
 
       <label for="roof-run-type"><strong>Run type:</strong></label><br>
         <select id="roof-run-type" style="width:100%;">
@@ -623,7 +627,7 @@
       </div>
 
       <!-- RIGHT COLUMN: canvas -->
-        <div class="canvas-column" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
+        <div id="roof-canvas-wrapper" class="canvas-column" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
           <div class="canvas-inner">
           <div class="canvas-floating-pad roof-floating-controls" aria-label="Roof quick controls">
             <div class="chip-row">
@@ -633,6 +637,7 @@
             </div>
             <div class="chip-row">
               <button id="roof-pan-inline" type="button">Pan</button>
+              <button id="roof-center-inline" type="button">Center</button>
               <button id="roof-zoom-in-inline" type="button">Zoom +</button>
               <button id="roof-zoom-out-inline" type="button">Zoom −</button>
             </div>
@@ -649,6 +654,7 @@
             <button id="roof-mode-measure-inline-mobile" type="button">Measure</button>
             <button id="roof-mode-adjust-inline-mobile" type="button">Adjust</button>
             <button id="roof-pan-inline-mobile" type="button">Pan</button>
+            <button id="roof-center-inline-mobile" type="button">Center</button>
             <button id="roof-zoom-in-inline-mobile" type="button">Zoom +</button>
             <button id="roof-zoom-out-inline-mobile" type="button">Zoom −</button>
           </div>
@@ -1494,14 +1500,16 @@
     var roofInfo        = document.getElementById('roof-info');
     var roofTotals      = document.getElementById('roof-totals');
 
-    var roofZoomInBtn   = document.getElementById('roof-zoom-in');
-    var roofZoomOutBtn  = document.getElementById('roof-zoom-out');
     var roofZoomInInlineBtn  = document.getElementById('roof-zoom-in-inline');
     var roofZoomOutInlineBtn = document.getElementById('roof-zoom-out-inline');
     var roofPanInlineBtn     = document.getElementById('roof-pan-inline');
+    var roofCenterInlineBtn  = document.getElementById('roof-center-inline');
+    var roofWrapper          = document.getElementById('roof-canvas-wrapper');
+    var roofPrintBtn         = document.getElementById('roof-print');
     var roofZoomInInlineMobileBtn  = document.getElementById('roof-zoom-in-inline-mobile');
     var roofZoomOutInlineMobileBtn = document.getElementById('roof-zoom-out-inline-mobile');
     var roofPanInlineMobileBtn     = document.getElementById('roof-pan-inline-mobile');
+    var roofCenterInlineMobileBtn  = document.getElementById('roof-center-inline-mobile');
     var roofScaleInlineMobileBtn   = document.getElementById('roof-mode-scale-inline-mobile');
     var roofMeasureInlineMobileBtn = document.getElementById('roof-mode-measure-inline-mobile');
     var roofAdjustInlineMobileBtn  = document.getElementById('roof-mode-adjust-inline-mobile');
@@ -1600,6 +1608,15 @@
         if (!roofCanvas) return;
         roofCanvas.style.transformOrigin = '0 0';
         roofCanvas.style.transform = 'scale(' + roofZoom.toFixed(2) + ')';
+      }
+
+      function roofCenterCanvas() {
+        if (!roofWrapper || !roofCanvas) return;
+        var displayW = roofCanvas.width * roofZoom;
+        var displayH = roofCanvas.height * roofZoom;
+        var targetLeft = Math.max(0, (displayW - roofWrapper.clientWidth) / 2);
+        var targetTop  = Math.max(0, (displayH - roofWrapper.clientHeight) / 2);
+        roofWrapper.scrollTo({ left: targetLeft, top: targetTop, behavior: 'smooth' });
       }
 
       function roofZoomBy(delta) {
@@ -2005,18 +2022,6 @@
   });
 }
 
-    if (roofZoomInBtn && roofCanvas) {
-      roofZoomInBtn.addEventListener('click', function () {
-        roofZoomBy(0.25);
-      });
-    }
-
-    if (roofZoomOutBtn && roofCanvas) {
-      roofZoomOutBtn.addEventListener('click', function () {
-        roofZoomBy(-0.25);
-      });
-    }
-
     if (roofZoomInInlineBtn && roofCanvas) {
       roofZoomInInlineBtn.addEventListener('click', function () {
         roofZoomBy(0.25);
@@ -2038,6 +2043,33 @@
     if (roofZoomOutInlineMobileBtn && roofCanvas) {
       roofZoomOutInlineMobileBtn.addEventListener('click', function () {
         roofZoomBy(-0.25);
+      });
+    }
+
+    if (roofCenterInlineBtn && roofWrapper) {
+      roofCenterInlineBtn.addEventListener('click', function () {
+        roofCenterCanvas();
+      });
+    }
+
+    if (roofCenterInlineMobileBtn && roofWrapper) {
+      roofCenterInlineMobileBtn.addEventListener('click', function () {
+        roofCenterCanvas();
+      });
+    }
+
+    if (roofPrintBtn) {
+      roofPrintBtn.addEventListener('click', function () {
+        if (!roofCanvas) { window.print(); return; }
+        var dataUrl = roofCanvas.toDataURL('image/png');
+        var win = window.open('', '_blank');
+        if (!win) { return; }
+        win.document.write('<!DOCTYPE html><html><head><title>Roof canvas</title></head><body style="margin:0; text-align:center;">');
+        win.document.write('<img src="' + dataUrl + '" style="max-width:100%; max-height:100vh;">');
+        win.document.write('</body></html>');
+        win.document.close();
+        win.focus();
+        setTimeout(function () { win.print(); win.close(); }, 200);
       });
     }
 
