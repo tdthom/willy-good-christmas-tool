@@ -97,6 +97,12 @@
         cursor: grab;
       }
 
+      .canvas-inner {
+        position: relative;
+        padding-top: 72px; /* leave room for floating controls so they never cover the drawing area */
+        box-sizing: border-box;
+      }
+
       /* Shared floating control pad overlay (does not shrink the canvas) */
       .canvas-floating-pad {
         position: absolute;
@@ -170,6 +176,20 @@
         border-color: #0c66b0;
         font-weight: 600;
         color: #0c3c66;
+      }
+
+      @media (max-width: 900px) {
+        .canvas-inner {
+          padding-top: 90px;
+        }
+
+        .canvas-floating-pad {
+          gap: 8px;
+        }
+
+        .canvas-floating-pad .chip-row {
+          justify-content: flex-start;
+        }
       }
     nav button.active {
       border-color: #004b80;
