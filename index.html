@@ -7,6 +7,7 @@
   <style>
     :root {
       -webkit-text-size-adjust: 100%;
+      --app-vh: 1vh;
     }
 
     html {
@@ -60,6 +61,7 @@
       -webkit-overflow-scrolling: touch;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
       overscroll-behavior-x: contain;
+      scrollbar-width: thin;
     }
     nav button {
       padding: 12px 16px;
@@ -68,7 +70,8 @@
       cursor: pointer;
       border-radius: 10px;
       font-size: 1rem;
-      flex: 1 0 140px;
+      flex: 0 0 auto;
+      min-width: 140px;
       white-space: nowrap;
       touch-action: manipulation;
       scroll-snap-align: start;
@@ -176,6 +179,30 @@
         border-color: #0c66b0;
         font-weight: 600;
         color: #0c3c66;
+      }
+
+      .controls-toggle {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid #bfc6cc;
+        background: #ffffff;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        cursor: pointer;
+      }
+
+      .controls-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 999;
+      }
+
+      .controls-overlay.active {
+        display: block;
       }
 
       @media (max-width: 900px) {
@@ -300,11 +327,12 @@
   }
 
   nav {
-    flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
     padding: 12px;
     padding-top: calc(12px + env(safe-area-inset-top, 0px));
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    overflow-x: auto;
+    flex-wrap: nowrap;
   }
 
   body {
@@ -312,10 +340,10 @@
   }
 
     nav button {
-      flex: 1 0 46%;
+      flex: 0 0 auto;
       font-size: 1rem;
       text-align: center;
-      min-height: 52px;
+      min-height: 48px;
     }
 
     .canvas-floating-pad {
@@ -342,20 +370,38 @@
     display: grid !important;
     grid-template-rows: minmax(220px, 44svh) 1fr;
     gap: 12px;
-    height: calc(100svh - 140px);
+    height: calc(var(--app-vh, 1vh) * 100 - 140px);
     min-height: 520px;
   }
 
   .controls-panel {
-    width: 100% !important;
-    max-width: 100% !important;
-    height: 100%;
-    max-height: none !important;
+    position: fixed;
+    top: calc(56px + env(safe-area-inset-top, 0px));
+    left: 0;
+    width: min(320px, 86vw) !important;
+    max-width: min(320px, 86vw) !important;
+    height: calc(var(--app-vh, 1vh) * 100 - 56px - env(safe-area-inset-top, 0px));
+    max-height: calc(var(--app-vh, 1vh) * 100 - 56px - env(safe-area-inset-top, 0px)) !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
-    padding-right: 10px;
+    padding: 12px 12px 18px 12px;
     box-sizing: border-box;
+    background: #ffffff;
+    border: 1px solid #ccc;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+    transform: translateX(-104%);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    z-index: 1000;
+    opacity: 0.98;
+  }
+
+  .controls-panel.open {
+    transform: translateX(0);
+  }
+
+  .controls-toggle {
+    display: inline-flex;
   }
 
   .canvas-column {
@@ -386,16 +432,33 @@
   }
 
   .canvas-floating-pad {
-    display: none;
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    bottom: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .canvas-floating-pad .chip-row {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .canvas-floating-pad button {
+    min-width: 0;
+    flex: 1 0 44%;
+    height: auto;
+    padding: 6px 10px;
+    font-size: 0.9rem;
   }
 
   .canvas-docked-toolbar {
-    display: flex;
-  }
-
-  .canvas-docked-toolbar button {
-    flex: 1 0 30%;
-    min-width: 0;
+    display: none;
   }
 
   /* Prevent Safari zoom on focus by ensuring 16px+ form text */
@@ -437,6 +500,8 @@
     <button data-screen="mockup">Photo Mockup</button>
     <button data-screen="proposal">Proposal</button>
   </nav>
+
+  <div class="controls-overlay" id="controls-overlay"></div>
 
   <!-- Screen 1: Clients -->
   <section id="screen-clients" class="screen active">
@@ -596,10 +661,12 @@
       </li>
     </ol>
 
+    <button class="controls-toggle" data-target="roof-controls" type="button">Controls</button>
+
     <div class="canvas-layout" style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start; margin-top:0.75rem;">
 
       <!-- LEFT COLUMN: controls -->
-      <div class="controls-panel" style="min-width:260px; max-width:320px; max-height:80vh; overflow-y:auto; background:#ffffff; border:1px solid #ccc; padding:8px; box-sizing:border-box;">
+      <div id="roof-controls" class="controls-panel" style="min-width:260px; max-width:320px; max-height:80vh; overflow-y:auto; background:#ffffff; border:1px solid #ccc; padding:8px; box-sizing:border-box;">
 
         <h3 style="margin-top:0;">Image &amp; scale</h3>
 
@@ -702,10 +769,12 @@
     <button id="mockup-print" type="button">Print / Save this mockup as PDF</button>
     <br><br>
 
+    <button class="controls-toggle" data-target="mockup-controls" type="button">Controls</button>
+
     <div class="canvas-layout" style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start;">
 
       <!-- Controls column -->
-      <div class="controls-panel" style="min-width:250px; max-width:320px; max-height:80vh; overflow-y:auto;">
+      <div id="mockup-controls" class="controls-panel" style="min-width:250px; max-width:320px; max-height:80vh; overflow-y:auto;">
         <h3 style="margin-top:0;">Light style</h3>
 
         <label for="mockup-color-mode"><strong>Color pattern:</strong></label><br>
@@ -960,6 +1029,51 @@
     // ------------------------------------------------------------------
     var navButtons = document.querySelectorAll('nav button[data-screen]');
     var screens = document.querySelectorAll('.screen');
+    var controlsOverlay = document.getElementById('controls-overlay');
+
+    function setViewportUnit() {
+      var vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--app-vh', vh + 'px');
+    }
+
+    function closeControlDrawers() {
+      document.querySelectorAll('.controls-panel.open').forEach(function (panel) {
+        panel.classList.remove('open');
+      });
+      if (controlsOverlay) controlsOverlay.classList.remove('active');
+    }
+
+    function toggleControlDrawer(targetId) {
+      var panel = targetId ? document.getElementById(targetId) : null;
+      if (!panel) return;
+      var willOpen = !panel.classList.contains('open');
+      closeControlDrawers();
+      if (willOpen) {
+        panel.classList.add('open');
+        if (controlsOverlay) controlsOverlay.classList.add('active');
+      }
+    }
+
+    document.querySelectorAll('.controls-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var targetId = btn.getAttribute('data-target');
+        toggleControlDrawer(targetId);
+      });
+    });
+
+    if (controlsOverlay) {
+      controlsOverlay.addEventListener('click', function () {
+        closeControlDrawers();
+      });
+    }
+
+    document.addEventListener('keyup', function (evt) {
+      if (evt.key === 'Escape') closeControlDrawers();
+    });
+
+    setViewportUnit();
+    window.addEventListener('resize', setViewportUnit);
+    window.addEventListener('orientationchange', setViewportUnit);
 
     navButtons.forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -970,6 +1084,7 @@
           if (s.id === 'screen-' + target) s.classList.add('active');
           else s.classList.remove('active');
         });
+        closeControlDrawers();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
     });
@@ -1900,11 +2015,11 @@
           if (!roofImage) return;
           if (roofIsPanMode) return;
 
-          if (evt.type === 'touchstart') {
-            roofIgnoreClickUntil = Date.now() + 700;
-            setCanvasTouchLock(roofCanvas, true);
-            setTimeout(function () { setCanvasTouchLock(roofCanvas, false); }, 400);
-          }
+        if (evt.pointerType === 'touch') {
+          roofIgnoreClickUntil = Date.now() + 700;
+          setCanvasTouchLock(roofCanvas, true);
+          setTimeout(function () { setCanvasTouchLock(roofCanvas, false); }, 400);
+        }
         if (evt.type === 'click' && Date.now() < roofIgnoreClickUntil) {
           return; // ignore ghost click after touch
         }
@@ -1952,7 +2067,10 @@
       }
 
         roofCanvas.addEventListener('click', handleRoofTap);
-        roofCanvas.addEventListener('touchstart', handleRoofTap, { passive: false });
+        roofCanvas.addEventListener('pointerdown', function (evt) {
+          if (evt.pointerType === 'touch' && evt.cancelable) evt.preventDefault();
+          handleRoofTap(evt);
+        });
 
         function roofHandleDown(evt) {
           if (roofIsPanMode) return;
@@ -2001,14 +2119,12 @@
         setCanvasTouchLock(roofCanvas, false);
       }
 
-      roofCanvas.addEventListener('mousedown', roofHandleDown);
-      roofCanvas.addEventListener('mousemove', roofHandleMove);
-      window.addEventListener('mouseup', roofHandleUp);
-
-      roofCanvas.addEventListener('touchstart', roofHandleDown, { passive: false });
-      roofCanvas.addEventListener('touchmove', roofHandleMove, { passive: false });
-      roofCanvas.addEventListener('touchend', roofHandleUp);
-      roofCanvas.addEventListener('touchcancel', roofHandleUp);
+      roofCanvas.addEventListener('pointerdown', roofHandleDown);
+      roofCanvas.addEventListener('pointermove', roofHandleMove);
+      roofCanvas.addEventListener('pointerup', roofHandleUp);
+      roofCanvas.addEventListener('pointercancel', roofHandleUp);
+      roofCanvas.addEventListener('pointerleave', roofHandleUp);
+      window.addEventListener('pointerup', roofHandleUp);
     }
 
     if (roofSendBtn) {
@@ -2133,6 +2249,7 @@
     var mockPanInlineMobile     = document.getElementById('mockup-pan-inline-mobile');
     var mockCanvasWrapper = document.getElementById('mockup-canvas-wrapper');
     var mockPrintBtn      = document.getElementById('mockup-print');
+    var mockPointerMap    = new Map();
 
     var mockModeDrawBtn   = document.getElementById('mockup-mode-draw');
     var mockModeAdjustBtn = document.getElementById('mockup-mode-adjust');
@@ -3102,6 +3219,21 @@ if (glowFactor > 0.15) { // appears around mid-dusk
        // --- MOUSE + TOUCH HANDLING FOR MOCKUP CANVAS --------------------
     if (mockCanvas && mockCtx) {
 
+      function normalizeMockPointer(evt, remove) {
+        if (!evt || !evt.pointerId) return evt;
+        if (evt.pointerType === 'touch') {
+          if (remove) mockPointerMap.delete(evt.pointerId);
+          else mockPointerMap.set(evt.pointerId, evt);
+          var touches = Array.from(mockPointerMap.values()).map(function (p) {
+            return { clientX: p.clientX, clientY: p.clientY };
+          });
+          evt.touches = touches;
+        } else {
+          mockPointerMap.clear();
+        }
+        return evt;
+      }
+
       // Normalize mouse/touch into a single canvas point
       function getPointerPoint(evt) {
         var clientX, clientY;
@@ -3144,7 +3276,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
         if (mockIsPanMode) return; // allow native scroll when panning
 
-        if (evt.type === 'touchstart') {
+        if (evt.pointerType === 'touch') {
           mockIgnoreClickUntil = Date.now() + 700;
         }
         if (evt.type === 'click' && Date.now() < mockIgnoreClickUntil) {
@@ -3201,13 +3333,13 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         }
 
         if (mockIsPanMode) {
-          if (evt.type === 'touchstart') {
+          if (evt.pointerType === 'touch') {
             mockIgnoreClickUntil = Date.now() + 700;
           }
           return; // let the wrapper scroll naturally
         }
 
-        if (evt.type === 'touchstart') {
+        if (evt.pointerType === 'touch') {
           // Ignore the delayed click that iOS may fire after touch
           mockIgnoreClickUntil = Date.now() + 700;
           setCanvasTouchLock(mockCanvas, true);
@@ -3218,8 +3350,8 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         mockIsDraggingDecor   = false;
         mockIsResizingDecor   = false;
 
-        // Draw / add modes: treat touchstart as a tap to place points
-        if ((mockMode === 'draw' || mockMode === 'decor-add') && evt.type === 'touchstart') {
+        // Draw / add modes: treat touch pointers as taps to place points
+        if ((mockMode === 'draw' || mockMode === 'decor-add') && evt.pointerType === 'touch') {
           handleMockTap(evt);
           return;
         }
@@ -3350,18 +3482,31 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         setCanvasTouchLock(mockCanvas, false);
       }
 
-      // Mouse events → shared handlers
-      mockCanvas.addEventListener('mousedown',  handleMockDown);
-      mockCanvas.addEventListener('mousemove',  handleMockMove);
-      mockCanvas.addEventListener('mouseup',    handleMockUp);
-      mockCanvas.addEventListener('mouseleave', handleMockUp);
-      document.addEventListener('mouseup',      handleMockUp);
-
-      // Touch events → shared handlers (for Apple / phones)
-      mockCanvas.addEventListener('touchstart', handleMockDown, { passive: false });
-      mockCanvas.addEventListener('touchmove',  handleMockMove, { passive: false });
-      mockCanvas.addEventListener('touchend',   handleMockUp);
-      mockCanvas.addEventListener('touchcancel',handleMockUp);
+      // Pointer events → shared handlers
+      mockCanvas.addEventListener('pointerdown', function (evt) {
+        normalizeMockPointer(evt, false);
+        handleMockDown(evt);
+      });
+      mockCanvas.addEventListener('pointermove', function (evt) {
+        normalizeMockPointer(evt, false);
+        handleMockMove(evt);
+      });
+      mockCanvas.addEventListener('pointerup', function (evt) {
+        normalizeMockPointer(evt, true);
+        handleMockUp(evt);
+      });
+      mockCanvas.addEventListener('pointercancel', function (evt) {
+        normalizeMockPointer(evt, true);
+        handleMockUp(evt);
+      });
+      mockCanvas.addEventListener('pointerleave', function (evt) {
+        normalizeMockPointer(evt, true);
+        handleMockUp(evt);
+      });
+      document.addEventListener('pointerup', function (evt) {
+        normalizeMockPointer(evt, true);
+        handleMockUp(evt);
+      });
     }
 
     // LIGHT RUNS CONTROL BUTTONS
