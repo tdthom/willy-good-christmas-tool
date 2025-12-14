@@ -159,9 +159,9 @@
 
       .canvas-floating-pad button {
         pointer-events: auto;
-        min-width: 40px;
-        height: 40px;
-        padding: 6px 10px;
+        min-width: 38px;
+        height: 38px;
+        padding: 6px 9px;
         border-radius: 999px;
         border: 1px solid #bfc6cc;
         background: rgba(255, 255, 255, 0.9);
@@ -353,10 +353,10 @@
     }
 
     .canvas-floating-pad button {
-      min-width: 36px;
-      height: 36px;
-      padding: 5px 8px;
-      font-size: 0.85rem;
+      min-width: 32px;
+      height: 32px;
+      padding: 4px 6px;
+      font-size: 0.8rem;
       box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
     }
 
@@ -2104,7 +2104,6 @@
         }
       }
 
-        roofCanvas.addEventListener('click', handleRoofTap);
         roofCanvas.addEventListener('pointerdown', function (evt) {
           if (evt.pointerType === 'touch' && evt.cancelable) evt.preventDefault();
           handleRoofTap(evt);
@@ -3382,9 +3381,6 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         if (evt.cancelable) evt.preventDefault();
       }
 
-      mockCanvas.addEventListener('click', handleMockTap);
-
-
       // Shared DOWN handler (mouse + touch)
       function handleMockDown(evt) {
         if (!mockImage) return;
@@ -3416,8 +3412,8 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         mockIsDraggingDecor   = false;
         mockIsResizingDecor   = false;
 
-        // Draw / add modes: treat touch pointers as taps to place points
-        if ((mockMode === 'draw' || mockMode === 'decor-add') && evt.pointerType === 'touch') {
+        // Draw / add modes: place points immediately for any pointer type
+        if (mockMode === 'draw' || mockMode === 'decor-add') {
           handleMockTap(evt);
           return;
         }
