@@ -111,7 +111,7 @@
         position: absolute;
         right: 10px;
         bottom: 10px;
-        z-index: 20;
+        z-index: 120;
         display: flex;
         flex-direction: column;
         gap: 6px;
@@ -434,10 +434,10 @@
   }
 
   .canvas-floating-pad {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    right: 8px;
+    position: fixed;
+    top: calc(8px + env(safe-area-inset-top, 0px));
+    left: 10px;
+    right: 10px;
     bottom: auto;
     flex-direction: row;
     flex-wrap: wrap;
@@ -1118,6 +1118,7 @@
           else s.classList.remove('active');
         });
         closeControlDrawers();
+        refreshAllCanvasHudPadding();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
     });
