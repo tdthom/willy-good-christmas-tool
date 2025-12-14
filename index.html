@@ -102,7 +102,7 @@
 
       .canvas-inner {
         position: relative;
-        padding-top: 72px; /* leave room for floating controls so they never cover the drawing area */
+        padding-top: var(--canvas-hud-offset, 72px); /* leave room for floating controls so they never cover the drawing area */
         box-sizing: border-box;
       }
 
@@ -111,7 +111,7 @@
         position: absolute;
         right: 10px;
         bottom: 10px;
-        z-index: 6;
+        z-index: 20;
         display: flex;
         flex-direction: column;
         gap: 6px;
@@ -207,7 +207,7 @@
 
       @media (max-width: 900px) {
         .canvas-inner {
-          padding-top: 90px;
+          padding-top: var(--canvas-hud-offset, 90px);
         }
 
         .canvas-floating-pad {
@@ -419,6 +419,8 @@
     flex: 1;
     min-height: 260px;
     overflow: hidden;
+    padding-top: var(--canvas-hud-offset, 96px);
+    box-sizing: border-box;
   }
 
   /* Make canvases fill remaining space without forcing page scroll */
@@ -1030,10 +1032,26 @@
     var navButtons = document.querySelectorAll('nav button[data-screen]');
     var screens = document.querySelectorAll('.screen');
     var controlsOverlay = document.getElementById('controls-overlay');
+    var canvasWrappers = ['roof-canvas-wrapper', 'mockup-canvas-wrapper'];
 
     function setViewportUnit() {
       var vh = window.innerHeight * 0.01;
       document.documentElement.style.setProperty('--app-vh', vh + 'px');
+    }
+
+    function refreshCanvasHudPadding(wrapperId) {
+      var wrapper = document.getElementById(wrapperId);
+      if (!wrapper) return;
+      var inner = wrapper.querySelector('.canvas-inner');
+      var hud = wrapper.querySelector('.canvas-floating-pad');
+      if (!inner || !hud) return;
+      var rect = hud.getBoundingClientRect();
+      var offset = Math.max(Math.ceil(rect.height + 16), 64);
+      inner.style.setProperty('--canvas-hud-offset', offset + 'px');
+    }
+
+    function refreshAllCanvasHudPadding() {
+      canvasWrappers.forEach(refreshCanvasHudPadding);
     }
 
     function closeControlDrawers() {
@@ -1072,8 +1090,15 @@
     });
 
     setViewportUnit();
-    window.addEventListener('resize', setViewportUnit);
-    window.addEventListener('orientationchange', setViewportUnit);
+    refreshAllCanvasHudPadding();
+    window.addEventListener('resize', function () {
+      setViewportUnit();
+      refreshAllCanvasHudPadding();
+    });
+    window.addEventListener('orientationchange', function () {
+      setViewportUnit();
+      refreshAllCanvasHudPadding();
+    });
 
     navButtons.forEach(function (btn) {
       btn.addEventListener('click', function () {
