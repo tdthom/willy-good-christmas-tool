@@ -720,11 +720,13 @@
           <div class="canvas-inner">
           <div class="canvas-floating-pad roof-floating-controls" aria-label="Roof quick controls">
             <div class="chip-row">
+              <button id="roof-controls-inline" type="button">Controls</button>
+              <button id="roof-undo-inline" type="button">Undo</button>
               <button id="roof-mode-scale-inline" type="button">Scale</button>
-              <button id="roof-mode-measure-inline" type="button">Measure</button>
-              <button id="roof-mode-adjust-inline" type="button">Adjust</button>
             </div>
             <div class="chip-row">
+              <button id="roof-mode-measure-inline" type="button">Measure</button>
+              <button id="roof-mode-adjust-inline" type="button">Adjust</button>
               <button id="roof-pan-inline" type="button">Pan</button>
               <button id="roof-center-inline" type="button">Center</button>
               <button id="roof-zoom-in-inline" type="button">Zoom +</button>
@@ -740,6 +742,8 @@
           </div>
           <div class="canvas-docked-toolbar roof-docked-toolbar" aria-label="Roof tools">
             <button id="roof-mode-scale-inline-mobile" type="button">Scale</button>
+            <button id="roof-controls-inline-mobile" type="button">Controls</button>
+            <button id="roof-undo-inline-mobile" type="button">Undo</button>
             <button id="roof-mode-measure-inline-mobile" type="button">Measure</button>
             <button id="roof-mode-adjust-inline-mobile" type="button">Adjust</button>
             <button id="roof-pan-inline-mobile" type="button">Pan</button>
@@ -947,6 +951,8 @@
           <div class="canvas-inner">
           <div class="canvas-floating-pad mockup-floating-controls" aria-label="Quick canvas controls">
             <div class="chip-row">
+              <button id="mockup-controls-inline" type="button">Controls</button>
+              <button id="mockup-undo-inline" type="button">Undo</button>
               <button id="mockup-mode-draw" type="button" class="active">Draw</button>
               <button id="mockup-mode-adjust" type="button">Adjust</button>
               <button id="mockup-mode-decor" type="button">Decorate</button>
@@ -967,6 +973,8 @@
           </div>
           <div class="canvas-docked-toolbar mockup-docked-toolbar" aria-label="Mockup tools">
             <button id="mockup-mode-draw-mobile" type="button" class="active">Draw</button>
+            <button id="mockup-controls-inline-mobile" type="button">Controls</button>
+            <button id="mockup-undo-inline-mobile" type="button">Undo</button>
             <button id="mockup-mode-adjust-mobile" type="button">Adjust</button>
             <button id="mockup-mode-decor-mobile" type="button">Decorate</button>
             <button id="mockup-pan-inline-mobile" type="button">Pan</button>
@@ -1664,12 +1672,16 @@
     var roofZoomOutInlineBtn = document.getElementById('roof-zoom-out-inline');
     var roofPanInlineBtn     = document.getElementById('roof-pan-inline');
     var roofCenterInlineBtn  = document.getElementById('roof-center-inline');
+    var roofUndoInlineBtn    = document.getElementById('roof-undo-inline');
+    var roofControlsInlineBtn = document.getElementById('roof-controls-inline');
     var roofWrapper          = document.getElementById('roof-canvas-wrapper');
     var roofPrintBtn         = document.getElementById('roof-print');
     var roofZoomInInlineMobileBtn  = document.getElementById('roof-zoom-in-inline-mobile');
     var roofZoomOutInlineMobileBtn = document.getElementById('roof-zoom-out-inline-mobile');
     var roofPanInlineMobileBtn     = document.getElementById('roof-pan-inline-mobile');
     var roofCenterInlineMobileBtn  = document.getElementById('roof-center-inline-mobile');
+    var roofUndoInlineMobileBtn    = document.getElementById('roof-undo-inline-mobile');
+    var roofControlsInlineMobileBtn = document.getElementById('roof-controls-inline-mobile');
     var roofScaleInlineMobileBtn   = document.getElementById('roof-mode-scale-inline-mobile');
     var roofMeasureInlineMobileBtn = document.getElementById('roof-mode-measure-inline-mobile');
     var roofAdjustInlineMobileBtn  = document.getElementById('roof-mode-adjust-inline-mobile');
@@ -2213,9 +2225,33 @@
       });
     }
 
+    if (roofUndoInlineBtn && roofUndoBtn) {
+      roofUndoInlineBtn.addEventListener('click', function () {
+        roofUndoBtn.click();
+      });
+    }
+
+    if (roofControlsInlineBtn) {
+      roofControlsInlineBtn.addEventListener('click', function () {
+        toggleControlDrawer('roof-controls');
+      });
+    }
+
     if (roofCenterInlineMobileBtn && roofWrapper) {
       roofCenterInlineMobileBtn.addEventListener('click', function () {
         roofCenterCanvas();
+      });
+    }
+
+    if (roofUndoInlineMobileBtn && roofUndoBtn) {
+      roofUndoInlineMobileBtn.addEventListener('click', function () {
+        roofUndoBtn.click();
+      });
+    }
+
+    if (roofControlsInlineMobileBtn) {
+      roofControlsInlineMobileBtn.addEventListener('click', function () {
+        toggleControlDrawer('roof-controls');
       });
     }
 
@@ -2266,11 +2302,15 @@
     var mockZoomInInline  = document.getElementById('mockup-zoom-in-inline');
     var mockZoomOutInline = document.getElementById('mockup-zoom-out-inline');
     var mockCenterInline  = document.getElementById('mockup-center-inline');
+    var mockUndoInlineBtn = document.getElementById('mockup-undo-inline');
+    var mockControlsInlineBtn = document.getElementById('mockup-controls-inline');
     var mockPanBtn        = document.getElementById('mockup-pan');
     var mockPanInlineBtn  = document.getElementById('mockup-pan-inline');
     var mockZoomInInlineMobile  = document.getElementById('mockup-zoom-in-inline-mobile');
     var mockZoomOutInlineMobile = document.getElementById('mockup-zoom-out-inline-mobile');
     var mockCenterInlineMobile  = document.getElementById('mockup-center-inline-mobile');
+    var mockUndoInlineMobileBtn = document.getElementById('mockup-undo-inline-mobile');
+    var mockControlsInlineMobileBtn = document.getElementById('mockup-controls-inline-mobile');
     var mockPanInlineMobile     = document.getElementById('mockup-pan-inline-mobile');
     var mockCanvasWrapper = document.getElementById('mockup-canvas-wrapper');
     var mockPrintBtn      = document.getElementById('mockup-print');
@@ -3879,9 +3919,33 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       });
     }
 
+    if (mockUndoInlineBtn && mockUndoBtn) {
+      mockUndoInlineBtn.addEventListener('click', function () {
+        mockUndoBtn.click();
+      });
+    }
+
+    if (mockControlsInlineBtn) {
+      mockControlsInlineBtn.addEventListener('click', function () {
+        toggleControlDrawer('mockup-controls');
+      });
+    }
+
     if (mockCenterInlineMobile && mockCanvasWrapper) {
       mockCenterInlineMobile.addEventListener('click', function () {
         mockCenterCanvas();
+      });
+    }
+
+    if (mockUndoInlineMobileBtn && mockUndoBtn) {
+      mockUndoInlineMobileBtn.addEventListener('click', function () {
+        mockUndoBtn.click();
+      });
+    }
+
+    if (mockControlsInlineMobileBtn) {
+      mockControlsInlineMobileBtn.addEventListener('click', function () {
+        toggleControlDrawer('mockup-controls');
       });
     }
 
