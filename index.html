@@ -8,6 +8,7 @@
     :root {
       -webkit-text-size-adjust: 100%;
       --app-vh: 1vh;
+      --hud-top-offset: calc(12px + env(safe-area-inset-top, 0px));
     }
 
     html {
@@ -102,7 +103,7 @@
 
       .canvas-inner {
         position: relative;
-        padding-top: var(--canvas-hud-offset, 72px); /* leave room for floating controls so they never cover the drawing area */
+        padding-top: var(--canvas-hud-offset, 64px); /* leave room for floating controls so they never cover the drawing area */
         box-sizing: border-box;
       }
 
@@ -111,7 +112,7 @@
         position: absolute;
         right: 10px;
         bottom: 10px;
-        z-index: 120;
+        z-index: 2200;
         display: flex;
         flex-direction: column;
         gap: 6px;
@@ -165,7 +166,7 @@
         border-radius: 999px;
         border: 1px solid #bfc6cc;
         background: rgba(255, 255, 255, 0.9);
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
         backdrop-filter: blur(6px);
         display: inline-flex;
@@ -207,17 +208,25 @@
 
       @media (max-width: 900px) {
         .canvas-inner {
-          padding-top: var(--canvas-hud-offset, 90px);
+          padding-top: var(--canvas-hud-offset, 82px);
         }
 
-        .canvas-floating-pad {
-          gap: 8px;
-        }
-
-        .canvas-floating-pad .chip-row {
-          justify-content: flex-start;
-        }
+      .canvas-floating-pad {
+        gap: 8px;
       }
+
+      .canvas-floating-pad .chip-row {
+        justify-content: flex-start;
+      }
+
+      .canvas-floating-pad button {
+        min-width: 32px;
+        height: 32px;
+        padding: 5px 8px;
+        font-size: 0.82rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+      }
+    }
     nav button.active {
       border-color: #004b80;
       font-weight: bold;
@@ -346,18 +355,18 @@
       min-height: 48px;
     }
 
-    .canvas-floating-pad {
-      right: 8px;
-      bottom: 8px;
-      gap: 4px;
-    }
+  .canvas-floating-pad {
+    right: 8px;
+    bottom: 8px;
+    gap: 4px;
+  }
 
-    .canvas-floating-pad button {
-      min-width: 32px;
-      height: 32px;
-      padding: 4px 6px;
-      font-size: 0.8rem;
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+  .canvas-floating-pad button {
+    min-width: 28px;
+    height: 30px;
+    padding: 4px 6px;
+    font-size: 0.78rem;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
     }
 
   /* Roof + mockup mobile shells: split into scrollable controls + fixed canvas */
@@ -419,7 +428,7 @@
     flex: 1;
     min-height: 260px;
     overflow: hidden;
-    padding-top: var(--canvas-hud-offset, 96px);
+    padding-top: var(--canvas-hud-offset, 82px);
     box-sizing: border-box;
   }
 
@@ -435,7 +444,7 @@
 
   .canvas-floating-pad {
     position: fixed;
-    top: calc(8px + env(safe-area-inset-top, 0px));
+    top: var(--hud-top-offset, calc(8px + env(safe-area-inset-top, 0px)));
     left: 10px;
     right: 10px;
     bottom: auto;
@@ -455,12 +464,29 @@
     min-width: 0;
     flex: 1 0 44%;
     height: auto;
-    padding: 5px 8px;
-    font-size: 0.85rem;
+    padding: 4px 7px;
+    font-size: 0.8rem;
   }
 
   .canvas-docked-toolbar {
     display: none;
+  }
+
+  @media (max-width: 560px) {
+    .canvas-floating-pad {
+      gap: 6px;
+    }
+
+    .canvas-floating-pad .chip-row {
+      gap: 5px;
+    }
+
+    .canvas-floating-pad button {
+      padding: 4px 6px;
+      font-size: 0.76rem;
+      height: 28px;
+      border-radius: 14px;
+    }
   }
 
   /* Prevent Safari zoom on focus by ensuring 16px+ form text */
@@ -720,17 +746,17 @@
           <div class="canvas-inner">
           <div class="canvas-floating-pad roof-floating-controls" aria-label="Roof quick controls">
             <div class="chip-row">
-              <button id="roof-controls-inline" type="button">Controls</button>
-              <button id="roof-undo-inline" type="button">Undo</button>
-              <button id="roof-mode-scale-inline" type="button">Scale</button>
+              <button id="roof-controls-inline" type="button" data-label="Controls" data-label-short="Menu">Controls</button>
+              <button id="roof-undo-inline" type="button" data-label="Undo" data-label-short="Undo">Undo</button>
+              <button id="roof-mode-scale-inline" type="button" data-label="Scale" data-label-short="Scale">Scale</button>
             </div>
             <div class="chip-row">
-              <button id="roof-mode-measure-inline" type="button">Measure</button>
-              <button id="roof-mode-adjust-inline" type="button">Adjust</button>
-              <button id="roof-pan-inline" type="button">Pan</button>
-              <button id="roof-center-inline" type="button">Center</button>
-              <button id="roof-zoom-in-inline" type="button">Zoom +</button>
-              <button id="roof-zoom-out-inline" type="button">Zoom −</button>
+              <button id="roof-mode-measure-inline" type="button" data-label="Measure" data-label-short="Measure">Measure</button>
+              <button id="roof-mode-adjust-inline" type="button" data-label="Adjust" data-label-short="Adjust">Adjust</button>
+              <button id="roof-pan-inline" type="button" data-label="Pan" data-label-short="Pan">Pan</button>
+              <button id="roof-center-inline" type="button" data-label="Center" data-label-short="Center">Center</button>
+              <button id="roof-zoom-in-inline" type="button" data-label="Zoom +" data-label-short="+">Zoom +</button>
+              <button id="roof-zoom-out-inline" type="button" data-label="Zoom −" data-label-short="−">Zoom −</button>
             </div>
           </div>
           <canvas
@@ -741,15 +767,15 @@
           ></canvas>
           </div>
           <div class="canvas-docked-toolbar roof-docked-toolbar" aria-label="Roof tools">
-            <button id="roof-mode-scale-inline-mobile" type="button">Scale</button>
-            <button id="roof-controls-inline-mobile" type="button">Controls</button>
-            <button id="roof-undo-inline-mobile" type="button">Undo</button>
-            <button id="roof-mode-measure-inline-mobile" type="button">Measure</button>
-            <button id="roof-mode-adjust-inline-mobile" type="button">Adjust</button>
-            <button id="roof-pan-inline-mobile" type="button">Pan</button>
-            <button id="roof-center-inline-mobile" type="button">Center</button>
-            <button id="roof-zoom-in-inline-mobile" type="button">Zoom +</button>
-            <button id="roof-zoom-out-inline-mobile" type="button">Zoom −</button>
+            <button id="roof-mode-scale-inline-mobile" type="button" data-label="Scale" data-label-short="Scale">Scale</button>
+            <button id="roof-controls-inline-mobile" type="button" data-label="Controls" data-label-short="Menu">Controls</button>
+            <button id="roof-undo-inline-mobile" type="button" data-label="Undo" data-label-short="Undo">Undo</button>
+            <button id="roof-mode-measure-inline-mobile" type="button" data-label="Measure" data-label-short="Measure">Measure</button>
+            <button id="roof-mode-adjust-inline-mobile" type="button" data-label="Adjust" data-label-short="Adjust">Adjust</button>
+            <button id="roof-pan-inline-mobile" type="button" data-label="Pan" data-label-short="Pan">Pan</button>
+            <button id="roof-center-inline-mobile" type="button" data-label="Center" data-label-short="Center">Center</button>
+            <button id="roof-zoom-in-inline-mobile" type="button" data-label="Zoom +" data-label-short="+">Zoom +</button>
+            <button id="roof-zoom-out-inline-mobile" type="button" data-label="Zoom −" data-label-short="−">Zoom −</button>
           </div>
         </div>
 
@@ -951,17 +977,17 @@
           <div class="canvas-inner">
           <div class="canvas-floating-pad mockup-floating-controls" aria-label="Quick canvas controls">
             <div class="chip-row">
-              <button id="mockup-controls-inline" type="button">Controls</button>
-              <button id="mockup-undo-inline" type="button">Undo</button>
-              <button id="mockup-mode-draw" type="button" class="active">Draw</button>
-              <button id="mockup-mode-adjust" type="button">Adjust</button>
-              <button id="mockup-mode-decor" type="button">Decorate</button>
+              <button id="mockup-controls-inline" type="button" data-label="Controls" data-label-short="Menu">Controls</button>
+              <button id="mockup-undo-inline" type="button" data-label="Undo" data-label-short="Undo">Undo</button>
+              <button id="mockup-mode-draw" type="button" class="active" data-label="Draw" data-label-short="Draw">Draw</button>
+              <button id="mockup-mode-adjust" type="button" data-label="Adjust" data-label-short="Adjust">Adjust</button>
+              <button id="mockup-mode-decor" type="button" data-label="Decorate" data-label-short="Decor">Decorate</button>
             </div>
             <div class="chip-row">
-              <button id="mockup-pan-inline" type="button">Pan</button>
-              <button id="mockup-center-inline" type="button">Center</button>
-              <button id="mockup-zoom-in-inline" type="button">Zoom +</button>
-              <button id="mockup-zoom-out-inline" type="button">Zoom −</button>
+              <button id="mockup-pan-inline" type="button" data-label="Pan" data-label-short="Pan">Pan</button>
+              <button id="mockup-center-inline" type="button" data-label="Center" data-label-short="Center">Center</button>
+              <button id="mockup-zoom-in-inline" type="button" data-label="Zoom +" data-label-short="+">Zoom +</button>
+              <button id="mockup-zoom-out-inline" type="button" data-label="Zoom −" data-label-short="−">Zoom −</button>
             </div>
           </div>
         <canvas
@@ -972,15 +998,15 @@
         ></canvas>
           </div>
           <div class="canvas-docked-toolbar mockup-docked-toolbar" aria-label="Mockup tools">
-            <button id="mockup-mode-draw-mobile" type="button" class="active">Draw</button>
-            <button id="mockup-controls-inline-mobile" type="button">Controls</button>
-            <button id="mockup-undo-inline-mobile" type="button">Undo</button>
-            <button id="mockup-mode-adjust-mobile" type="button">Adjust</button>
-            <button id="mockup-mode-decor-mobile" type="button">Decorate</button>
-            <button id="mockup-pan-inline-mobile" type="button">Pan</button>
-            <button id="mockup-center-inline-mobile" type="button">Center</button>
-            <button id="mockup-zoom-in-inline-mobile" type="button">Zoom +</button>
-            <button id="mockup-zoom-out-inline-mobile" type="button">Zoom −</button>
+            <button id="mockup-mode-draw-mobile" type="button" class="active" data-label="Draw" data-label-short="Draw">Draw</button>
+            <button id="mockup-controls-inline-mobile" type="button" data-label="Controls" data-label-short="Menu">Controls</button>
+            <button id="mockup-undo-inline-mobile" type="button" data-label="Undo" data-label-short="Undo">Undo</button>
+            <button id="mockup-mode-adjust-mobile" type="button" data-label="Adjust" data-label-short="Adjust">Adjust</button>
+            <button id="mockup-mode-decor-mobile" type="button" data-label="Decorate" data-label-short="Decor">Decorate</button>
+            <button id="mockup-pan-inline-mobile" type="button" data-label="Pan" data-label-short="Pan">Pan</button>
+            <button id="mockup-center-inline-mobile" type="button" data-label="Center" data-label-short="Center">Center</button>
+            <button id="mockup-zoom-in-inline-mobile" type="button" data-label="Zoom +" data-label-short="+">Zoom +</button>
+            <button id="mockup-zoom-out-inline-mobile" type="button" data-label="Zoom −" data-label-short="−">Zoom −</button>
           </div>
       </div>
     </div>
@@ -1041,10 +1067,44 @@
     var screens = document.querySelectorAll('.screen');
     var controlsOverlay = document.getElementById('controls-overlay');
     var canvasWrappers = ['roof-canvas-wrapper', 'mockup-canvas-wrapper'];
+    var hudButtons = [
+      'roof-controls-inline','roof-undo-inline','roof-mode-scale-inline','roof-mode-measure-inline','roof-mode-adjust-inline','roof-pan-inline','roof-center-inline','roof-zoom-in-inline','roof-zoom-out-inline',
+      'roof-mode-scale-inline-mobile','roof-controls-inline-mobile','roof-undo-inline-mobile','roof-mode-measure-inline-mobile','roof-mode-adjust-inline-mobile','roof-pan-inline-mobile','roof-center-inline-mobile','roof-zoom-in-inline-mobile','roof-zoom-out-inline-mobile',
+      'mockup-controls-inline','mockup-undo-inline','mockup-mode-draw','mockup-mode-adjust','mockup-mode-decor','mockup-pan-inline','mockup-center-inline','mockup-zoom-in-inline','mockup-zoom-out-inline',
+      'mockup-mode-draw-mobile','mockup-controls-inline-mobile','mockup-undo-inline-mobile','mockup-mode-adjust-mobile','mockup-mode-decor-mobile','mockup-pan-inline-mobile','mockup-center-inline-mobile','mockup-zoom-in-inline-mobile','mockup-zoom-out-inline-mobile'
+    ];
+    var hudLabelCache = {};
 
     function setViewportUnit() {
       var vh = window.innerHeight * 0.01;
       document.documentElement.style.setProperty('--app-vh', vh + 'px');
+    }
+
+    function refreshHudTopOffset() {
+      var header = document.querySelector('header');
+      var nav = document.querySelector('nav');
+      var total = 8;
+      if (header) total += header.getBoundingClientRect().height;
+      if (nav) total += nav.getBoundingClientRect().height;
+      document.documentElement.style.setProperty('--hud-top-offset', Math.round(total + 4) + 'px');
+    }
+
+    function setButtonLabel(id, useShort) {
+      var btn = document.getElementById(id);
+      if (!btn) return;
+      if (!hudLabelCache[id]) {
+        hudLabelCache[id] = {
+          full: btn.getAttribute('data-label') || btn.textContent.trim(),
+          short: btn.getAttribute('data-label-short') || btn.textContent.trim()
+        };
+      }
+      var cache = hudLabelCache[id];
+      btn.textContent = useShort ? (cache.short || cache.full) : (cache.full || cache.short);
+    }
+
+    function applyCompactHudLabels() {
+      var compact = window.innerWidth <= 560;
+      hudButtons.forEach(function (id) { setButtonLabel(id, compact); });
     }
 
     function refreshCanvasHudPadding(wrapperId) {
@@ -1054,7 +1114,7 @@
       var hud = wrapper.querySelector('.canvas-floating-pad');
       if (!inner || !hud) return;
       var rect = hud.getBoundingClientRect();
-      var offset = Math.max(Math.ceil(rect.height + 16), 64);
+      var offset = Math.max(Math.ceil(rect.height + 12), 56);
       inner.style.setProperty('--canvas-hud-offset', offset + 'px');
     }
 
@@ -1099,13 +1159,19 @@
 
     setViewportUnit();
     refreshAllCanvasHudPadding();
+    applyCompactHudLabels();
+    refreshHudTopOffset();
     window.addEventListener('resize', function () {
       setViewportUnit();
       refreshAllCanvasHudPadding();
+      applyCompactHudLabels();
+      refreshHudTopOffset();
     });
     window.addEventListener('orientationchange', function () {
       setViewportUnit();
       refreshAllCanvasHudPadding();
+      applyCompactHudLabels();
+      refreshHudTopOffset();
     });
 
     navButtons.forEach(function (btn) {
@@ -1119,8 +1185,17 @@
         });
         closeControlDrawers();
         refreshAllCanvasHudPadding();
+        applyCompactHudLabels();
+        refreshHudTopOffset();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
+    });
+
+    ['roof-canvas', 'mockup-canvas'].forEach(function (canvasId) {
+      var canvasEl = document.getElementById(canvasId);
+      if (canvasEl) {
+        canvasEl.addEventListener('pointerdown', closeControlDrawers);
+      }
     });
 
     // ------------------------------------------------------------------
