@@ -81,7 +81,8 @@
     /* Stop page panning while adjusting canvases on touch devices */
       #mockup-canvas,
       #roof-canvas {
-        touch-action: pan-x pan-y pinch-zoom;
+        touch-action: none;
+        overscroll-behavior: contain;
       }
 
       #mockup-canvas.touch-lock,
@@ -173,6 +174,21 @@
         align-items: center;
         justify-content: center;
         white-space: nowrap;
+      }
+
+      .canvas-floating-pad.hud-collapsed .hud-secondary-row {
+        display: none;
+      }
+
+      .canvas-floating-pad .hud-toggle {
+        min-width: 32px;
+        height: 32px;
+        padding: 5px 7px;
+        font-size: 0.8rem;
+        border-radius: 12px;
+        border: 1px solid #bfc6cc;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
       }
 
       .canvas-floating-pad button.active {
@@ -369,6 +385,11 @@
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
     }
 
+  .canvas-floating-pad .hud-toggle {
+    height: 28px;
+    padding: 4px 6px;
+  }
+
   /* Roof + mockup mobile shells: split into scrollable controls + fixed canvas */
   #screen-roof,
   #screen-mockup {
@@ -468,6 +489,11 @@
     font-size: 0.8rem;
   }
 
+  .canvas-floating-pad .hud-toggle {
+    flex: 0 0 auto;
+    min-width: 32px;
+  }
+
   .canvas-docked-toolbar {
     display: none;
   }
@@ -486,6 +512,12 @@
       font-size: 0.76rem;
       height: 28px;
       border-radius: 14px;
+    }
+
+    .canvas-floating-pad .hud-toggle {
+      height: 26px;
+      padding: 3px 6px;
+      border-radius: 12px;
     }
   }
 
@@ -744,13 +776,14 @@
       <!-- RIGHT COLUMN: canvas -->
         <div id="roof-canvas-wrapper" class="canvas-column" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
           <div class="canvas-inner">
-          <div class="canvas-floating-pad roof-floating-controls" aria-label="Roof quick controls">
+          <div id="roof-floating-controls" class="canvas-floating-pad roof-floating-controls" aria-label="Roof quick controls">
             <div class="chip-row">
               <button id="roof-controls-inline" type="button" data-label="Controls" data-label-short="Menu">Controls</button>
               <button id="roof-undo-inline" type="button" data-label="Undo" data-label-short="Undo">Undo</button>
               <button id="roof-mode-scale-inline" type="button" data-label="Scale" data-label-short="Scale">Scale</button>
+              <button class="hud-toggle" data-target="roof-floating-controls" type="button" aria-label="More roof controls">⋯ More</button>
             </div>
-            <div class="chip-row">
+            <div class="chip-row hud-secondary-row">
               <button id="roof-mode-measure-inline" type="button" data-label="Measure" data-label-short="Measure">Measure</button>
               <button id="roof-mode-adjust-inline" type="button" data-label="Adjust" data-label-short="Adjust">Adjust</button>
               <button id="roof-pan-inline" type="button" data-label="Pan" data-label-short="Pan">Pan</button>
@@ -975,15 +1008,16 @@
       <!-- Canvas column -->
         <div id="mockup-canvas-wrapper" class="canvas-column" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
           <div class="canvas-inner">
-          <div class="canvas-floating-pad mockup-floating-controls" aria-label="Quick canvas controls">
+          <div id="mockup-floating-controls" class="canvas-floating-pad mockup-floating-controls" aria-label="Quick canvas controls">
             <div class="chip-row">
               <button id="mockup-controls-inline" type="button" data-label="Controls" data-label-short="Menu">Controls</button>
               <button id="mockup-undo-inline" type="button" data-label="Undo" data-label-short="Undo">Undo</button>
               <button id="mockup-mode-draw" type="button" class="active" data-label="Draw" data-label-short="Draw">Draw</button>
               <button id="mockup-mode-adjust" type="button" data-label="Adjust" data-label-short="Adjust">Adjust</button>
               <button id="mockup-mode-decor" type="button" data-label="Decorate" data-label-short="Decor">Decorate</button>
+              <button class="hud-toggle" data-target="mockup-floating-controls" type="button" aria-label="More mockup controls">⋯ More</button>
             </div>
-            <div class="chip-row">
+            <div class="chip-row hud-secondary-row">
               <button id="mockup-pan-inline" type="button" data-label="Pan" data-label-short="Pan">Pan</button>
               <button id="mockup-center-inline" type="button" data-label="Center" data-label-short="Center">Center</button>
               <button id="mockup-zoom-in-inline" type="button" data-label="Zoom +" data-label-short="+">Zoom +</button>
@@ -1074,6 +1108,8 @@
       'mockup-mode-draw-mobile','mockup-controls-inline-mobile','mockup-undo-inline-mobile','mockup-mode-adjust-mobile','mockup-mode-decor-mobile','mockup-pan-inline-mobile','mockup-center-inline-mobile','mockup-zoom-in-inline-mobile','mockup-zoom-out-inline-mobile'
     ];
     var hudLabelCache = {};
+    var hudPadIds = ['roof-floating-controls', 'mockup-floating-controls'];
+    var hudCollapseState = {};
 
     function setViewportUnit() {
       var vh = window.innerHeight * 0.01;
@@ -1105,6 +1141,24 @@
     function applyCompactHudLabels() {
       var compact = window.innerWidth <= 560;
       hudButtons.forEach(function (id) { setButtonLabel(id, compact); });
+    }
+
+    function setHudCollapsed(padId, collapsed) {
+      var pad = document.getElementById(padId);
+      if (!pad) return;
+      pad.classList.toggle('hud-collapsed', collapsed);
+      var toggle = pad.querySelector('.hud-toggle');
+      if (toggle) toggle.textContent = collapsed ? '⋯ More' : 'Less';
+      hudCollapseState[padId] = collapsed;
+      var wrapper = pad.closest('.canvas-column');
+      if (wrapper && wrapper.id) {
+        refreshCanvasHudPadding(wrapper.id);
+      }
+    }
+
+    function refreshHudCollapseFromViewport() {
+      var collapse = window.innerWidth <= 560;
+      hudPadIds.forEach(function (id) { setHudCollapsed(id, collapse); });
     }
 
     function refreshCanvasHudPadding(wrapperId) {
@@ -1153,6 +1207,15 @@
       });
     }
 
+    document.querySelectorAll('.hud-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var targetId = btn.getAttribute('data-target');
+        var current = hudCollapseState[targetId];
+        setHudCollapsed(targetId, !current);
+        refreshAllCanvasHudPadding();
+      });
+    });
+
     document.addEventListener('keyup', function (evt) {
       if (evt.key === 'Escape') closeControlDrawers();
     });
@@ -1161,17 +1224,20 @@
     refreshAllCanvasHudPadding();
     applyCompactHudLabels();
     refreshHudTopOffset();
+    refreshHudCollapseFromViewport();
     window.addEventListener('resize', function () {
       setViewportUnit();
       refreshAllCanvasHudPadding();
       applyCompactHudLabels();
       refreshHudTopOffset();
+      refreshHudCollapseFromViewport();
     });
     window.addEventListener('orientationchange', function () {
       setViewportUnit();
       refreshAllCanvasHudPadding();
       applyCompactHudLabels();
       refreshHudTopOffset();
+      refreshHudCollapseFromViewport();
     });
 
     navButtons.forEach(function (btn) {
@@ -1187,6 +1253,7 @@
         refreshAllCanvasHudPadding();
         applyCompactHudLabels();
         refreshHudTopOffset();
+        refreshHudCollapseFromViewport();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
     });
@@ -1957,12 +2024,16 @@
          if (roofMode === 'adjust') {
           roofCtx.beginPath();
           roofCtx.fillStyle = '#00ffff';
-          roofCtx.arc(seg.from.x, seg.from.y, 4, 0, Math.PI * 2);
+          roofCtx.strokeStyle = '#004b80';
+          roofCtx.lineWidth = 2;
+          roofCtx.arc(seg.from.x, seg.from.y, 7, 0, Math.PI * 2);
           roofCtx.fill();
+          roofCtx.stroke();
 
           roofCtx.beginPath();
-          roofCtx.arc(seg.to.x, seg.to.y, 4, 0, Math.PI * 2);
+          roofCtx.arc(seg.to.x, seg.to.y, 7, 0, Math.PI * 2);
           roofCtx.fill();
+          roofCtx.stroke();
         }
       });
     }
@@ -2185,11 +2256,11 @@
         });
 
         function roofHandleDown(evt) {
-          if (roofIsPanMode) return;
-          if (roofMode !== 'adjust' || !roofSegments.length) return;
-          setCanvasTouchLock(roofCanvas, true);
-          var pt = roofCanvasPoint(evt);
-          var best = { index: -1, end: null, dist: 12 };
+        if (roofIsPanMode) return;
+        if (roofMode !== 'adjust' || !roofSegments.length) return;
+        setCanvasTouchLock(roofCanvas, true);
+        var pt = roofCanvasPoint(evt);
+        var best = { index: -1, end: null, dist: 20 };
 
         roofSegments.forEach(function (seg, idx) {
           var df = roofDist(pt, seg.from);
@@ -2663,7 +2734,7 @@
 
         var handlePos = getDecorationHandlePosition(deco);
         var dHandle   = mockPointDistance(pt, handlePos);
-        if (dHandle <= 10) {
+        if (dHandle <= 18) {
           return { deco: deco, mode: 'handle' };
         }
 
@@ -3059,13 +3130,13 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       mockCtx.beginPath();
       mockCtx.fillStyle   = '#00ffff';
       mockCtx.strokeStyle = '#004b80';
-      mockCtx.lineWidth   = 1;
-      mockCtx.arc(from.x, from.y, 3, 0, Math.PI * 2);
+      mockCtx.lineWidth   = 2;
+      mockCtx.arc(from.x, from.y, 7, 0, Math.PI * 2);
       mockCtx.fill();
       mockCtx.stroke();
 
       mockCtx.beginPath();
-      mockCtx.arc(to.x, to.y, 3, 0, Math.PI * 2);
+      mockCtx.arc(to.x, to.y, 7, 0, Math.PI * 2);
       mockCtx.fill();
       mockCtx.stroke();
     }
@@ -3307,7 +3378,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       mockCtx.beginPath();
       mockCtx.fillStyle = '#00e5ff';
       mockCtx.strokeStyle = '#004b80';
-      mockCtx.rect(-5, -5, 10, 10);
+      mockCtx.rect(-8, -8, 16, 16);
       mockCtx.fill();
       mockCtx.stroke();
       mockCtx.restore();
@@ -3482,6 +3553,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
           setCanvasTouchLock(mockCanvas, true);
         }
         var pt = getPointerPoint(evt);
+        if (!mockIsPanMode && evt.cancelable) evt.preventDefault();
 
         mockIsDraggingSegment = false;
         mockIsDraggingDecor   = false;
@@ -3495,7 +3567,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
         // Adjust mode: pick up a segment endpoint
         if (mockMode === 'adjust' && mockSegments.length) {
-          var hitThreshold = 14;
+          var hitThreshold = 22;
           for (var i = 0; i < mockSegments.length; i++) {
             var seg = mockSegments[i];
             var dFrom = mockPointDistance(pt, seg.from);
