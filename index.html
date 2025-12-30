@@ -156,6 +156,19 @@
         font-weight: 600;
         color: #0c3c66;
       }
+      .canvas-mobile-toggle {
+        display: none;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 7;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid #bfc6cc;
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+        font-weight: 600;
+      }
     nav button.active {
       border-color: #004b80;
       font-weight: bold;
@@ -329,6 +342,7 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
+    min-width: 0 !important;
   }
 
   .canvas-inner {
@@ -356,11 +370,32 @@
 
   .canvas-docked-toolbar {
     display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    border: 1px solid #d6d6d6;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    position: relative;
+    z-index: 1;
   }
 
   .canvas-docked-toolbar button {
     flex: 1 0 30%;
     min-width: 0;
+  }
+  .canvas-docked-toolbar[data-collapsed="true"] {
+    display: none;
+  }
+  .canvas-docked-toolbar[data-collapsed="false"] {
+    display: flex;
+  }
+
+  .canvas-mobile-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
 
   /* Prevent Safari zoom on focus by ensuring 16px+ form text */
@@ -613,6 +648,9 @@
       <!-- RIGHT COLUMN: canvas -->
         <div class="canvas-column" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
           <div class="canvas-inner">
+            <button type="button" class="canvas-mobile-toggle" id="roof-toolbar-toggle" aria-controls="roof-toolbar" aria-expanded="false">
+              Show controls
+            </button>
           <div class="canvas-floating-pad roof-floating-controls" aria-label="Roof quick controls">
             <div class="chip-row">
               <button id="roof-mode-scale-inline" type="button">Scale</button>
@@ -632,7 +670,7 @@
             style="border:1px solid #ccc; max-width:none; transform-origin:0 0;"
           ></canvas>
           </div>
-          <div class="canvas-docked-toolbar roof-docked-toolbar" aria-label="Roof tools">
+          <div class="canvas-docked-toolbar roof-docked-toolbar" id="roof-toolbar" aria-label="Roof tools">
             <button id="roof-mode-scale-inline-mobile" type="button">Scale</button>
             <button id="roof-mode-measure-inline-mobile" type="button">Measure</button>
             <button id="roof-mode-adjust-inline-mobile" type="button">Adjust</button>
@@ -839,6 +877,9 @@
       <!-- Canvas column -->
         <div id="mockup-canvas-wrapper" class="canvas-column" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
           <div class="canvas-inner">
+          <button type="button" class="canvas-mobile-toggle" id="mockup-toolbar-toggle" aria-controls="mockup-toolbar" aria-expanded="false">
+            Show controls
+          </button>
           <div class="canvas-floating-pad mockup-floating-controls" aria-label="Quick canvas controls">
             <div class="chip-row">
               <button id="mockup-mode-draw" type="button" class="active">Draw</button>
@@ -858,7 +899,7 @@
           style="border:1px solid #ccc; max-width:none; transform-origin:0 0;"
         ></canvas>
           </div>
-          <div class="canvas-docked-toolbar mockup-docked-toolbar" aria-label="Mockup tools">
+          <div class="canvas-docked-toolbar mockup-docked-toolbar" id="mockup-toolbar" aria-label="Mockup tools">
             <button id="mockup-mode-draw-mobile" type="button" class="active">Draw</button>
             <button id="mockup-mode-adjust-mobile" type="button">Adjust</button>
             <button id="mockup-mode-decor-mobile" type="button">Decorate</button>
@@ -988,6 +1029,33 @@
       if (!el) return;
       if (locked) el.classList.add('touch-lock');
       else el.classList.remove('touch-lock');
+    }
+    function setupToolbarToggle(toggleEl, toolbarEl) {
+      if (!toggleEl || !toolbarEl) return;
+      var mq = window.matchMedia('(max-width: 900px)');
+
+      function setCollapsed(collapsed) {
+        toolbarEl.setAttribute('data-collapsed', collapsed ? 'true' : 'false');
+        toggleEl.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        toggleEl.textContent = collapsed ? 'Show controls' : 'Hide controls';
+      }
+
+      toggleEl.addEventListener('click', function () {
+        var collapsed = toolbarEl.getAttribute('data-collapsed') === 'true';
+        setCollapsed(!collapsed);
+      });
+
+      function handleViewportChange(e) {
+        if (e && e.matches === false) {
+          setCollapsed(false);
+          return;
+        }
+        setCollapsed(true);
+      }
+
+      handleViewportChange(mq);
+      if (mq.addEventListener) mq.addEventListener('change', handleViewportChange);
+      else if (mq.addListener) mq.addListener(handleViewportChange);
     }
 
     // Shared reference to mockup canvas
@@ -1497,6 +1565,8 @@
     var roofScaleInlineBtn   = document.getElementById('roof-mode-scale-inline');
     var roofMeasureInlineBtn = document.getElementById('roof-mode-measure-inline');
     var roofAdjustInlineBtn  = document.getElementById('roof-mode-adjust-inline');
+    var roofToolbarToggle    = document.getElementById('roof-toolbar-toggle');
+    var roofToolbar          = document.getElementById('roof-toolbar');
     var roofZoom        = 1;
     var ROOF_ZOOM_MIN   = 0.5;
     var ROOF_ZOOM_MAX   = 3;
@@ -1514,6 +1584,7 @@
     var roofIgnoreClickUntil = 0; // guard against delayed iOS clicks
     var roofIsPanMode    = false;
 
+      setupToolbarToggle(roofToolbarToggle, roofToolbar);
       function roofSetInfo(msg) {
         if (roofInfo) roofInfo.textContent = msg;
       }
@@ -2068,6 +2139,8 @@
     var mockPanInlineMobile     = document.getElementById('mockup-pan-inline-mobile');
     var mockCanvasWrapper = document.getElementById('mockup-canvas-wrapper');
     var mockPrintBtn      = document.getElementById('mockup-print');
+    var mockupToolbarToggle = document.getElementById('mockup-toolbar-toggle');
+    var mockupToolbar       = document.getElementById('mockup-toolbar');
 
     var mockModeDrawBtn   = document.getElementById('mockup-mode-draw');
     var mockModeAdjustBtn = document.getElementById('mockup-mode-adjust');
@@ -2098,6 +2171,7 @@
 
     var groundCurveToggle = document.getElementById('ground-curve-toggle');
     var decorImageInput   = document.getElementById('decor-image-input');
+    setupToolbarToggle(mockupToolbarToggle, mockupToolbar);
 
     var mockImage       = null;
     var mockDrawParams  = null;
