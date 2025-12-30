@@ -205,6 +205,41 @@
         font-weight: 600;
         color: #0c3c66;
       }
+      .controls-toggle {
+        display: none;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid #bfc6cc;
+        background: #ffffff;
+        font-weight: 600;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+      }
+      .quick-tools-toggle {
+        display: none;
+        position: absolute;
+        right: 10px;
+        bottom: 60px;
+        z-index: 7;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid #bfc6cc;
+        background: rgba(255, 255, 255, 0.95);
+        font-weight: 600;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+      }
+      .canvas-mobile-toggle {
+        display: none;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 7;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid #bfc6cc;
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+        font-weight: 600;
+      }
 
       .controls-toggle {
         display: none;
@@ -448,6 +483,7 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
+    min-width: 0 !important;
   }
 
   .canvas-inner {
@@ -484,6 +520,17 @@
     z-index: 900;
   }
 
+  .canvas-docked-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    border: 1px solid #d6d6d6;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    position: relative;
+    z-index: 1;
   .canvas-floating-pad .chip-row {
     flex: 1 1 100%;
     justify-content: flex-start;
@@ -528,6 +575,38 @@
       padding: 3px 6px;
       border-radius: 12px;
     }
+  }
+  .canvas-docked-toolbar[data-collapsed="true"] {
+    display: none;
+  }
+  .canvas-docked-toolbar[data-collapsed="false"] {
+    display: flex;
+  }
+
+  .canvas-mobile-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .controls-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .quick-tools-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .controls-panel.collapsed {
+    display: none !important;
+  }
+  .canvas-layout.controls-collapsed {
+    grid-template-rows: 0fr 1fr;
+  }
+  .canvas-floating-pad.show-mobile {
+    display: flex;
   }
 
   /* Prevent Safari zoom on focus by ensuring 16px+ form text */
@@ -730,6 +809,14 @@
       </li>
     </ol>
 
+    <div id="roof-layout" class="canvas-layout" style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start; margin-top:0.75rem;">
+
+      <button type="button" class="controls-toggle" id="roof-controls-toggle" aria-controls="roof-controls-panel" aria-expanded="true">
+        Hide controls
+      </button>
+
+      <!-- LEFT COLUMN: controls -->
+      <div class="controls-panel" id="roof-controls-panel" style="min-width:260px; max-width:320px; max-height:80vh; overflow-y:auto; background:#ffffff; border:1px solid #ccc; padding:8px; box-sizing:border-box;">
     <button class="controls-toggle" data-target="roof-controls" type="button">Controls</button>
 
     <div class="canvas-layout" style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start; margin-top:0.75rem;">
@@ -768,7 +855,7 @@
 
         <p class="small-note" style="margin-top:0;">
           Gable returns are measured separately so you can calculate extra wire and tie-ins.
-          The totals below show gable footage and <strong>gable + 10% waste</strong>.
+          A default <strong>10% fittings/waste allowance</strong> is applied to every run type.
         </p>
 
         <button id="roof-send-to-estimate" style="width:100%; margin-bottom:0.5rem;">
@@ -785,6 +872,13 @@
       <!-- RIGHT COLUMN: canvas -->
         <div id="roof-canvas-wrapper" class="canvas-column" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
           <div class="canvas-inner">
+            <button type="button" class="canvas-mobile-toggle" id="roof-toolbar-toggle" aria-controls="roof-toolbar" aria-expanded="false">
+              Show controls
+            </button>
+            <button type="button" class="quick-tools-toggle" id="roof-quick-toggle" aria-controls="roof-quick-pad" aria-expanded="false">
+              Show quick tools
+            </button>
+          <div class="canvas-floating-pad roof-floating-controls" id="roof-quick-pad" aria-label="Roof quick controls">
           <div id="roof-floating-controls" class="canvas-floating-pad roof-floating-controls" aria-label="Roof quick controls">
             <div class="chip-row">
               <button id="roof-controls-inline" type="button" data-label="Controls" data-label-short="Menu">Controls</button>
@@ -808,6 +902,13 @@
             style="border:1px solid #ccc; max-width:none; transform-origin:0 0;"
           ></canvas>
           </div>
+          <div class="canvas-docked-toolbar roof-docked-toolbar" id="roof-toolbar" aria-label="Roof tools">
+            <button id="roof-mode-scale-inline-mobile" type="button">Scale</button>
+            <button id="roof-mode-measure-inline-mobile" type="button">Measure</button>
+            <button id="roof-mode-adjust-inline-mobile" type="button">Adjust</button>
+            <button id="roof-pan-inline-mobile" type="button">Pan</button>
+            <button id="roof-zoom-in-inline-mobile" type="button">Zoom +</button>
+            <button id="roof-zoom-out-inline-mobile" type="button">Zoom −</button>
           <div class="canvas-docked-toolbar roof-docked-toolbar" aria-label="Roof tools">
             <button id="roof-mode-scale-inline-mobile" type="button" data-label="Scale" data-label-short="Scale">Scale</button>
             <button id="roof-controls-inline-mobile" type="button" data-label="Controls" data-label-short="Menu">Controls</button>
@@ -843,6 +944,14 @@
     <button id="mockup-print" type="button">Print / Save this mockup as PDF</button>
     <br><br>
 
+    <div id="mockup-layout" class="canvas-layout" style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start;">
+
+      <button type="button" class="controls-toggle" id="mockup-controls-toggle" aria-controls="mockup-controls-panel" aria-expanded="true">
+        Hide controls
+      </button>
+
+      <!-- Controls column -->
+      <div class="controls-panel" id="mockup-controls-panel" style="min-width:250px; max-width:320px; max-height:80vh; overflow-y:auto;">
     <button class="controls-toggle" data-target="mockup-controls" type="button">Controls</button>
 
     <div class="canvas-layout" style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start;">
@@ -1017,6 +1126,13 @@
       <!-- Canvas column -->
         <div id="mockup-canvas-wrapper" class="canvas-column" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
           <div class="canvas-inner">
+          <button type="button" class="canvas-mobile-toggle" id="mockup-toolbar-toggle" aria-controls="mockup-toolbar" aria-expanded="false">
+            Show controls
+          </button>
+          <button type="button" class="quick-tools-toggle" id="mockup-quick-toggle" aria-controls="mockup-quick-pad" aria-expanded="false">
+            Show quick tools
+          </button>
+          <div class="canvas-floating-pad mockup-floating-controls" id="mockup-quick-pad" aria-label="Quick canvas controls">
           <div id="mockup-floating-controls" class="canvas-floating-pad mockup-floating-controls" aria-label="Quick canvas controls">
             <div class="chip-row">
               <button id="mockup-controls-inline" type="button" data-label="Controls" data-label-short="Menu">Controls</button>
@@ -1040,6 +1156,13 @@
           style="border:1px solid #ccc; max-width:none; transform-origin:0 0;"
         ></canvas>
           </div>
+          <div class="canvas-docked-toolbar mockup-docked-toolbar" id="mockup-toolbar" aria-label="Mockup tools">
+            <button id="mockup-mode-draw-mobile" type="button" class="active">Draw</button>
+            <button id="mockup-mode-adjust-mobile" type="button">Adjust</button>
+            <button id="mockup-mode-decor-mobile" type="button">Decorate</button>
+            <button id="mockup-pan-inline-mobile" type="button">Pan</button>
+            <button id="mockup-zoom-in-inline-mobile" type="button">Zoom +</button>
+            <button id="mockup-zoom-out-inline-mobile" type="button">Zoom −</button>
           <div class="canvas-docked-toolbar mockup-docked-toolbar" aria-label="Mockup tools">
             <button id="mockup-mode-draw-mobile" type="button" class="active" data-label="Draw" data-label-short="Draw">Draw</button>
             <button id="mockup-controls-inline-mobile" type="button" data-label="Controls" data-label-short="Menu">Controls</button>
@@ -1325,6 +1448,91 @@
       if (!el) return;
       if (locked) el.classList.add('touch-lock');
       else el.classList.remove('touch-lock');
+    }
+    function setupToolbarToggle(toggleEl, toolbarEl) {
+      if (!toggleEl || !toolbarEl) return;
+      var mq = window.matchMedia('(max-width: 900px)');
+
+      function setCollapsed(collapsed) {
+        toolbarEl.setAttribute('data-collapsed', collapsed ? 'true' : 'false');
+        toggleEl.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        toggleEl.textContent = collapsed ? 'Show controls' : 'Hide controls';
+      }
+
+      toggleEl.addEventListener('click', function () {
+        var collapsed = toolbarEl.getAttribute('data-collapsed') === 'true';
+        setCollapsed(!collapsed);
+      });
+
+      function handleViewportChange(e) {
+        if (e && e.matches === false) {
+          setCollapsed(false);
+          return;
+        }
+        setCollapsed(true);
+      }
+
+      handleViewportChange(mq);
+      if (mq.addEventListener) mq.addEventListener('change', handleViewportChange);
+      else if (mq.addListener) mq.addListener(handleViewportChange);
+    }
+    function setupControlsPanelToggle(opts) {
+      if (!opts || !opts.toggle || !opts.panel || !opts.layout) return;
+      var toggleEl = opts.toggle;
+      var panelEl = opts.panel;
+      var layoutEl = opts.layout;
+      var mq = window.matchMedia('(max-width: 900px)');
+
+      function setCollapsed(collapsed) {
+        panelEl.classList.toggle('collapsed', collapsed);
+        layoutEl.classList.toggle('controls-collapsed', collapsed);
+        toggleEl.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        toggleEl.textContent = collapsed ? 'Show controls' : 'Hide controls';
+      }
+
+      toggleEl.addEventListener('click', function () {
+        var collapsed = panelEl.classList.contains('collapsed');
+        setCollapsed(!collapsed);
+      });
+
+      function handleViewportChange(e) {
+        if (e && e.matches === false) {
+          setCollapsed(false);
+          return;
+        }
+        setCollapsed(true);
+      }
+
+      handleViewportChange(mq);
+      if (mq.addEventListener) mq.addEventListener('change', handleViewportChange);
+      else if (mq.addListener) mq.addListener(handleViewportChange);
+    }
+    function setupQuickToolsToggle(toggleEl, padEl) {
+      if (!toggleEl || !padEl) return;
+      var mq = window.matchMedia('(max-width: 900px)');
+
+      function setVisible(show) {
+        padEl.classList.toggle('show-mobile', show);
+        toggleEl.setAttribute('aria-expanded', show ? 'true' : 'false');
+        toggleEl.textContent = show ? 'Hide quick tools' : 'Show quick tools';
+      }
+
+      toggleEl.addEventListener('click', function () {
+        var isShown = padEl.classList.contains('show-mobile');
+        setVisible(!isShown);
+      });
+
+      function handleViewportChange(e) {
+        if (e && e.matches === false) {
+          setVisible(true);
+          return;
+        }
+        setVisible(false);
+      }
+
+      handleViewportChange(mq);
+      if (mq.addEventListener) mq.addEventListener('change', handleViewportChange);
+      else if (mq.addListener) mq.addListener(handleViewportChange);
     }
 
     // Shared reference to mockup canvas
@@ -1840,9 +2048,17 @@
     var roofScaleInlineBtn   = document.getElementById('roof-mode-scale-inline');
     var roofMeasureInlineBtn = document.getElementById('roof-mode-measure-inline');
     var roofAdjustInlineBtn  = document.getElementById('roof-mode-adjust-inline');
+    var roofToolbarToggle    = document.getElementById('roof-toolbar-toggle');
+    var roofToolbar          = document.getElementById('roof-toolbar');
+    var roofControlsToggle   = document.getElementById('roof-controls-toggle');
+    var roofControlsPanel    = document.getElementById('roof-controls-panel');
+    var roofLayout           = document.getElementById('roof-layout');
+    var roofQuickToggle      = document.getElementById('roof-quick-toggle');
+    var roofQuickPad         = document.getElementById('roof-quick-pad');
     var roofZoom        = 1;
     var ROOF_ZOOM_MIN   = 0.5;
     var ROOF_ZOOM_MAX   = 3;
+    var ROOF_WASTE_FACTOR = 1.10; // default 10% fittings / connections allowance
 
     var roofImage       = null;
     var roofFeetPerPixel = null;
@@ -1857,6 +2073,13 @@
     var roofIgnoreClickUntil = 0; // guard against delayed iOS clicks
     var roofIsPanMode    = false;
 
+      setupToolbarToggle(roofToolbarToggle, roofToolbar);
+      setupControlsPanelToggle({
+        toggle: roofControlsToggle,
+        panel: roofControlsPanel,
+        layout: roofLayout
+      });
+      setupQuickToolsToggle(roofQuickToggle, roofQuickPad);
       function roofSetInfo(msg) {
         if (roofInfo) roofInfo.textContent = msg;
       }
@@ -1971,35 +2194,43 @@
 
       var totals = { ridge: 0, eaves: 0, gable: 0, ground: 0 };
       roofSegments.forEach(function (seg) {
-      if (totals.hasOwnProperty(seg.type)) {
-        totals[seg.type] += seg.feet || 0;
-      }
-    });
+        if (totals.hasOwnProperty(seg.type)) {
+          totals[seg.type] += seg.feet || 0;
+        }
+      });
 
-      var all = totals.ridge + totals.eaves + totals.gable + totals.ground;
+      var totalsWithWaste = {
+        ridge: totals.ridge * ROOF_WASTE_FACTOR,
+        eaves: totals.eaves * ROOF_WASTE_FACTOR,
+        gable: totals.gable * ROOF_WASTE_FACTOR,
+        ground: totals.ground * ROOF_WASTE_FACTOR
+      };
 
-      var gableWasteFactor = 1.10;
-      var gableWithWaste   = totals.gable * gableWasteFactor;
+      var allBeforeWaste = totals.ridge + totals.eaves + totals.gable + totals.ground;
+      var allWithWaste   = totalsWithWaste.ridge + totalsWithWaste.eaves +
+                           totalsWithWaste.gable + totalsWithWaste.ground;
 
       var html = '';
       if (roofFeetPerPixel) {
         html += '<p>Scale: 1 pixel ≈ ' + roofFeetPerPixel.toFixed(4) + ' ft</p>';
       }
 
-      html += '<ul>';
-      html += '<li><strong>Ridge / hip / shingle:</strong> ' +
-        totals.ridge.toFixed(1) + ' ft</li>';
-      html += '<li><strong>Eaves / gutters:</strong> ' +
-        totals.eaves.toFixed(1) + ' ft</li>';
-      html += '<li><strong>Gable returns / other:</strong> ' +
-        totals.gable.toFixed(1) + ' ft</li>';
-      html += '<li><strong>Ground / stake lights:</strong> ' +
-        totals.ground.toFixed(1) + ' ft</li>';
+      html += '<p><strong>Measured (before waste):</strong></p><ul>';
+      html += '<li>Ridge / hip / shingle: ' + totals.ridge.toFixed(1) + ' ft</li>';
+      html += '<li>Eaves / gutters: ' + totals.eaves.toFixed(1) + ' ft</li>';
+      html += '<li>Gable returns / other: ' + totals.gable.toFixed(1) + ' ft</li>';
+      html += '<li>Ground / stake lights: ' + totals.ground.toFixed(1) + ' ft</li>';
       html += '</ul>';
-      html += '<p><strong>Gable w/ 10% waste (extra wire, tie-ins):</strong> ' +
-        gableWithWaste.toFixed(1) + ' ft</p>';
-      html += '<p><strong>Total measured (all segments, before waste):</strong> ' +
-        all.toFixed(1) + ' ft</p>';
+
+      html += '<p><strong>With 10% fittings/connection allowance:</strong></p><ul>';
+      html += '<li>Ridge / hip / shingle: ' + totalsWithWaste.ridge.toFixed(1) + ' ft</li>';
+      html += '<li>Eaves / gutters: ' + totalsWithWaste.eaves.toFixed(1) + ' ft</li>';
+      html += '<li>Gable returns / other: ' + totalsWithWaste.gable.toFixed(1) + ' ft</li>';
+      html += '<li>Ground / stake lights: ' + totalsWithWaste.ground.toFixed(1) + ' ft</li>';
+      html += '</ul>';
+      html += '<p><strong>Total before waste:</strong> ' + allBeforeWaste.toFixed(1) + ' ft</p>';
+      html += '<p><strong>Total with waste:</strong> ' + allWithWaste.toFixed(1) + ' ft</p>';
+      html += '<p class=\"small-note\">10% waste applied to all runs by default for fittings and connections.</p>';
 
       roofTotals.innerHTML = html;
     }
@@ -2333,9 +2564,9 @@
       }
     });
 
-    var ridgeWithGable = totals.ridge + totals.gable;
-    var eavesOnly      = totals.eaves;
-    var groundFeet     = totals.ground;
+    var ridgeWithGable = (totals.ridge + totals.gable) * ROOF_WASTE_FACTOR;
+    var eavesOnly      = totals.eaves * ROOF_WASTE_FACTOR;
+    var groundFeet     = totals.ground * ROOF_WASTE_FACTOR;
 
     if (ridgeInput)  ridgeInput.value  = ridgeWithGable.toFixed(1);
     if (eavesInput)  eavesInput.value  = eavesOnly.toFixed(1);
@@ -2343,9 +2574,9 @@
 
     roofSetInfo(
       'Sent ridge (' + ridgeWithGable.toFixed(1) +
-      ' ft, incl. gable returns), eaves (' +
-      eavesOnly.toFixed(1) + ' ft), and ground / stake lights (' +
-      groundFeet.toFixed(1) + ' ft) to Estimate.'
+      ' ft, incl. gable returns, +10% waste), eaves (' +
+      eavesOnly.toFixed(1) + ' ft, +10% waste), and ground / stake lights (' +
+      groundFeet.toFixed(1) + ' ft, +10% waste) to Estimate.'
     );
   });
 }
@@ -2469,6 +2700,13 @@
     var mockPanInlineMobile     = document.getElementById('mockup-pan-inline-mobile');
     var mockCanvasWrapper = document.getElementById('mockup-canvas-wrapper');
     var mockPrintBtn      = document.getElementById('mockup-print');
+    var mockupToolbarToggle = document.getElementById('mockup-toolbar-toggle');
+    var mockupToolbar       = document.getElementById('mockup-toolbar');
+    var mockupControlsToggle = document.getElementById('mockup-controls-toggle');
+    var mockupControlsPanel  = document.getElementById('mockup-controls-panel');
+    var mockupLayout         = document.getElementById('mockup-layout');
+    var mockupQuickToggle    = document.getElementById('mockup-quick-toggle');
+    var mockupQuickPad       = document.getElementById('mockup-quick-pad');
     var mockPointerMap    = new Map();
 
     var mockModeDrawBtn   = document.getElementById('mockup-mode-draw');
@@ -2500,6 +2738,13 @@
 
     var groundCurveToggle = document.getElementById('ground-curve-toggle');
     var decorImageInput   = document.getElementById('decor-image-input');
+    setupToolbarToggle(mockupToolbarToggle, mockupToolbar);
+    setupControlsPanelToggle({
+      toggle: mockupControlsToggle,
+      panel: mockupControlsPanel,
+      layout: mockupLayout
+    });
+    setupQuickToolsToggle(mockupQuickToggle, mockupQuickPad);
 
     var mockImage       = null;
     var mockDrawParams  = null;
