@@ -15,6 +15,8 @@
   <style>
     :root {
       -webkit-text-size-adjust: 100%;
+      --app-vh: 1vh;
+      --hud-top-offset: calc(12px + env(safe-area-inset-top, 0px));
     }
 
     html {
@@ -68,6 +70,7 @@
       -webkit-overflow-scrolling: touch;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
       overscroll-behavior-x: contain;
+      scrollbar-width: thin;
     }
     nav button {
       padding: 12px 16px;
@@ -76,7 +79,8 @@
       cursor: pointer;
       border-radius: 10px;
       font-size: 1rem;
-      flex: 1 0 140px;
+      flex: 0 0 auto;
+      min-width: 140px;
       white-space: nowrap;
       touch-action: manipulation;
       scroll-snap-align: start;
@@ -85,7 +89,8 @@
     /* Stop page panning while adjusting canvases on touch devices */
       #mockup-canvas,
       #roof-canvas {
-        touch-action: pan-x pan-y pinch-zoom;
+        touch-action: none;
+        overscroll-behavior: contain;
       }
 
       #mockup-canvas.touch-lock,
@@ -105,18 +110,47 @@
         cursor: grab;
       }
 
+      .canvas-inner {
+        position: relative;
+        padding-top: var(--canvas-hud-offset, 64px); /* leave room for floating controls so they never cover the drawing area */
+        box-sizing: border-box;
+      }
+
       /* Shared floating control pad overlay (does not shrink the canvas) */
       .canvas-floating-pad {
         position: absolute;
         right: 10px;
         bottom: 10px;
-        z-index: 6;
+        z-index: 900;
         display: flex;
         flex-direction: column;
         gap: 6px;
         align-items: flex-end;
         pointer-events: none;
         max-width: calc(100% - 20px);
+      }
+
+      .mockup-floating-controls,
+      .roof-floating-controls {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        bottom: auto;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+        pointer-events: none;
+      }
+
+      .mockup-floating-controls .chip-row,
+      .roof-floating-controls .chip-row {
+        pointer-events: auto;
+        justify-content: flex-start;
+      }
+
+      .mockup-floating-controls .chip-row:last-child,
+      .roof-floating-controls .chip-row:last-child {
+        justify-content: flex-end;
       }
 
       .canvas-docked-toolbar {
@@ -135,13 +169,13 @@
 
       .canvas-floating-pad button {
         pointer-events: auto;
-        min-width: 44px;
-        height: 44px;
-        padding: 8px 12px;
+        min-width: 38px;
+        height: 38px;
+        padding: 6px 9px;
         border-radius: 999px;
         border: 1px solid #bfc6cc;
         background: rgba(255, 255, 255, 0.9);
-        font-size: 0.95rem;
+        font-size: 0.85rem;
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
         backdrop-filter: blur(6px);
         display: inline-flex;
@@ -150,12 +184,73 @@
         white-space: nowrap;
       }
 
+      .canvas-floating-pad.hud-collapsed .hud-secondary-row {
+        display: none;
+      }
+
+      .canvas-floating-pad .hud-toggle {
+        min-width: 32px;
+        height: 32px;
+        padding: 5px 7px;
+        font-size: 0.8rem;
+        border-radius: 12px;
+        border: 1px solid #bfc6cc;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+      }
+
       .canvas-floating-pad button.active {
         background: #e2f1ff;
         border-color: #0c66b0;
         font-weight: 600;
         color: #0c3c66;
       }
+
+      .controls-toggle {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid #bfc6cc;
+        background: #ffffff;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        cursor: pointer;
+      }
+
+      .controls-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 999;
+      }
+
+      .controls-overlay.active {
+        display: block;
+      }
+
+      @media (max-width: 900px) {
+        .canvas-inner {
+          padding-top: var(--canvas-hud-offset, 82px);
+        }
+
+      .canvas-floating-pad {
+        gap: 8px;
+      }
+
+      .canvas-floating-pad .chip-row {
+        justify-content: flex-start;
+      }
+
+      .canvas-floating-pad button {
+        min-width: 32px;
+        height: 32px;
+        padding: 5px 8px;
+        font-size: 0.82rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+      }
+    }
     nav button.active {
       border-color: #004b80;
       font-weight: bold;
@@ -265,11 +360,12 @@
   }
 
   nav {
-    flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
     padding: 12px;
     padding-top: calc(12px + env(safe-area-inset-top, 0px));
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    overflow-x: auto;
+    flex-wrap: nowrap;
   }
 
   body {
@@ -277,25 +373,30 @@
   }
 
     nav button {
-      flex: 1 0 46%;
+      flex: 0 0 auto;
       font-size: 1rem;
       text-align: center;
-      min-height: 52px;
+      min-height: 48px;
     }
 
-    .canvas-floating-pad {
-      right: 8px;
-      bottom: 8px;
-      gap: 4px;
+  .canvas-floating-pad {
+    right: 8px;
+    bottom: 8px;
+    gap: 4px;
+  }
+
+  .canvas-floating-pad button {
+    min-width: 28px;
+    height: 30px;
+    padding: 4px 6px;
+    font-size: 0.78rem;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
     }
 
-    .canvas-floating-pad button {
-      min-width: 40px;
-      height: 40px;
-      padding: 6px 10px;
-      font-size: 0.9rem;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-    }
+  .canvas-floating-pad .hud-toggle {
+    height: 28px;
+    padding: 4px 6px;
+  }
 
   /* Roof + mockup mobile shells: split into scrollable controls + fixed canvas */
   #screen-roof,
@@ -307,20 +408,38 @@
     display: grid !important;
     grid-template-rows: minmax(220px, 44svh) 1fr;
     gap: 12px;
-    height: calc(100svh - 140px);
+    height: calc(var(--app-vh, 1vh) * 100 - 140px);
     min-height: 520px;
   }
 
   .controls-panel {
-    width: 100% !important;
-    max-width: 100% !important;
-    height: 100%;
-    max-height: none !important;
+    position: fixed;
+    top: calc(56px + env(safe-area-inset-top, 0px));
+    left: 0;
+    width: min(320px, 86vw) !important;
+    max-width: min(320px, 86vw) !important;
+    height: calc(var(--app-vh, 1vh) * 100 - 56px - env(safe-area-inset-top, 0px));
+    max-height: calc(var(--app-vh, 1vh) * 100 - 56px - env(safe-area-inset-top, 0px)) !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
-    padding-right: 10px;
+    padding: 12px 12px 18px 12px;
     box-sizing: border-box;
+    background: #ffffff;
+    border: 1px solid #ccc;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+    transform: translateX(-104%);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    z-index: 1000;
+    opacity: 0.98;
+  }
+
+  .controls-panel.open {
+    transform: translateX(0);
+  }
+
+  .controls-toggle {
+    display: inline-flex;
   }
 
   .canvas-column {
@@ -338,6 +457,8 @@
     flex: 1;
     min-height: 260px;
     overflow: hidden;
+    padding-top: var(--canvas-hud-offset, 82px);
+    box-sizing: border-box;
   }
 
   /* Make canvases fill remaining space without forcing page scroll */
@@ -351,16 +472,62 @@
   }
 
   .canvas-floating-pad {
-    display: none;
+    position: fixed;
+    top: var(--hud-top-offset, calc(8px + env(safe-area-inset-top, 0px)));
+    left: 10px;
+    right: 10px;
+    bottom: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
+    z-index: 900;
+  }
+
+  .canvas-floating-pad .chip-row {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .canvas-floating-pad button {
+    min-width: 0;
+    flex: 1 0 44%;
+    height: auto;
+    padding: 4px 7px;
+    font-size: 0.8rem;
+  }
+
+  .canvas-floating-pad .hud-toggle {
+    flex: 0 0 auto;
+    min-width: 32px;
   }
 
   .canvas-docked-toolbar {
-    display: flex;
+    display: none;
   }
 
-  .canvas-docked-toolbar button {
-    flex: 1 0 30%;
-    min-width: 0;
+  @media (max-width: 560px) {
+    .canvas-floating-pad {
+      gap: 6px;
+    }
+
+    .canvas-floating-pad .chip-row {
+      gap: 5px;
+    }
+
+    .canvas-floating-pad button {
+      padding: 4px 6px;
+      font-size: 0.76rem;
+      height: 28px;
+      border-radius: 14px;
+    }
+
+    .canvas-floating-pad .hud-toggle {
+      height: 26px;
+      padding: 3px 6px;
+      border-radius: 12px;
+    }
   }
 
   /* Prevent Safari zoom on focus by ensuring 16px+ form text */
@@ -402,6 +569,8 @@
     <button data-screen="mockup">Photo Mockup</button>
     <button data-screen="proposal">Proposal</button>
   </nav>
+
+  <div class="controls-overlay" id="controls-overlay"></div>
 
   <!-- Screen 1: Clients -->
   <section id="screen-clients" class="screen active">
@@ -561,10 +730,12 @@
       </li>
     </ol>
 
+    <button class="controls-toggle" data-target="roof-controls" type="button">Controls</button>
+
     <div class="canvas-layout" style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start; margin-top:0.75rem;">
 
       <!-- LEFT COLUMN: controls -->
-      <div class="controls-panel" style="min-width:260px; max-width:320px; max-height:80vh; overflow-y:auto; background:#ffffff; border:1px solid #ccc; padding:8px; box-sizing:border-box;">
+      <div id="roof-controls" class="controls-panel" style="min-width:260px; max-width:320px; max-height:80vh; overflow-y:auto; background:#ffffff; border:1px solid #ccc; padding:8px; box-sizing:border-box;">
 
         <h3 style="margin-top:0;">Image &amp; scale</h3>
 
@@ -583,8 +754,9 @@
         <button id="roof-adjust-mode">Adjust</button>
         <button id="roof-clear">Clear</button><br><br>
 
-        <button id="roof-zoom-in">Zoom in</button>
-        <button id="roof-zoom-out">Zoom out</button><br><br>
+        <button id="roof-print" type="button" style="width:100%; margin-bottom:0.5rem;">
+          Print / Save roof canvas
+        </button>
 
       <label for="roof-run-type"><strong>Run type:</strong></label><br>
         <select id="roof-run-type" style="width:100%;">
@@ -611,18 +783,22 @@
       </div>
 
       <!-- RIGHT COLUMN: canvas -->
-        <div class="canvas-column" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
+        <div id="roof-canvas-wrapper" class="canvas-column" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
           <div class="canvas-inner">
-          <div class="canvas-floating-pad roof-floating-controls" aria-label="Roof quick controls">
+          <div id="roof-floating-controls" class="canvas-floating-pad roof-floating-controls" aria-label="Roof quick controls">
             <div class="chip-row">
-              <button id="roof-mode-scale-inline" type="button">Scale</button>
-              <button id="roof-mode-measure-inline" type="button">Measure</button>
-              <button id="roof-mode-adjust-inline" type="button">Adjust</button>
+              <button id="roof-controls-inline" type="button" data-label="Controls" data-label-short="Menu">Controls</button>
+              <button id="roof-undo-inline" type="button" data-label="Undo" data-label-short="Undo">Undo</button>
+              <button id="roof-mode-scale-inline" type="button" data-label="Scale" data-label-short="Scale">Scale</button>
+              <button class="hud-toggle" data-target="roof-floating-controls" type="button" aria-label="More roof controls">⋯ More</button>
             </div>
-            <div class="chip-row">
-              <button id="roof-pan-inline" type="button">Pan</button>
-              <button id="roof-zoom-in-inline" type="button">Zoom +</button>
-              <button id="roof-zoom-out-inline" type="button">Zoom −</button>
+            <div class="chip-row hud-secondary-row">
+              <button id="roof-mode-measure-inline" type="button" data-label="Measure" data-label-short="Measure">Measure</button>
+              <button id="roof-mode-adjust-inline" type="button" data-label="Adjust" data-label-short="Adjust">Adjust</button>
+              <button id="roof-pan-inline" type="button" data-label="Pan" data-label-short="Pan">Pan</button>
+              <button id="roof-center-inline" type="button" data-label="Center" data-label-short="Center">Center</button>
+              <button id="roof-zoom-in-inline" type="button" data-label="Zoom +" data-label-short="+">Zoom +</button>
+              <button id="roof-zoom-out-inline" type="button" data-label="Zoom −" data-label-short="−">Zoom −</button>
             </div>
           </div>
           <canvas
@@ -633,12 +809,15 @@
           ></canvas>
           </div>
           <div class="canvas-docked-toolbar roof-docked-toolbar" aria-label="Roof tools">
-            <button id="roof-mode-scale-inline-mobile" type="button">Scale</button>
-            <button id="roof-mode-measure-inline-mobile" type="button">Measure</button>
-            <button id="roof-mode-adjust-inline-mobile" type="button">Adjust</button>
-            <button id="roof-pan-inline-mobile" type="button">Pan</button>
-            <button id="roof-zoom-in-inline-mobile" type="button">Zoom +</button>
-            <button id="roof-zoom-out-inline-mobile" type="button">Zoom −</button>
+            <button id="roof-mode-scale-inline-mobile" type="button" data-label="Scale" data-label-short="Scale">Scale</button>
+            <button id="roof-controls-inline-mobile" type="button" data-label="Controls" data-label-short="Menu">Controls</button>
+            <button id="roof-undo-inline-mobile" type="button" data-label="Undo" data-label-short="Undo">Undo</button>
+            <button id="roof-mode-measure-inline-mobile" type="button" data-label="Measure" data-label-short="Measure">Measure</button>
+            <button id="roof-mode-adjust-inline-mobile" type="button" data-label="Adjust" data-label-short="Adjust">Adjust</button>
+            <button id="roof-pan-inline-mobile" type="button" data-label="Pan" data-label-short="Pan">Pan</button>
+            <button id="roof-center-inline-mobile" type="button" data-label="Center" data-label-short="Center">Center</button>
+            <button id="roof-zoom-in-inline-mobile" type="button" data-label="Zoom +" data-label-short="+">Zoom +</button>
+            <button id="roof-zoom-out-inline-mobile" type="button" data-label="Zoom −" data-label-short="−">Zoom −</button>
           </div>
         </div>
 
@@ -661,16 +840,15 @@
 
     <input type="file" id="mockup-image-input" accept="image/*"><br><br>
 
-    <button id="mockup-zoom-in" type="button">Zoom in</button>
-    <button id="mockup-zoom-out" type="button">Zoom out</button>
-    <button id="mockup-pan" type="button">Pan / move photo</button>
     <button id="mockup-print" type="button">Print / Save this mockup as PDF</button>
     <br><br>
+
+    <button class="controls-toggle" data-target="mockup-controls" type="button">Controls</button>
 
     <div class="canvas-layout" style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start;">
 
       <!-- Controls column -->
-      <div class="controls-panel" style="min-width:250px; max-width:320px; max-height:80vh; overflow-y:auto;">
+      <div id="mockup-controls" class="controls-panel" style="min-width:250px; max-width:320px; max-height:80vh; overflow-y:auto;">
         <h3 style="margin-top:0;">Light style</h3>
 
         <label for="mockup-color-mode"><strong>Color pattern:</strong></label><br>
@@ -839,18 +1017,22 @@
       <!-- Canvas column -->
         <div id="mockup-canvas-wrapper" class="canvas-column" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
           <div class="canvas-inner">
-          <div class="canvas-floating-pad mockup-floating-controls" aria-label="Quick canvas controls">
+          <div id="mockup-floating-controls" class="canvas-floating-pad mockup-floating-controls" aria-label="Quick canvas controls">
             <div class="chip-row">
-              <button id="mockup-mode-draw" type="button" class="active">Draw</button>
-              <button id="mockup-mode-adjust" type="button">Adjust</button>
-              <button id="mockup-mode-decor" type="button">Decorate</button>
+              <button id="mockup-controls-inline" type="button" data-label="Controls" data-label-short="Menu">Controls</button>
+              <button id="mockup-undo-inline" type="button" data-label="Undo" data-label-short="Undo">Undo</button>
+              <button id="mockup-mode-draw" type="button" class="active" data-label="Draw" data-label-short="Draw">Draw</button>
+              <button id="mockup-mode-adjust" type="button" data-label="Adjust" data-label-short="Adjust">Adjust</button>
+              <button id="mockup-mode-decor" type="button" data-label="Decorate" data-label-short="Decor">Decorate</button>
+              <button class="hud-toggle" data-target="mockup-floating-controls" type="button" aria-label="More mockup controls">⋯ More</button>
             </div>
-          <div class="chip-row">
-            <button id="mockup-pan-inline" type="button">Pan</button>
-            <button id="mockup-zoom-in-inline" type="button">Zoom +</button>
-            <button id="mockup-zoom-out-inline" type="button">Zoom −</button>
+            <div class="chip-row hud-secondary-row">
+              <button id="mockup-pan-inline" type="button" data-label="Pan" data-label-short="Pan">Pan</button>
+              <button id="mockup-center-inline" type="button" data-label="Center" data-label-short="Center">Center</button>
+              <button id="mockup-zoom-in-inline" type="button" data-label="Zoom +" data-label-short="+">Zoom +</button>
+              <button id="mockup-zoom-out-inline" type="button" data-label="Zoom −" data-label-short="−">Zoom −</button>
+            </div>
           </div>
-        </div>
         <canvas
           id="mockup-canvas"
           width="1000"
@@ -859,12 +1041,15 @@
         ></canvas>
           </div>
           <div class="canvas-docked-toolbar mockup-docked-toolbar" aria-label="Mockup tools">
-            <button id="mockup-mode-draw-mobile" type="button" class="active">Draw</button>
-            <button id="mockup-mode-adjust-mobile" type="button">Adjust</button>
-            <button id="mockup-mode-decor-mobile" type="button">Decorate</button>
-            <button id="mockup-pan-inline-mobile" type="button">Pan</button>
-            <button id="mockup-zoom-in-inline-mobile" type="button">Zoom +</button>
-            <button id="mockup-zoom-out-inline-mobile" type="button">Zoom −</button>
+            <button id="mockup-mode-draw-mobile" type="button" class="active" data-label="Draw" data-label-short="Draw">Draw</button>
+            <button id="mockup-controls-inline-mobile" type="button" data-label="Controls" data-label-short="Menu">Controls</button>
+            <button id="mockup-undo-inline-mobile" type="button" data-label="Undo" data-label-short="Undo">Undo</button>
+            <button id="mockup-mode-adjust-mobile" type="button" data-label="Adjust" data-label-short="Adjust">Adjust</button>
+            <button id="mockup-mode-decor-mobile" type="button" data-label="Decorate" data-label-short="Decor">Decorate</button>
+            <button id="mockup-pan-inline-mobile" type="button" data-label="Pan" data-label-short="Pan">Pan</button>
+            <button id="mockup-center-inline-mobile" type="button" data-label="Center" data-label-short="Center">Center</button>
+            <button id="mockup-zoom-in-inline-mobile" type="button" data-label="Zoom +" data-label-short="+">Zoom +</button>
+            <button id="mockup-zoom-out-inline-mobile" type="button" data-label="Zoom −" data-label-short="−">Zoom −</button>
           </div>
       </div>
     </div>
@@ -923,6 +1108,146 @@
     // ------------------------------------------------------------------
     var navButtons = document.querySelectorAll('nav button[data-screen]');
     var screens = document.querySelectorAll('.screen');
+    var controlsOverlay = document.getElementById('controls-overlay');
+    var canvasWrappers = ['roof-canvas-wrapper', 'mockup-canvas-wrapper'];
+    var hudButtons = [
+      'roof-controls-inline','roof-undo-inline','roof-mode-scale-inline','roof-mode-measure-inline','roof-mode-adjust-inline','roof-pan-inline','roof-center-inline','roof-zoom-in-inline','roof-zoom-out-inline',
+      'roof-mode-scale-inline-mobile','roof-controls-inline-mobile','roof-undo-inline-mobile','roof-mode-measure-inline-mobile','roof-mode-adjust-inline-mobile','roof-pan-inline-mobile','roof-center-inline-mobile','roof-zoom-in-inline-mobile','roof-zoom-out-inline-mobile',
+      'mockup-controls-inline','mockup-undo-inline','mockup-mode-draw','mockup-mode-adjust','mockup-mode-decor','mockup-pan-inline','mockup-center-inline','mockup-zoom-in-inline','mockup-zoom-out-inline',
+      'mockup-mode-draw-mobile','mockup-controls-inline-mobile','mockup-undo-inline-mobile','mockup-mode-adjust-mobile','mockup-mode-decor-mobile','mockup-pan-inline-mobile','mockup-center-inline-mobile','mockup-zoom-in-inline-mobile','mockup-zoom-out-inline-mobile'
+    ];
+    var hudLabelCache = {};
+    var hudPadIds = ['roof-floating-controls', 'mockup-floating-controls'];
+    var hudCollapseState = {};
+
+    function setViewportUnit() {
+      var vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--app-vh', vh + 'px');
+    }
+
+    function refreshHudTopOffset() {
+      var header = document.querySelector('header');
+      var nav = document.querySelector('nav');
+      var total = 8;
+      if (header) total += header.getBoundingClientRect().height;
+      if (nav) total += nav.getBoundingClientRect().height;
+      document.documentElement.style.setProperty('--hud-top-offset', Math.round(total + 4) + 'px');
+    }
+
+    function setButtonLabel(id, useShort) {
+      var btn = document.getElementById(id);
+      if (!btn) return;
+      if (!hudLabelCache[id]) {
+        hudLabelCache[id] = {
+          full: btn.getAttribute('data-label') || btn.textContent.trim(),
+          short: btn.getAttribute('data-label-short') || btn.textContent.trim()
+        };
+      }
+      var cache = hudLabelCache[id];
+      btn.textContent = useShort ? (cache.short || cache.full) : (cache.full || cache.short);
+    }
+
+    function applyCompactHudLabels() {
+      var compact = window.innerWidth <= 560;
+      hudButtons.forEach(function (id) { setButtonLabel(id, compact); });
+    }
+
+    function setHudCollapsed(padId, collapsed) {
+      var pad = document.getElementById(padId);
+      if (!pad) return;
+      pad.classList.toggle('hud-collapsed', collapsed);
+      var toggle = pad.querySelector('.hud-toggle');
+      if (toggle) toggle.textContent = collapsed ? '⋯ More' : 'Less';
+      hudCollapseState[padId] = collapsed;
+      var wrapper = pad.closest('.canvas-column');
+      if (wrapper && wrapper.id) {
+        refreshCanvasHudPadding(wrapper.id);
+      }
+    }
+
+    function refreshHudCollapseFromViewport() {
+      var collapse = window.innerWidth <= 560;
+      hudPadIds.forEach(function (id) { setHudCollapsed(id, collapse); });
+    }
+
+    function refreshCanvasHudPadding(wrapperId) {
+      var wrapper = document.getElementById(wrapperId);
+      if (!wrapper) return;
+      var inner = wrapper.querySelector('.canvas-inner');
+      var hud = wrapper.querySelector('.canvas-floating-pad');
+      if (!inner || !hud) return;
+      var rect = hud.getBoundingClientRect();
+      var offset = Math.max(Math.ceil(rect.height + 12), 56);
+      inner.style.setProperty('--canvas-hud-offset', offset + 'px');
+    }
+
+    function refreshAllCanvasHudPadding() {
+      canvasWrappers.forEach(refreshCanvasHudPadding);
+    }
+
+    function closeControlDrawers() {
+      document.querySelectorAll('.controls-panel.open').forEach(function (panel) {
+        panel.classList.remove('open');
+      });
+      if (controlsOverlay) controlsOverlay.classList.remove('active');
+    }
+
+    function toggleControlDrawer(targetId) {
+      var panel = targetId ? document.getElementById(targetId) : null;
+      if (!panel) return;
+      var willOpen = !panel.classList.contains('open');
+      closeControlDrawers();
+      if (willOpen) {
+        panel.classList.add('open');
+        if (controlsOverlay) controlsOverlay.classList.add('active');
+      }
+    }
+
+    document.querySelectorAll('.controls-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var targetId = btn.getAttribute('data-target');
+        toggleControlDrawer(targetId);
+      });
+    });
+
+    if (controlsOverlay) {
+      controlsOverlay.addEventListener('click', function () {
+        closeControlDrawers();
+      });
+    }
+
+    document.querySelectorAll('.hud-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var targetId = btn.getAttribute('data-target');
+        var current = hudCollapseState[targetId];
+        setHudCollapsed(targetId, !current);
+        refreshAllCanvasHudPadding();
+      });
+    });
+
+    document.addEventListener('keyup', function (evt) {
+      if (evt.key === 'Escape') closeControlDrawers();
+    });
+
+    setViewportUnit();
+    refreshAllCanvasHudPadding();
+    applyCompactHudLabels();
+    refreshHudTopOffset();
+    refreshHudCollapseFromViewport();
+    window.addEventListener('resize', function () {
+      setViewportUnit();
+      refreshAllCanvasHudPadding();
+      applyCompactHudLabels();
+      refreshHudTopOffset();
+      refreshHudCollapseFromViewport();
+    });
+    window.addEventListener('orientationchange', function () {
+      setViewportUnit();
+      refreshAllCanvasHudPadding();
+      applyCompactHudLabels();
+      refreshHudTopOffset();
+      refreshHudCollapseFromViewport();
+    });
 
     navButtons.forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -933,8 +1258,20 @@
           if (s.id === 'screen-' + target) s.classList.add('active');
           else s.classList.remove('active');
         });
+        closeControlDrawers();
+        refreshAllCanvasHudPadding();
+        applyCompactHudLabels();
+        refreshHudTopOffset();
+        refreshHudCollapseFromViewport();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
+    });
+
+    ['roof-canvas', 'mockup-canvas'].forEach(function (canvasId) {
+      var canvasEl = document.getElementById(canvasId);
+      if (canvasEl) {
+        canvasEl.addEventListener('pointerdown', closeControlDrawers);
+      }
     });
 
     // ------------------------------------------------------------------
@@ -1483,14 +1820,20 @@
     var roofInfo        = document.getElementById('roof-info');
     var roofTotals      = document.getElementById('roof-totals');
 
-    var roofZoomInBtn   = document.getElementById('roof-zoom-in');
-    var roofZoomOutBtn  = document.getElementById('roof-zoom-out');
     var roofZoomInInlineBtn  = document.getElementById('roof-zoom-in-inline');
     var roofZoomOutInlineBtn = document.getElementById('roof-zoom-out-inline');
     var roofPanInlineBtn     = document.getElementById('roof-pan-inline');
+    var roofCenterInlineBtn  = document.getElementById('roof-center-inline');
+    var roofUndoInlineBtn    = document.getElementById('roof-undo-inline');
+    var roofControlsInlineBtn = document.getElementById('roof-controls-inline');
+    var roofWrapper          = document.getElementById('roof-canvas-wrapper');
+    var roofPrintBtn         = document.getElementById('roof-print');
     var roofZoomInInlineMobileBtn  = document.getElementById('roof-zoom-in-inline-mobile');
     var roofZoomOutInlineMobileBtn = document.getElementById('roof-zoom-out-inline-mobile');
     var roofPanInlineMobileBtn     = document.getElementById('roof-pan-inline-mobile');
+    var roofCenterInlineMobileBtn  = document.getElementById('roof-center-inline-mobile');
+    var roofUndoInlineMobileBtn    = document.getElementById('roof-undo-inline-mobile');
+    var roofControlsInlineMobileBtn = document.getElementById('roof-controls-inline-mobile');
     var roofScaleInlineMobileBtn   = document.getElementById('roof-mode-scale-inline-mobile');
     var roofMeasureInlineMobileBtn = document.getElementById('roof-mode-measure-inline-mobile');
     var roofAdjustInlineMobileBtn  = document.getElementById('roof-mode-adjust-inline-mobile');
@@ -1591,6 +1934,15 @@
         roofCanvas.style.transform = 'scale(' + roofZoom.toFixed(2) + ')';
       }
 
+      function roofCenterCanvas() {
+        if (!roofWrapper || !roofCanvas) return;
+        var displayW = roofCanvas.width * roofZoom;
+        var displayH = roofCanvas.height * roofZoom;
+        var targetLeft = Math.max(0, (displayW - roofWrapper.clientWidth) / 2);
+        var targetTop  = Math.max(0, (displayH - roofWrapper.clientHeight) / 2);
+        roofWrapper.scrollTo({ left: targetLeft, top: targetTop, behavior: 'smooth' });
+      }
+
       function roofZoomBy(delta) {
         roofZoom = Math.min(Math.max(roofZoom + delta, ROOF_ZOOM_MIN), ROOF_ZOOM_MAX);
         roofApplyZoom();
@@ -1681,12 +2033,16 @@
          if (roofMode === 'adjust') {
           roofCtx.beginPath();
           roofCtx.fillStyle = '#00ffff';
-          roofCtx.arc(seg.from.x, seg.from.y, 4, 0, Math.PI * 2);
+          roofCtx.strokeStyle = '#004b80';
+          roofCtx.lineWidth = 2;
+          roofCtx.arc(seg.from.x, seg.from.y, 7, 0, Math.PI * 2);
           roofCtx.fill();
+          roofCtx.stroke();
 
           roofCtx.beginPath();
-          roofCtx.arc(seg.to.x, seg.to.y, 4, 0, Math.PI * 2);
+          roofCtx.arc(seg.to.x, seg.to.y, 7, 0, Math.PI * 2);
           roofCtx.fill();
+          roofCtx.stroke();
         }
       });
     }
@@ -1852,11 +2208,11 @@
           if (!roofImage) return;
           if (roofIsPanMode) return;
 
-          if (evt.type === 'touchstart') {
-            roofIgnoreClickUntil = Date.now() + 700;
-            setCanvasTouchLock(roofCanvas, true);
-            setTimeout(function () { setCanvasTouchLock(roofCanvas, false); }, 400);
-          }
+        if (evt.pointerType === 'touch') {
+          roofIgnoreClickUntil = Date.now() + 700;
+          setCanvasTouchLock(roofCanvas, true);
+          setTimeout(function () { setCanvasTouchLock(roofCanvas, false); }, 400);
+        }
         if (evt.type === 'click' && Date.now() < roofIgnoreClickUntil) {
           return; // ignore ghost click after touch
         }
@@ -1903,15 +2259,17 @@
         }
       }
 
-        roofCanvas.addEventListener('click', handleRoofTap);
-        roofCanvas.addEventListener('touchstart', handleRoofTap, { passive: false });
+        roofCanvas.addEventListener('pointerdown', function (evt) {
+          if (evt.pointerType === 'touch' && evt.cancelable) evt.preventDefault();
+          handleRoofTap(evt);
+        });
 
         function roofHandleDown(evt) {
-          if (roofIsPanMode) return;
-          if (roofMode !== 'adjust' || !roofSegments.length) return;
-          setCanvasTouchLock(roofCanvas, true);
-          var pt = roofCanvasPoint(evt);
-          var best = { index: -1, end: null, dist: 12 };
+        if (roofIsPanMode) return;
+        if (roofMode !== 'adjust' || !roofSegments.length) return;
+        setCanvasTouchLock(roofCanvas, true);
+        var pt = roofCanvasPoint(evt);
+        var best = { index: -1, end: null, dist: 20 };
 
         roofSegments.forEach(function (seg, idx) {
           var df = roofDist(pt, seg.from);
@@ -1953,14 +2311,12 @@
         setCanvasTouchLock(roofCanvas, false);
       }
 
-      roofCanvas.addEventListener('mousedown', roofHandleDown);
-      roofCanvas.addEventListener('mousemove', roofHandleMove);
-      window.addEventListener('mouseup', roofHandleUp);
-
-      roofCanvas.addEventListener('touchstart', roofHandleDown, { passive: false });
-      roofCanvas.addEventListener('touchmove', roofHandleMove, { passive: false });
-      roofCanvas.addEventListener('touchend', roofHandleUp);
-      roofCanvas.addEventListener('touchcancel', roofHandleUp);
+      roofCanvas.addEventListener('pointerdown', roofHandleDown);
+      roofCanvas.addEventListener('pointermove', roofHandleMove);
+      roofCanvas.addEventListener('pointerup', roofHandleUp);
+      roofCanvas.addEventListener('pointercancel', roofHandleUp);
+      roofCanvas.addEventListener('pointerleave', roofHandleUp);
+      window.addEventListener('pointerup', roofHandleUp);
     }
 
     if (roofSendBtn) {
@@ -1994,18 +2350,6 @@
   });
 }
 
-    if (roofZoomInBtn && roofCanvas) {
-      roofZoomInBtn.addEventListener('click', function () {
-        roofZoomBy(0.25);
-      });
-    }
-
-    if (roofZoomOutBtn && roofCanvas) {
-      roofZoomOutBtn.addEventListener('click', function () {
-        roofZoomBy(-0.25);
-      });
-    }
-
     if (roofZoomInInlineBtn && roofCanvas) {
       roofZoomInInlineBtn.addEventListener('click', function () {
         roofZoomBy(0.25);
@@ -2027,6 +2371,57 @@
     if (roofZoomOutInlineMobileBtn && roofCanvas) {
       roofZoomOutInlineMobileBtn.addEventListener('click', function () {
         roofZoomBy(-0.25);
+      });
+    }
+
+    if (roofCenterInlineBtn && roofWrapper) {
+      roofCenterInlineBtn.addEventListener('click', function () {
+        roofCenterCanvas();
+      });
+    }
+
+    if (roofUndoInlineBtn && roofUndoBtn) {
+      roofUndoInlineBtn.addEventListener('click', function () {
+        roofUndoBtn.click();
+      });
+    }
+
+    if (roofControlsInlineBtn) {
+      roofControlsInlineBtn.addEventListener('click', function () {
+        toggleControlDrawer('roof-controls');
+      });
+    }
+
+    if (roofCenterInlineMobileBtn && roofWrapper) {
+      roofCenterInlineMobileBtn.addEventListener('click', function () {
+        roofCenterCanvas();
+      });
+    }
+
+    if (roofUndoInlineMobileBtn && roofUndoBtn) {
+      roofUndoInlineMobileBtn.addEventListener('click', function () {
+        roofUndoBtn.click();
+      });
+    }
+
+    if (roofControlsInlineMobileBtn) {
+      roofControlsInlineMobileBtn.addEventListener('click', function () {
+        toggleControlDrawer('roof-controls');
+      });
+    }
+
+    if (roofPrintBtn) {
+      roofPrintBtn.addEventListener('click', function () {
+        if (!roofCanvas) { window.print(); return; }
+        var dataUrl = roofCanvas.toDataURL('image/png');
+        var win = window.open('', '_blank');
+        if (!win) { return; }
+        win.document.write('<!DOCTYPE html><html><head><title>Roof canvas</title></head><body style="margin:0; text-align:center;">');
+        win.document.write('<img src="' + dataUrl + '" style="max-width:100%; max-height:100vh;">');
+        win.document.write('</body></html>');
+        win.document.close();
+        win.focus();
+        setTimeout(function () { win.print(); win.close(); }, 200);
       });
     }
 
@@ -2061,13 +2456,20 @@
     var mockZoomOutBtn    = document.getElementById('mockup-zoom-out');
     var mockZoomInInline  = document.getElementById('mockup-zoom-in-inline');
     var mockZoomOutInline = document.getElementById('mockup-zoom-out-inline');
+    var mockCenterInline  = document.getElementById('mockup-center-inline');
+    var mockUndoInlineBtn = document.getElementById('mockup-undo-inline');
+    var mockControlsInlineBtn = document.getElementById('mockup-controls-inline');
     var mockPanBtn        = document.getElementById('mockup-pan');
     var mockPanInlineBtn  = document.getElementById('mockup-pan-inline');
     var mockZoomInInlineMobile  = document.getElementById('mockup-zoom-in-inline-mobile');
     var mockZoomOutInlineMobile = document.getElementById('mockup-zoom-out-inline-mobile');
+    var mockCenterInlineMobile  = document.getElementById('mockup-center-inline-mobile');
+    var mockUndoInlineMobileBtn = document.getElementById('mockup-undo-inline-mobile');
+    var mockControlsInlineMobileBtn = document.getElementById('mockup-controls-inline-mobile');
     var mockPanInlineMobile     = document.getElementById('mockup-pan-inline-mobile');
     var mockCanvasWrapper = document.getElementById('mockup-canvas-wrapper');
     var mockPrintBtn      = document.getElementById('mockup-print');
+    var mockPointerMap    = new Map();
 
     var mockModeDrawBtn   = document.getElementById('mockup-mode-draw');
     var mockModeAdjustBtn = document.getElementById('mockup-mode-adjust');
@@ -2266,6 +2668,15 @@
       mockSetZoom(mockZoom + delta);
     }
 
+    function mockCenterCanvas() {
+      if (!mockCanvasWrapper || !mockCanvas) return;
+      var displayW = mockCanvas.width * mockZoom;
+      var displayH = mockCanvas.height * mockZoom;
+      var targetLeft = Math.max(0, (displayW - mockCanvasWrapper.clientWidth) / 2);
+      var targetTop  = Math.max(0, (displayH - mockCanvasWrapper.clientHeight) / 2);
+      mockCanvasWrapper.scrollTo({ left: targetLeft, top: targetTop, behavior: 'smooth' });
+    }
+
     function mockCanvasPoint(evt) {
   var rect   = mockCanvas.getBoundingClientRect();
 
@@ -2332,7 +2743,7 @@
 
         var handlePos = getDecorationHandlePosition(deco);
         var dHandle   = mockPointDistance(pt, handlePos);
-        if (dHandle <= 10) {
+        if (dHandle <= 18) {
           return { deco: deco, mode: 'handle' };
         }
 
@@ -2728,13 +3139,13 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       mockCtx.beginPath();
       mockCtx.fillStyle   = '#00ffff';
       mockCtx.strokeStyle = '#004b80';
-      mockCtx.lineWidth   = 1;
-      mockCtx.arc(from.x, from.y, 3, 0, Math.PI * 2);
+      mockCtx.lineWidth   = 2;
+      mockCtx.arc(from.x, from.y, 7, 0, Math.PI * 2);
       mockCtx.fill();
       mockCtx.stroke();
 
       mockCtx.beginPath();
-      mockCtx.arc(to.x, to.y, 3, 0, Math.PI * 2);
+      mockCtx.arc(to.x, to.y, 7, 0, Math.PI * 2);
       mockCtx.fill();
       mockCtx.stroke();
     }
@@ -2976,7 +3387,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       mockCtx.beginPath();
       mockCtx.fillStyle = '#00e5ff';
       mockCtx.strokeStyle = '#004b80';
-      mockCtx.rect(-5, -5, 10, 10);
+      mockCtx.rect(-8, -8, 16, 16);
       mockCtx.fill();
       mockCtx.stroke();
       mockCtx.restore();
@@ -3028,6 +3439,21 @@ if (glowFactor > 0.15) { // appears around mid-dusk
        // --- MOUSE + TOUCH HANDLING FOR MOCKUP CANVAS --------------------
     if (mockCanvas && mockCtx) {
 
+      function normalizeMockPointer(evt, remove) {
+        if (!evt || !evt.pointerId) return evt;
+        if (evt.pointerType === 'touch') {
+          if (remove) mockPointerMap.delete(evt.pointerId);
+          else mockPointerMap.set(evt.pointerId, evt);
+          var touches = Array.from(mockPointerMap.values()).map(function (p) {
+            return { clientX: p.clientX, clientY: p.clientY };
+          });
+          evt.touches = touches;
+        } else {
+          mockPointerMap.clear();
+        }
+        return evt;
+      }
+
       // Normalize mouse/touch into a single canvas point
       function getPointerPoint(evt) {
         var clientX, clientY;
@@ -3070,7 +3496,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
         if (mockIsPanMode) return; // allow native scroll when panning
 
-        if (evt.type === 'touchstart') {
+        if (evt.pointerType === 'touch') {
           mockIgnoreClickUntil = Date.now() + 700;
         }
         if (evt.type === 'click' && Date.now() < mockIgnoreClickUntil) {
@@ -3110,9 +3536,6 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         if (evt.cancelable) evt.preventDefault();
       }
 
-      mockCanvas.addEventListener('click', handleMockTap);
-
-
       // Shared DOWN handler (mouse + touch)
       function handleMockDown(evt) {
         if (!mockImage) return;
@@ -3127,32 +3550,33 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         }
 
         if (mockIsPanMode) {
-          if (evt.type === 'touchstart') {
+          if (evt.pointerType === 'touch') {
             mockIgnoreClickUntil = Date.now() + 700;
           }
           return; // let the wrapper scroll naturally
         }
 
-        if (evt.type === 'touchstart') {
+        if (evt.pointerType === 'touch') {
           // Ignore the delayed click that iOS may fire after touch
           mockIgnoreClickUntil = Date.now() + 700;
           setCanvasTouchLock(mockCanvas, true);
         }
         var pt = getPointerPoint(evt);
+        if (!mockIsPanMode && evt.cancelable) evt.preventDefault();
 
         mockIsDraggingSegment = false;
         mockIsDraggingDecor   = false;
         mockIsResizingDecor   = false;
 
-        // Draw / add modes: treat touchstart as a tap to place points
-        if ((mockMode === 'draw' || mockMode === 'decor-add') && evt.type === 'touchstart') {
+        // Draw / add modes: place points immediately for any pointer type
+        if (mockMode === 'draw' || mockMode === 'decor-add') {
           handleMockTap(evt);
           return;
         }
 
         // Adjust mode: pick up a segment endpoint
         if (mockMode === 'adjust' && mockSegments.length) {
-          var hitThreshold = 14;
+          var hitThreshold = 22;
           for (var i = 0; i < mockSegments.length; i++) {
             var seg = mockSegments[i];
             var dFrom = mockPointDistance(pt, seg.from);
@@ -3276,18 +3700,31 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         setCanvasTouchLock(mockCanvas, false);
       }
 
-      // Mouse events → shared handlers
-      mockCanvas.addEventListener('mousedown',  handleMockDown);
-      mockCanvas.addEventListener('mousemove',  handleMockMove);
-      mockCanvas.addEventListener('mouseup',    handleMockUp);
-      mockCanvas.addEventListener('mouseleave', handleMockUp);
-      document.addEventListener('mouseup',      handleMockUp);
-
-      // Touch events → shared handlers (for Apple / phones)
-      mockCanvas.addEventListener('touchstart', handleMockDown, { passive: false });
-      mockCanvas.addEventListener('touchmove',  handleMockMove, { passive: false });
-      mockCanvas.addEventListener('touchend',   handleMockUp);
-      mockCanvas.addEventListener('touchcancel',handleMockUp);
+      // Pointer events → shared handlers
+      mockCanvas.addEventListener('pointerdown', function (evt) {
+        normalizeMockPointer(evt, false);
+        handleMockDown(evt);
+      });
+      mockCanvas.addEventListener('pointermove', function (evt) {
+        normalizeMockPointer(evt, false);
+        handleMockMove(evt);
+      });
+      mockCanvas.addEventListener('pointerup', function (evt) {
+        normalizeMockPointer(evt, true);
+        handleMockUp(evt);
+      });
+      mockCanvas.addEventListener('pointercancel', function (evt) {
+        normalizeMockPointer(evt, true);
+        handleMockUp(evt);
+      });
+      mockCanvas.addEventListener('pointerleave', function (evt) {
+        normalizeMockPointer(evt, true);
+        handleMockUp(evt);
+      });
+      document.addEventListener('pointerup', function (evt) {
+        normalizeMockPointer(evt, true);
+        handleMockUp(evt);
+      });
     }
 
     // LIGHT RUNS CONTROL BUTTONS
@@ -3626,6 +4063,42 @@ if (glowFactor > 0.15) { // appears around mid-dusk
     if (mockZoomOutInlineMobile) {
       mockZoomOutInlineMobile.addEventListener('click', function () {
         mockZoomBy(-0.25);
+      });
+    }
+
+    if (mockCenterInline && mockCanvasWrapper) {
+      mockCenterInline.addEventListener('click', function () {
+        mockCenterCanvas();
+      });
+    }
+
+    if (mockUndoInlineBtn && mockUndoBtn) {
+      mockUndoInlineBtn.addEventListener('click', function () {
+        mockUndoBtn.click();
+      });
+    }
+
+    if (mockControlsInlineBtn) {
+      mockControlsInlineBtn.addEventListener('click', function () {
+        toggleControlDrawer('mockup-controls');
+      });
+    }
+
+    if (mockCenterInlineMobile && mockCanvasWrapper) {
+      mockCenterInlineMobile.addEventListener('click', function () {
+        mockCenterCanvas();
+      });
+    }
+
+    if (mockUndoInlineMobileBtn && mockUndoBtn) {
+      mockUndoInlineMobileBtn.addEventListener('click', function () {
+        mockUndoBtn.click();
+      });
+    }
+
+    if (mockControlsInlineMobileBtn) {
+      mockControlsInlineMobileBtn.addEventListener('click', function () {
+        toggleControlDrawer('mockup-controls');
       });
     }
 
