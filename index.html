@@ -4,17 +4,36 @@
   <meta charset="UTF-8">
   <title>Willy Good – Christmas Lights</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#004b80">
+  <meta name="application-name" content="Willy Good Christmas Lights">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="logo.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="logo.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="logo.png">
   <style>
+    :root {
+      -webkit-text-size-adjust: 100%;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
       background: #f7f7f7;
+      overflow-x: hidden;
+      overscroll-behavior-y: contain;
     }
     header {
       background: #004b80;
       color: #ffffff;
       padding: 10px 16px;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
     }
     .header-left {
       display: flex;
@@ -36,22 +55,111 @@
     }
     nav {
       background: #eeeeee;
-      padding: 8px 16px;
+      padding: 10px 12px;
       display: flex;
       gap: 8px;
       border-bottom: 1px solid #cccccc;
+      overflow-x: auto;
+      position: sticky;
+      top: 0;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+      z-index: 10;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      overscroll-behavior-x: contain;
     }
     nav button {
-      padding: 6px 12px;
+      padding: 12px 16px;
       border: 1px solid #cccccc;
       background: #ffffff;
       cursor: pointer;
-      border-radius: 4px;
-      font-size: 0.9rem;
+      border-radius: 10px;
+      font-size: 1rem;
+      flex: 1 0 140px;
+      white-space: nowrap;
+      touch-action: manipulation;
+      scroll-snap-align: start;
     }
+
+    /* Stop page panning while adjusting canvases on touch devices */
+      #mockup-canvas,
+      #roof-canvas {
+        touch-action: pan-x pan-y pinch-zoom;
+      }
+
+      #mockup-canvas.touch-lock,
+      #roof-canvas.touch-lock {
+        touch-action: none !important;
+      }
+
+      /* Allow optional panning on the mockup canvas when toggled on */
+      #mockup-canvas.pan-enabled {
+        touch-action: pan-x pan-y pinch-zoom;
+        cursor: grab;
+      }
+
+      /* Allow optional panning on the roof canvas when toggled on */
+      #roof-canvas.pan-enabled {
+        touch-action: pan-x pan-y pinch-zoom;
+        cursor: grab;
+      }
+
+      /* Shared floating control pad overlay (does not shrink the canvas) */
+      .canvas-floating-pad {
+        position: absolute;
+        right: 10px;
+        bottom: 10px;
+        z-index: 6;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: flex-end;
+        pointer-events: none;
+        max-width: calc(100% - 20px);
+      }
+
+      .canvas-docked-toolbar {
+        display: none;
+        gap: 8px;
+        flex-wrap: wrap;
+        padding: 8px 0 0 0;
+      }
+
+      .canvas-floating-pad .chip-row {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .canvas-floating-pad button {
+        pointer-events: auto;
+        min-width: 44px;
+        height: 44px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid #bfc6cc;
+        background: rgba(255, 255, 255, 0.9);
+        font-size: 0.95rem;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+        backdrop-filter: blur(6px);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+      }
+
+      .canvas-floating-pad button.active {
+        background: #e2f1ff;
+        border-color: #0c66b0;
+        font-weight: 600;
+        color: #0c3c66;
+      }
     nav button.active {
       border-color: #004b80;
       font-weight: bold;
+      background: #e2f1ff;
     }
     .screen {
       display: none;
@@ -73,18 +181,29 @@
     textarea,
     select {
       font-family: inherit;
-      font-size: 0.9rem;
-      padding: 4px;
+      font-size: 1rem;
+      padding: 10px 12px;
       width: 260px;
       max-width: 100%;
       box-sizing: border-box;
+      border-radius: 8px;
+      border: 1px solid #bfbfbf;
+      min-height: 48px;
     }
     textarea {
       resize: vertical;
     }
     button {
       font-family: inherit;
-      font-size: 0.9rem;
+      font-size: 1rem;
+      touch-action: manipulation;
+    }
+
+    input,
+    select,
+    textarea,
+    label {
+      touch-action: manipulation;
     }
     #clients-list {
       list-style: none;
@@ -139,7 +258,7 @@
     }
 
     /* ---------- Mobile layout tweaks ---------- */
-@media (max-width: 900px) {
+  @media (max-width: 900px) {
 
   body {
     font-size: 14px;
@@ -147,33 +266,115 @@
 
   nav {
     flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* Stack the two-column layouts on Roof & Mockup screens */
-  #screen-roof > div,
-  #screen-mockup > div {
-    display: block !important;         /* override inline flex */
+  body {
+    overscroll-behavior-y: auto;
   }
 
-  #screen-roof > div > div,
-  #screen-mockup > div > div {
-    min-width: 0 !important;
-    max-width: 100% !important;
+    nav button {
+      flex: 1 0 46%;
+      font-size: 1rem;
+      text-align: center;
+      min-height: 52px;
+    }
+
+    .canvas-floating-pad {
+      right: 8px;
+      bottom: 8px;
+      gap: 4px;
+    }
+
+    .canvas-floating-pad button {
+      min-width: 40px;
+      height: 40px;
+      padding: 6px 10px;
+      font-size: 0.9rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+  /* Roof + mockup mobile shells: split into scrollable controls + fixed canvas */
+  #screen-roof,
+  #screen-mockup {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .canvas-layout {
+    display: grid !important;
+    grid-template-rows: minmax(220px, 44svh) 1fr;
+    gap: 12px;
+    height: calc(100svh - 140px);
+    min-height: 520px;
+  }
+
+  .controls-panel {
     width: 100% !important;
+    max-width: 100% !important;
+    height: 100%;
+    max-height: none !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    padding-right: 10px;
+    box-sizing: border-box;
   }
 
-  /* Make canvases fit the phone width */
+  .canvas-column {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .canvas-inner {
+    position: relative;
+    border: 1px solid #ccc;
+    background: #ffffff;
+    flex: 1;
+    min-height: 260px;
+    overflow: hidden;
+  }
+
+  /* Make canvases fill remaining space without forcing page scroll */
   #roof-canvas,
   #mockup-canvas {
     width: 100% !important;
-    height: auto !important;
+    height: 100% !important;
     max-width: 100% !important;
+    max-height: 100%;
+    display: block;
   }
 
-  /* Prevent iOS/phone gestures from fighting canvas interactions */
-#mockup-canvas, #roof-canvas {
-  touch-action: none;
-}
+  .canvas-floating-pad {
+    display: none;
+  }
+
+  .canvas-docked-toolbar {
+    display: flex;
+  }
+
+  .canvas-docked-toolbar button {
+    flex: 1 0 30%;
+    min-width: 0;
+  }
+
+  /* Prevent Safari zoom on focus by ensuring 16px+ form text */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  textarea,
+  select,
+  button,
+  label {
+    font-size: 16px;
+    line-height: 1.2;
+  }
 
   /* Give the control column a little breathing room */
   #screen-roof > div > div:first-child,
@@ -360,10 +561,10 @@
       </li>
     </ol>
 
-    <div style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start; margin-top:0.75rem;">
+    <div class="canvas-layout" style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start; margin-top:0.75rem;">
 
       <!-- LEFT COLUMN: controls -->
-      <div style="min-width:260px; max-width:320px; max-height:80vh; overflow-y:auto; background:#ffffff; border:1px solid #ccc; padding:8px; box-sizing:border-box;">
+      <div class="controls-panel" style="min-width:260px; max-width:320px; max-height:80vh; overflow-y:auto; background:#ffffff; border:1px solid #ccc; padding:8px; box-sizing:border-box;">
 
         <h3 style="margin-top:0;">Image &amp; scale</h3>
 
@@ -410,14 +611,36 @@
       </div>
 
       <!-- RIGHT COLUMN: canvas -->
-      <div style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff;">
-        <canvas
-          id="roof-canvas"
-          width="800"
-          height="500"
-          style="border:1px solid #ccc; max-width:none; transform-origin:0 0;"
-        ></canvas>
-      </div>
+        <div class="canvas-column" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
+          <div class="canvas-inner">
+          <div class="canvas-floating-pad roof-floating-controls" aria-label="Roof quick controls">
+            <div class="chip-row">
+              <button id="roof-mode-scale-inline" type="button">Scale</button>
+              <button id="roof-mode-measure-inline" type="button">Measure</button>
+              <button id="roof-mode-adjust-inline" type="button">Adjust</button>
+            </div>
+            <div class="chip-row">
+              <button id="roof-pan-inline" type="button">Pan</button>
+              <button id="roof-zoom-in-inline" type="button">Zoom +</button>
+              <button id="roof-zoom-out-inline" type="button">Zoom −</button>
+            </div>
+          </div>
+          <canvas
+            id="roof-canvas"
+            width="800"
+            height="500"
+            style="border:1px solid #ccc; max-width:none; transform-origin:0 0;"
+          ></canvas>
+          </div>
+          <div class="canvas-docked-toolbar roof-docked-toolbar" aria-label="Roof tools">
+            <button id="roof-mode-scale-inline-mobile" type="button">Scale</button>
+            <button id="roof-mode-measure-inline-mobile" type="button">Measure</button>
+            <button id="roof-mode-adjust-inline-mobile" type="button">Adjust</button>
+            <button id="roof-pan-inline-mobile" type="button">Pan</button>
+            <button id="roof-zoom-in-inline-mobile" type="button">Zoom +</button>
+            <button id="roof-zoom-out-inline-mobile" type="button">Zoom −</button>
+          </div>
+        </div>
 
     </div>
   </section>
@@ -440,13 +663,14 @@
 
     <button id="mockup-zoom-in" type="button">Zoom in</button>
     <button id="mockup-zoom-out" type="button">Zoom out</button>
+    <button id="mockup-pan" type="button">Pan / move photo</button>
     <button id="mockup-print" type="button">Print / Save this mockup as PDF</button>
     <br><br>
 
-    <div style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start;">
+    <div class="canvas-layout" style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start;">
 
       <!-- Controls column -->
-      <div style="min-width:250px; max-width:320px; max-height:80vh; overflow-y:auto;">
+      <div class="controls-panel" style="min-width:250px; max-width:320px; max-height:80vh; overflow-y:auto;">
         <h3 style="margin-top:0;">Light style</h3>
 
         <label for="mockup-color-mode"><strong>Color pattern:</strong></label><br>
@@ -454,7 +678,12 @@
           <option value="single">Single color</option>
           <option value="two">2 colors (alternate)</option>
           <option value="three">3 colors (1-2-3 pattern)</option>
+          <option value="custom">Custom cycle</option>
         </select><br><br>
+
+        <label for="mockup-custom-pattern"><strong>Custom pattern (bulbs per color)</strong></label><br>
+        <input id="mockup-custom-pattern" type="text" placeholder="e.g. 2-1 (two of color 1, one of color 2)" style="width:240px;">
+        <div class="small-note">Use 2-2-1 for two white, two red, one green, repeating.</div><br>
 
         <label for="mockup-color1"><strong>Color 1:</strong></label>
         <input type="color" id="mockup-color1" value="#ffffff">
@@ -462,6 +691,38 @@
         <input type="color" id="mockup-color2" value="#ff0000">
         <label for="mockup-color3" style="margin-left:0.75rem;"><strong>Color 3:</strong></label>
         <input type="color" id="mockup-color3" value="#00ff00">
+        <br><br>
+
+        <h4 style="margin:0.2rem 0;">Per-area colors</h4>
+        <label class="small-note">
+          <input type="checkbox" id="mockup-ground-color-toggle">
+          Custom ground / stake color
+        </label>
+        <input type="color" id="mockup-ground-color" value="#ffd7a8" style="margin-left:0.5rem;">
+        <br>
+        <label for="mockup-ground-pattern" class="small-note"><strong>Ground pattern:</strong></label>
+        <select id="mockup-ground-pattern" style="width:220px; margin-top:4px;">
+          <option value="inherit">Match main pattern</option>
+          <option value="single">Single color</option>
+          <option value="two">2-color alternate</option>
+          <option value="three">3-color cycle</option>
+          <option value="custom">Custom cycle</option>
+        </select>
+        <br>
+        <label class="small-note">
+          <input type="checkbox" id="mockup-tree-color-toggle">
+          Custom tree / bush color
+        </label>
+        <input type="color" id="mockup-tree-color" value="#a6f0c6" style="margin-left:0.5rem;">
+        <br>
+        <label for="mockup-tree-pattern" class="small-note"><strong>Tree / shrub pattern:</strong></label>
+        <select id="mockup-tree-pattern" style="width:220px; margin-top:4px;">
+          <option value="inherit">Match main pattern</option>
+          <option value="single">Single color</option>
+          <option value="two">2-color alternate</option>
+          <option value="three">3-color cycle</option>
+          <option value="custom">Custom cycle</option>
+        </select>
         <br><br>
 
         <label for="mockup-bulb-spacing"><strong>Bulb spacing:</strong></label><br>
@@ -519,6 +780,23 @@
           Click <strong>Edit decorations</strong> to move, resize, or delete.
         </p>
 
+        <label for="decor-style-preset"><strong>Decoration palette:</strong></label><br>
+        <select id="decor-style-preset" style="width:220px;">
+          <option value="classic" selected>Classic red + evergreen</option>
+          <option value="warm">Warm white + gold</option>
+          <option value="ice">Ice blue + silver</option>
+          <option value="custom">Custom (use colors below)</option>
+        </select><br><br>
+
+        <label for="decor-base-color"><strong>Base / foliage:</strong></label>
+        <input type="color" id="decor-base-color" value="#0b5b3b">
+        <label for="decor-accent-color" style="margin-left:0.5rem;"><strong>Ribbon / accent:</strong></label>
+        <input type="color" id="decor-accent-color" value="#c62828">
+        <br>
+        <label for="decor-light-color" style="margin-top:0.35rem; display:inline-block;"><strong>Light color:</strong></label>
+        <input type="color" id="decor-light-color" value="#ffe9a3" style="margin-left:0.5rem;">
+        <br><br>
+
         <label for="mockup-decor-type"><strong>Decoration type:</strong></label><br>
         <select id="mockup-decor-type" style="width:220px;">
           <option value="wreath">Wreath (with lights)</option>
@@ -559,13 +837,35 @@
       </div>
 
       <!-- Canvas column -->
-      <div style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff;">
+        <div id="mockup-canvas-wrapper" class="canvas-column" style="flex:1; min-width:600px; overflow:auto; border:1px solid #ccc; padding:4px; background:#ffffff; position:relative;">
+          <div class="canvas-inner">
+          <div class="canvas-floating-pad mockup-floating-controls" aria-label="Quick canvas controls">
+            <div class="chip-row">
+              <button id="mockup-mode-draw" type="button" class="active">Draw</button>
+              <button id="mockup-mode-adjust" type="button">Adjust</button>
+              <button id="mockup-mode-decor" type="button">Decorate</button>
+            </div>
+          <div class="chip-row">
+            <button id="mockup-pan-inline" type="button">Pan</button>
+            <button id="mockup-zoom-in-inline" type="button">Zoom +</button>
+            <button id="mockup-zoom-out-inline" type="button">Zoom −</button>
+          </div>
+        </div>
         <canvas
           id="mockup-canvas"
           width="1000"
           height="550"
           style="border:1px solid #ccc; max-width:none; transform-origin:0 0;"
         ></canvas>
+          </div>
+          <div class="canvas-docked-toolbar mockup-docked-toolbar" aria-label="Mockup tools">
+            <button id="mockup-mode-draw-mobile" type="button" class="active">Draw</button>
+            <button id="mockup-mode-adjust-mobile" type="button">Adjust</button>
+            <button id="mockup-mode-decor-mobile" type="button">Decorate</button>
+            <button id="mockup-pan-inline-mobile" type="button">Pan</button>
+            <button id="mockup-zoom-in-inline-mobile" type="button">Zoom +</button>
+            <button id="mockup-zoom-out-inline-mobile" type="button">Zoom −</button>
+          </div>
       </div>
     </div>
 
@@ -633,6 +933,7 @@
           if (s.id === 'screen-' + target) s.classList.add('active');
           else s.classList.remove('active');
         });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       });
     });
 
@@ -668,8 +969,25 @@
       return 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha.toFixed(3) + ')';
     }
 
+    function adjustColor(hex, delta) {
+      var rgb = hexToRgb(hex);
+      var clamp = function (v) {
+        return Math.min(255, Math.max(0, Math.round(v)));
+      };
+      return 'rgb(' +
+        clamp(rgb.r + delta * 255) + ',' +
+        clamp(rgb.g + delta * 255) + ',' +
+        clamp(rgb.b + delta * 255) + ')';
+    }
+
     function parseNum(el) {
       return el ? (parseFloat(el.value) || 0) : 0;
+    }
+
+    function setCanvasTouchLock(el, locked) {
+      if (!el) return;
+      if (locked) el.classList.add('touch-lock');
+      else el.classList.remove('touch-lock');
     }
 
     // Shared reference to mockup canvas
@@ -1167,6 +1485,18 @@
 
     var roofZoomInBtn   = document.getElementById('roof-zoom-in');
     var roofZoomOutBtn  = document.getElementById('roof-zoom-out');
+    var roofZoomInInlineBtn  = document.getElementById('roof-zoom-in-inline');
+    var roofZoomOutInlineBtn = document.getElementById('roof-zoom-out-inline');
+    var roofPanInlineBtn     = document.getElementById('roof-pan-inline');
+    var roofZoomInInlineMobileBtn  = document.getElementById('roof-zoom-in-inline-mobile');
+    var roofZoomOutInlineMobileBtn = document.getElementById('roof-zoom-out-inline-mobile');
+    var roofPanInlineMobileBtn     = document.getElementById('roof-pan-inline-mobile');
+    var roofScaleInlineMobileBtn   = document.getElementById('roof-mode-scale-inline-mobile');
+    var roofMeasureInlineMobileBtn = document.getElementById('roof-mode-measure-inline-mobile');
+    var roofAdjustInlineMobileBtn  = document.getElementById('roof-mode-adjust-inline-mobile');
+    var roofScaleInlineBtn   = document.getElementById('roof-mode-scale-inline');
+    var roofMeasureInlineBtn = document.getElementById('roof-mode-measure-inline');
+    var roofAdjustInlineBtn  = document.getElementById('roof-mode-adjust-inline');
     var roofZoom        = 1;
     var ROOF_ZOOM_MIN   = 0.5;
     var ROOF_ZOOM_MAX   = 3;
@@ -1181,28 +1511,73 @@
     var roofIsDragging   = false;
     var roofDragIndex    = -1;
     var roofDragEnd      = null;
+    var roofIgnoreClickUntil = 0; // guard against delayed iOS clicks
+    var roofIsPanMode    = false;
 
-    function roofSetInfo(msg) {
-      if (roofInfo) roofInfo.textContent = msg;
+      function roofSetInfo(msg) {
+        if (roofInfo) roofInfo.textContent = msg;
+      }
+
+      function roofUpdateModeButtons() {
+        var mode = roofIsPanMode ? 'pan' : roofMode;
+        var isScale   = mode === 'scale';
+        var isMeasure = mode === 'measure';
+        var isAdjust  = mode === 'adjust';
+
+        if (roofScaleInlineBtn)   roofScaleInlineBtn.classList.toggle('active', isScale);
+        if (roofMeasureInlineBtn) roofMeasureInlineBtn.classList.toggle('active', isMeasure);
+        if (roofAdjustInlineBtn)  roofAdjustInlineBtn.classList.toggle('active', isAdjust);
+        if (roofPanInlineBtn)     roofPanInlineBtn.classList.toggle('active', roofIsPanMode);
+        if (roofScaleInlineMobileBtn)   roofScaleInlineMobileBtn.classList.toggle('active', isScale);
+        if (roofMeasureInlineMobileBtn) roofMeasureInlineMobileBtn.classList.toggle('active', isMeasure);
+        if (roofAdjustInlineMobileBtn)  roofAdjustInlineMobileBtn.classList.toggle('active', isAdjust);
+        if (roofPanInlineMobileBtn)     roofPanInlineMobileBtn.classList.toggle('active', roofIsPanMode);
+      }
+
+      function roofSetPanMode(enable) {
+        roofIsPanMode = !!enable;
+        if (roofCanvas) {
+          roofCanvas.classList.toggle('pan-enabled', roofIsPanMode);
+        }
+        if (roofIsPanMode) {
+          roofMode = 'none';
+          roofSetInfo('Pan enabled: drag to reposition the roof photo. Tap Pan again to resume.');
+        } else {
+          roofSetInfo('Pan off. Pick Scale, Measure, or Adjust to keep working.');
+        }
+        roofUpdateModeButtons();
+      }
+
+      function roofEnsurePanOff() {
+        if (roofIsPanMode) {
+          roofIsPanMode = false;
+          if (roofCanvas) roofCanvas.classList.remove('pan-enabled');
+          roofUpdateModeButtons();
+        }
+      }
+
+    function roofCanvasPoint(evt) {
+      var clientX, clientY;
+
+      if (evt.touches && evt.touches.length) {
+        clientX = evt.touches[0].clientX;
+        clientY = evt.touches[0].clientY;
+      } else if (evt.changedTouches && evt.changedTouches.length) {
+        clientX = evt.changedTouches[0].clientX;
+        clientY = evt.changedTouches[0].clientY;
+      } else {
+        clientX = evt.clientX;
+        clientY = evt.clientY;
+      }
+
+      var rect = roofCanvas.getBoundingClientRect();
+      var sx   = roofCanvas.width  / rect.width;
+      var sy   = roofCanvas.height / rect.height;
+      return {
+        x: (clientX - rect.left) * sx,
+        y: (clientY - rect.top)  * sy
+      };
     }
-
-   function roofCanvasPoint(evt) {
-  var rect = roofCanvas.getBoundingClientRect();
-
-  var clientX = evt.clientX;
-  var clientY = evt.clientY;
-  if (evt.touches && evt.touches.length) {
-    clientX = evt.touches[0].clientX;
-    clientY = evt.touches[0].clientY;
-  }
-
-  var sx   = roofCanvas.width  / rect.width;
-  var sy   = roofCanvas.height / rect.height;
-  return {
-    x: (clientX - rect.left) * sx,
-    y: (clientY - rect.top)  * sy
-  };
-}
 
     function roofDist(a, b) {
       var dx = a.x - b.x;
@@ -1210,11 +1585,16 @@
       return Math.sqrt(dx * dx + dy * dy);
     }
 
-    function roofApplyZoom() {
-      if (!roofCanvas) return;
-      roofCanvas.style.transformOrigin = '0 0';
-      roofCanvas.style.transform = 'scale(' + roofZoom.toFixed(2) + ')';
-    }
+      function roofApplyZoom() {
+        if (!roofCanvas) return;
+        roofCanvas.style.transformOrigin = '0 0';
+        roofCanvas.style.transform = 'scale(' + roofZoom.toFixed(2) + ')';
+      }
+
+      function roofZoomBy(delta) {
+        roofZoom = Math.min(Math.max(roofZoom + delta, ROOF_ZOOM_MIN), ROOF_ZOOM_MAX);
+        roofApplyZoom();
+      }
 
     function roofDrawBase() {
       if (!roofCtx || !roofCanvas) return;
@@ -1340,41 +1720,47 @@
             roofMode         = 'none';
             roofLastPoint    = null;
 
-            roofZoom = 1;
-            roofApplyZoom();
-            roofDrawBase();
-            roofUpdateTotals();
-            roofSetInfo('Image loaded. Step 1: click "Set scale" and draw a known distance.');
+              roofZoom = 1;
+              roofApplyZoom();
+              roofDrawBase();
+              roofUpdateTotals();
+              roofSetInfo('Image loaded. Step 1: click "Set scale" and draw a known distance.');
+              roofEnsurePanOff();
+              roofUpdateModeButtons();
+            };
+            img.src = ev.target.result;
           };
-          img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
+          reader.readAsDataURL(file);
+        });
     }
 
-    if (roofSetScaleBtn) {
-      roofSetScaleBtn.addEventListener('click', function () {
-        if (!roofImage) { roofSetInfo('Upload an image first.'); return; }
-        roofMode         = 'scale';
-        roofScalePoints  = [];
-        roofLastPoint    = null;
-        roofSegments     = [];
-        roofFeetPerPixel = null;
-        roofRedraw();
-        roofUpdateTotals();
-        roofSetInfo('Scale mode: click two points on a known distance.');
-      });
-    }
+      if (roofSetScaleBtn) {
+        roofSetScaleBtn.addEventListener('click', function () {
+          if (!roofImage) { roofSetInfo('Upload an image first.'); return; }
+          roofEnsurePanOff();
+          roofMode         = 'scale';
+          roofScalePoints  = [];
+          roofLastPoint    = null;
+          roofSegments     = [];
+          roofFeetPerPixel = null;
+          roofRedraw();
+          roofUpdateTotals();
+          roofSetInfo('Scale mode: click two points on a known distance.');
+          roofUpdateModeButtons();
+        });
+      }
 
-    if (roofMeasureBtn) {
-      roofMeasureBtn.addEventListener('click', function () {
-        if (!roofImage)       { roofSetInfo('Upload an image first.'); return; }
-        if (!roofFeetPerPixel){ roofSetInfo('Set scale first.');      return; }
-        roofMode      = 'measure';
-        roofLastPoint = null;
-        roofSetInfo('Measure mode: choose run type, then click along each run.');
-      });
-    }
+      if (roofMeasureBtn) {
+        roofMeasureBtn.addEventListener('click', function () {
+          if (!roofImage)       { roofSetInfo('Upload an image first.'); return; }
+          if (!roofFeetPerPixel){ roofSetInfo('Set scale first.');      return; }
+          roofEnsurePanOff();
+          roofMode      = 'measure';
+          roofLastPoint = null;
+          roofSetInfo('Measure mode: choose run type, then click along each run.');
+          roofUpdateModeButtons();
+        });
+      }
 
     if (roofUndoBtn) {
       roofUndoBtn.addEventListener('click', function () {
@@ -1397,21 +1783,84 @@
       });
     }
 
-    if (roofAdjustBtn) {
-      roofAdjustBtn.addEventListener('click', function () {
-        if (!roofImage)       { roofSetInfo('Upload an image first.');       return; }
-        if (!roofFeetPerPixel){ roofSetInfo('Set scale first.');            return; }
-        if (!roofSegments.length) { roofSetInfo('No segments yet – measure first.'); return; }
-        roofMode      = 'adjust';
-        roofLastPoint = null;
-        roofSetInfo('Adjust mode: drag cyan endpoints to tweak lines.');
-        roofRedraw();
-      });
-    }
+      if (roofAdjustBtn) {
+        roofAdjustBtn.addEventListener('click', function () {
+          if (!roofImage)       { roofSetInfo('Upload an image first.');       return; }
+          if (!roofFeetPerPixel){ roofSetInfo('Set scale first.');            return; }
+          if (!roofSegments.length) { roofSetInfo('No segments yet – measure first.'); return; }
+          roofEnsurePanOff();
+          roofMode      = 'adjust';
+          roofLastPoint = null;
+          roofSetInfo('Adjust mode: drag cyan endpoints to tweak lines.');
+          roofRedraw();
+          roofUpdateModeButtons();
+        });
+      }
 
-    if (roofCanvas && roofCtx) {
-      roofCanvas.addEventListener('click', function (evt) {
-        if (!roofImage) return;
+      if (roofScaleInlineBtn && roofSetScaleBtn) {
+        roofScaleInlineBtn.addEventListener('click', function () {
+          roofSetScaleBtn.click();
+        });
+      }
+
+      if (roofScaleInlineMobileBtn && roofSetScaleBtn) {
+        roofScaleInlineMobileBtn.addEventListener('click', function () {
+          roofSetScaleBtn.click();
+        });
+      }
+
+      if (roofMeasureInlineBtn && roofMeasureBtn) {
+        roofMeasureInlineBtn.addEventListener('click', function () {
+          roofMeasureBtn.click();
+        });
+      }
+
+      if (roofMeasureInlineMobileBtn && roofMeasureBtn) {
+        roofMeasureInlineMobileBtn.addEventListener('click', function () {
+          roofMeasureBtn.click();
+        });
+      }
+
+      if (roofAdjustInlineBtn && roofAdjustBtn) {
+        roofAdjustInlineBtn.addEventListener('click', function () {
+          roofAdjustBtn.click();
+        });
+      }
+
+      if (roofAdjustInlineMobileBtn && roofAdjustBtn) {
+        roofAdjustInlineMobileBtn.addEventListener('click', function () {
+          roofAdjustBtn.click();
+        });
+      }
+
+      if (roofPanInlineBtn && roofCanvas) {
+        roofPanInlineBtn.addEventListener('click', function () {
+          roofSetPanMode(!roofIsPanMode);
+        });
+      }
+
+      if (roofPanInlineMobileBtn && roofCanvas) {
+        roofPanInlineMobileBtn.addEventListener('click', function () {
+          roofSetPanMode(!roofIsPanMode);
+        });
+      }
+
+      roofUpdateModeButtons();
+
+      if (roofCanvas && roofCtx) {
+        function handleRoofTap(evt) {
+          if (!roofImage) return;
+          if (roofIsPanMode) return;
+
+          if (evt.type === 'touchstart') {
+            roofIgnoreClickUntil = Date.now() + 700;
+            setCanvasTouchLock(roofCanvas, true);
+            setTimeout(function () { setCanvasTouchLock(roofCanvas, false); }, 400);
+          }
+        if (evt.type === 'click' && Date.now() < roofIgnoreClickUntil) {
+          return; // ignore ghost click after touch
+        }
+
         var pt = roofCanvasPoint(evt);
 
         if (roofMode === 'scale') {
@@ -1432,6 +1881,7 @@
           }
           roofRedraw();
           roofUpdateTotals();
+          if (evt.cancelable) evt.preventDefault();
           return;
         }
 
@@ -1448,14 +1898,20 @@
             roofUpdateTotals();
           }
           roofRedraw();
+          if (evt.cancelable) evt.preventDefault();
           return;
         }
-      });
+      }
 
-      roofCanvas.addEventListener('mousedown', function (evt) {
-        if (roofMode !== 'adjust' || !roofSegments.length) return;
-        var pt = roofCanvasPoint(evt);
-        var best = { index: -1, end: null, dist: 12 };
+        roofCanvas.addEventListener('click', handleRoofTap);
+        roofCanvas.addEventListener('touchstart', handleRoofTap, { passive: false });
+
+        function roofHandleDown(evt) {
+          if (roofIsPanMode) return;
+          if (roofMode !== 'adjust' || !roofSegments.length) return;
+          setCanvasTouchLock(roofCanvas, true);
+          var pt = roofCanvasPoint(evt);
+          var best = { index: -1, end: null, dist: 12 };
 
         roofSegments.forEach(function (seg, idx) {
           var df = roofDist(pt, seg.from);
@@ -1468,13 +1924,15 @@
           roofIsDragging = true;
           roofDragIndex  = best.index;
           roofDragEnd    = best.end;
+          if (evt.cancelable) evt.preventDefault();
         }
-      });
+      }
 
-      roofCanvas.addEventListener('mousemove', function (evt) {
-        if (!roofIsDragging || roofDragIndex < 0) return;
-        var seg = roofSegments[roofDragIndex];
-        if (!seg) return;
+        function roofHandleMove(evt) {
+          if (roofIsPanMode) return;
+          if (!roofIsDragging || roofDragIndex < 0) return;
+          var seg = roofSegments[roofDragIndex];
+          if (!seg) return;
         var pt = roofCanvasPoint(evt);
         seg[roofDragEnd] = pt;
         if (roofFeetPerPixel) {
@@ -1482,16 +1940,27 @@
         }
         roofRedraw();
         roofUpdateTotals();
-      });
+        if (evt.cancelable) evt.preventDefault();
+      }
 
-      window.addEventListener('mouseup', function () {
+      function roofHandleUp() {
         if (roofIsDragging) {
           roofIsDragging = false;
           roofDragIndex  = -1;
           roofDragEnd    = null;
           roofSetInfo('Endpoint adjusted.');
         }
-      });
+        setCanvasTouchLock(roofCanvas, false);
+      }
+
+      roofCanvas.addEventListener('mousedown', roofHandleDown);
+      roofCanvas.addEventListener('mousemove', roofHandleMove);
+      window.addEventListener('mouseup', roofHandleUp);
+
+      roofCanvas.addEventListener('touchstart', roofHandleDown, { passive: false });
+      roofCanvas.addEventListener('touchmove', roofHandleMove, { passive: false });
+      roofCanvas.addEventListener('touchend', roofHandleUp);
+      roofCanvas.addEventListener('touchcancel', roofHandleUp);
     }
 
     if (roofSendBtn) {
@@ -1527,15 +1996,37 @@
 
     if (roofZoomInBtn && roofCanvas) {
       roofZoomInBtn.addEventListener('click', function () {
-        roofZoom = Math.min(roofZoom + 0.25, ROOF_ZOOM_MAX);
-        roofApplyZoom();
+        roofZoomBy(0.25);
       });
     }
 
     if (roofZoomOutBtn && roofCanvas) {
       roofZoomOutBtn.addEventListener('click', function () {
-        roofZoom = Math.max(roofZoom - 0.25, ROOF_ZOOM_MIN);
-        roofApplyZoom();
+        roofZoomBy(-0.25);
+      });
+    }
+
+    if (roofZoomInInlineBtn && roofCanvas) {
+      roofZoomInInlineBtn.addEventListener('click', function () {
+        roofZoomBy(0.25);
+      });
+    }
+
+    if (roofZoomOutInlineBtn && roofCanvas) {
+      roofZoomOutInlineBtn.addEventListener('click', function () {
+        roofZoomBy(-0.25);
+      });
+    }
+
+    if (roofZoomInInlineMobileBtn && roofCanvas) {
+      roofZoomInInlineMobileBtn.addEventListener('click', function () {
+        roofZoomBy(0.25);
+      });
+    }
+
+    if (roofZoomOutInlineMobileBtn && roofCanvas) {
+      roofZoomOutInlineMobileBtn.addEventListener('click', function () {
+        roofZoomBy(-0.25);
       });
     }
 
@@ -1550,10 +2041,17 @@
     var mockColor1Input        = document.getElementById('mockup-color1');
     var mockColor2Input        = document.getElementById('mockup-color2');
     var mockColor3Input        = document.getElementById('mockup-color3');
+    var mockCustomPatternInput = document.getElementById('mockup-custom-pattern');
     var mockBulbSpacingSelect  = document.getElementById('mockup-bulb-spacing');
     var mockBulbSizeSelect     = document.getElementById('mockup-bulb-size');
     var mockRunTypeSelect      = document.getElementById('mockup-run-type');
     var mockShowWireCheckbox   = document.getElementById('mockup-show-wire');
+    var mockGroundColorInput   = document.getElementById('mockup-ground-color');
+    var mockGroundColorToggle  = document.getElementById('mockup-ground-color-toggle');
+    var mockGroundPatternSelect= document.getElementById('mockup-ground-pattern');
+    var mockTreeColorInput     = document.getElementById('mockup-tree-color');
+    var mockTreeColorToggle    = document.getElementById('mockup-tree-color-toggle');
+    var mockTreePatternSelect  = document.getElementById('mockup-tree-pattern');
 
     var mockUndoBtn       = document.getElementById('mockup-undo');
     var mockNewRunBtn     = document.getElementById('mockup-new-run');
@@ -1561,13 +2059,33 @@
     var mockClearBtn      = document.getElementById('mockup-clear');
     var mockZoomInBtn     = document.getElementById('mockup-zoom-in');
     var mockZoomOutBtn    = document.getElementById('mockup-zoom-out');
+    var mockZoomInInline  = document.getElementById('mockup-zoom-in-inline');
+    var mockZoomOutInline = document.getElementById('mockup-zoom-out-inline');
+    var mockPanBtn        = document.getElementById('mockup-pan');
+    var mockPanInlineBtn  = document.getElementById('mockup-pan-inline');
+    var mockZoomInInlineMobile  = document.getElementById('mockup-zoom-in-inline-mobile');
+    var mockZoomOutInlineMobile = document.getElementById('mockup-zoom-out-inline-mobile');
+    var mockPanInlineMobile     = document.getElementById('mockup-pan-inline-mobile');
+    var mockCanvasWrapper = document.getElementById('mockup-canvas-wrapper');
     var mockPrintBtn      = document.getElementById('mockup-print');
+
+    var mockModeDrawBtn   = document.getElementById('mockup-mode-draw');
+    var mockModeAdjustBtn = document.getElementById('mockup-mode-adjust');
+    var mockModeDecorBtn  = document.getElementById('mockup-mode-decor');
+    var mockModeDrawMobile   = document.getElementById('mockup-mode-draw-mobile');
+    var mockModeAdjustMobile = document.getElementById('mockup-mode-adjust-mobile');
+    var mockModeDecorMobile  = document.getElementById('mockup-mode-decor-mobile');
 
     var mockDecorTypeSelect   = document.getElementById('mockup-decor-type');
     var mockDecorPlaceBtn     = document.getElementById('mockup-decor-mode');
     var mockDecorEditBtn      = document.getElementById('mockup-decor-edit');
     var mockDecorDeleteBtn    = document.getElementById('mockup-decor-delete');
     var mockDecorClearBtn     = document.getElementById('mockup-decor-clear');
+
+    var decorPresetSelect     = document.getElementById('decor-style-preset');
+    var decorBaseColorInput   = document.getElementById('decor-base-color');
+    var decorAccentColorInput = document.getElementById('decor-accent-color');
+    var decorLightColorInput  = document.getElementById('decor-light-color');
 
     var decorSmallerBtn       = document.getElementById('decor-smaller');
     var decorBiggerBtn        = document.getElementById('decor-bigger');
@@ -1585,10 +2103,15 @@
     var mockDrawParams  = null;
     var mockSegments    = []; // {from:{x,y}, to:{x,y}, type, curve?}
     var mockLastPoint   = null;
-    var mockMode        = 'draw'; // 'draw','adjust','decor-add','decor-edit'
+    var mockMode        = 'draw'; // 'draw','adjust','decor-add','decor-edit','pan'
     var mockZoom        = 1;
     var MOCK_ZOOM_MIN   = 0.5;
     var MOCK_ZOOM_MAX   = 3;
+    var mockIsPanMode   = false;
+    var mockModeBeforePan = 'draw';
+    var mockIsPinching    = false;
+    var mockPinchStartDist = 0;
+    var mockPinchStartZoom = 1;
 
     // --- Mobile click guard (prevents touch -> delayed click double fire) ---
     var mockIgnoreClickUntil = 0;
@@ -1646,6 +2169,65 @@
       if (mockInfo) mockInfo.textContent = msg || '';
     }
 
+    function mockUpdateModeButtons() {
+      var mode = mockIsPanMode ? 'pan' : mockMode;
+      var isDraw   = mode === 'draw';
+      var isAdjust = mode === 'adjust';
+      var isDecor  = mode === 'decor-add' || mode === 'decor-edit';
+
+      if (mockModeDrawBtn)   mockModeDrawBtn.classList.toggle('active', isDraw);
+      if (mockModeAdjustBtn) mockModeAdjustBtn.classList.toggle('active', isAdjust);
+      if (mockModeDecorBtn)  mockModeDecorBtn.classList.toggle('active', isDecor);
+      if (mockModeDrawMobile)   mockModeDrawMobile.classList.toggle('active', isDraw);
+      if (mockModeAdjustMobile) mockModeAdjustMobile.classList.toggle('active', isAdjust);
+      if (mockModeDecorMobile)  mockModeDecorMobile.classList.toggle('active', isDecor);
+    }
+
+    function mockUpdatePanStateUI() {
+      if (mockPanBtn) {
+        if (mockIsPanMode) mockPanBtn.classList.add('active');
+        else mockPanBtn.classList.remove('active');
+      }
+      if (mockPanInlineBtn) {
+        if (mockIsPanMode) mockPanInlineBtn.classList.add('active');
+        else mockPanInlineBtn.classList.remove('active');
+      }
+      if (mockPanInlineMobile) {
+        if (mockIsPanMode) mockPanInlineMobile.classList.add('active');
+        else mockPanInlineMobile.classList.remove('active');
+      }
+      if (mockCanvas) {
+        if (mockIsPanMode) mockCanvas.classList.add('pan-enabled');
+        else mockCanvas.classList.remove('pan-enabled');
+      }
+      mockUpdateModeButtons();
+    }
+
+    function mockSetPanMode(on, silent) {
+      if (on && !mockIsPanMode) {
+        mockModeBeforePan = mockMode;
+        mockMode = 'pan';
+        mockIsPanMode = true;
+        mockUpdatePanStateUI();
+        if (!silent) {
+          mockSetInfo('Pan enabled: drag or swipe to reposition the photo, then tap Pan again to keep drawing.');
+        }
+      } else if (!on && mockIsPanMode) {
+        mockIsPanMode = false;
+        mockMode = mockModeBeforePan || 'draw';
+        mockUpdatePanStateUI();
+        if (!silent) {
+          mockSetInfo('Pan off. Tap to draw, adjust, or place decorations again.');
+        }
+      }
+    }
+
+    function mockEnsurePanOff() {
+      if (mockIsPanMode) {
+        mockSetPanMode(false, true);
+      }
+    }
+
     function mockDrawBase() {
     if (!mockCtx || !mockCanvas) return;
     mockCtx.clearRect(0, 0, mockCanvas.width, mockCanvas.height);
@@ -1669,6 +2251,19 @@
       if (!mockCanvas) return;
       mockCanvas.style.transformOrigin = '0 0';
       mockCanvas.style.transform = 'scale(' + mockZoom.toFixed(2) + ')';
+    }
+
+    function mockSetZoom(nextZoom, silent) {
+      var clamped = Math.max(MOCK_ZOOM_MIN, Math.min(MOCK_ZOOM_MAX, nextZoom));
+      mockZoom = clamped;
+      mockApplyZoom();
+      if (!silent) {
+        mockSetInfo('Zoom ' + Math.round(clamped * 100) + '%. Tap Pan to reposition.');
+      }
+    }
+
+    function mockZoomBy(delta) {
+      mockSetZoom(mockZoom + delta);
     }
 
     function mockCanvasPoint(evt) {
@@ -1835,6 +2430,7 @@
 
     function mockRedraw() {
   if (!mockCtx || !mockCanvas) return;
+  mockUpdateModeButtons();
   mockDrawBase();
   if (!mockImage) return;
 
@@ -1842,6 +2438,42 @@
   var c1   = (mockColor1Input && mockColor1Input.value) || '#ffffff';
   var c2   = (mockColor2Input && mockColor2Input.value) || '#ff0000';
   var c3   = (mockColor3Input && mockColor3Input.value) || '#00ff00';
+
+  function getModeForType(segType) {
+    var base = (mockColorModeSelect && mockColorModeSelect.value) || 'single';
+    if (segType === 'ground' && mockGroundPatternSelect) {
+      var gVal = mockGroundPatternSelect.value;
+      if (gVal && gVal !== 'inherit') base = gVal;
+    }
+    if (segType === 'tree' && mockTreePatternSelect) {
+      var tVal = mockTreePatternSelect.value;
+      if (tVal && tVal !== 'inherit') base = tVal;
+    }
+    return base;
+  }
+
+  function parseCustomPattern() {
+    var raw = (mockCustomPatternInput && mockCustomPatternInput.value) || '';
+    var parts = raw.split(/[^0-9]+/).filter(function (p) { return p.trim().length; });
+    var nums = parts.map(function (p) { return Math.max(1, parseInt(p, 10) || 0); }).filter(Boolean);
+    return nums.length ? nums : [1];
+  }
+
+  function colorsForType(segType) {
+    var colors = [c1, c2, c3];
+    if (segType === 'ground' && groundOverride) {
+      colors[0] = groundColor;
+    }
+    if (segType === 'tree' && treeOverride) {
+      colors[0] = treeColor;
+    }
+    return colors;
+  }
+
+  var groundOverride = mockGroundColorToggle && mockGroundColorToggle.checked;
+  var treeOverride   = mockTreeColorToggle && mockTreeColorToggle.checked;
+  var groundColor    = (mockGroundColorInput && mockGroundColorInput.value) || c1;
+  var treeColor      = (mockTreeColorInput && mockTreeColorInput.value) || c1;
 
   var spacingInches = 12;
   if (mockBulbSpacingSelect) {
@@ -1869,6 +2501,40 @@
 
   // How big the glow is
   var glowRadiusBoost = 1 + 0.6 * duskFactor; // up to +60% at night
+
+  var decorBase   = (decorBaseColorInput && decorBaseColorInput.value) || '#0b5b3b';
+  var decorAccent = (decorAccentColorInput && decorAccentColorInput.value) || '#c62828';
+  var decorLight  = (decorLightColorInput && decorLightColorInput.value) || '#ffe9a3';
+
+  function colorForRun(idx, segType) {
+    var currentMode = getModeForType(segType);
+    var colors = colorsForType(segType).filter(Boolean);
+    if (!colors.length) colors = ['#ffffff'];
+
+    if (currentMode === 'single') {
+      return colors[0];
+    }
+
+    if (currentMode === 'two') {
+      return (idx % 2 === 0) ? colors[0] : (colors[1] || colors[0]);
+    }
+
+    if (currentMode === 'three') {
+      var mod3 = idx % 3;
+      return (mod3 === 0) ? colors[0] : (mod3 === 1 ? (colors[1] || colors[0]) : (colors[2] || colors[0]));
+    }
+
+    // Custom cycles: counts per color (e.g., 2-2-1)
+    var counts = parseCustomPattern();
+    var total = counts.reduce(function (sum, n) { return sum + n; }, 0) || 1;
+    var pos = idx % total;
+    var colorIndex = 0;
+    for (var cIdx = 0; cIdx < counts.length; cIdx++) {
+      if (pos < counts[cIdx]) { colorIndex = cIdx; break; }
+      pos -= counts[cIdx];
+    }
+    return colors[colorIndex % colors.length];
+  }
 
   // Ground curve sag
   var GROUND_CURVE_BULGE_FACTOR = 0.10;
@@ -1966,13 +2632,7 @@
       }
 
       // Color pattern
-      var color = c1;
-      if (mode === 'two') {
-        color = (b % 2 === 0) ? c1 : c2;
-      } else if (mode === 'three') {
-        var idx = b % 3;
-        color = (idx === 0) ? c1 : (idx === 1 ? c2 : c3);
-      }
+      var color = colorForRun(b, seg.type);
 
       mockCtx.save();
       mockCtx.translate(x, y);
@@ -2098,17 +2758,17 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       innerR = r * 0.55;
       mockCtx.beginPath();
       mockCtx.arc(0, 0, r, 0, Math.PI * 2);
-      mockCtx.strokeStyle = '#0b5b3b';
+      mockCtx.strokeStyle = decorBase;
       mockCtx.lineWidth = 6;
       mockCtx.stroke();
 
       mockCtx.beginPath();
       mockCtx.arc(0, 0, innerR, 0, Math.PI * 2);
-      mockCtx.strokeStyle = '#0b3b24';
+      mockCtx.strokeStyle = adjustColor(decorBase, -0.12);
       mockCtx.lineWidth = 4;
       mockCtx.stroke();
 
-      mockCtx.fillStyle = '#c62828';
+      mockCtx.fillStyle = decorAccent;
       mockCtx.beginPath();
       mockCtx.moveTo(-innerR * 0.7, innerR * 0.6);
       mockCtx.lineTo(0, innerR * 1.1);
@@ -2127,7 +2787,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       var w = r * 1.4;
       var h = r * 0.7;
 
-      mockCtx.fillStyle = '#c62828';
+      mockCtx.fillStyle = decorAccent;
 
       mockCtx.beginPath();
       mockCtx.moveTo(-w * 0.5, 0);
@@ -2143,10 +2803,10 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
       mockCtx.beginPath();
       mockCtx.rect(-w * 0.12, -h * 0.25, w * 0.24, h * 0.5);
-      mockCtx.fillStyle = '#8e0000';
+      mockCtx.fillStyle = adjustColor(decorAccent, -0.25);
       mockCtx.fill();
 
-      mockCtx.fillStyle = '#c62828';
+      mockCtx.fillStyle = decorAccent;
       mockCtx.beginPath();
       mockCtx.moveTo(-w * 0.18, h * 0.25);
       mockCtx.lineTo(-w * 0.45, h * 0.9);
@@ -2168,7 +2828,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       mockCtx.beginPath();
       mockCtx.moveTo(-swagW / 2, -swagH * 0.1);
       mockCtx.quadraticCurveTo(0, swagH, swagW / 2, -swagH * 0.1);
-      mockCtx.strokeStyle = '#0b5b3b';
+      mockCtx.strokeStyle = decorBase;
       mockCtx.lineWidth = 6;
       mockCtx.stroke();
 
@@ -2178,7 +2838,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         var x2 = -swagW / 2 + swagW * t2;
         var y2 = -swagH * 0.1 + (Math.sin(t2 * Math.PI) * swagH * 0.7);
         mockCtx.beginPath();
-        mockCtx.fillStyle = (bi % 2 === 0) ? '#ffd54f' : '#ff5252';
+        mockCtx.fillStyle = (bi % 2 === 0) ? decorLight : decorAccent;
         mockCtx.arc(x2, y2, r * 0.08, 0, Math.PI * 2);
         mockCtx.fill();
       }
@@ -2187,11 +2847,11 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       var trunkH = r * 1.6;
       var trunkW = r * 0.25;
 
-      mockCtx.fillStyle = '#5d4037';
+      mockCtx.fillStyle = adjustColor(decorBase, -0.35);
       mockCtx.fillRect(-trunkW / 2, -trunkH / 2, trunkW, trunkH);
 
       var wraps = 6;
-      mockCtx.strokeStyle = '#fff59d';
+      mockCtx.strokeStyle = decorLight;
       mockCtx.lineWidth = 2;
       for (var wi = 0; wi < wraps; wi++) {
         var ty = -trunkH / 2 + (trunkH * wi / (wraps - 1));
@@ -2214,8 +2874,8 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         else mockCtx.lineTo(sx, sy);
       }
       mockCtx.closePath();
-      mockCtx.fillStyle = '#fff176';
-      mockCtx.strokeStyle = '#fbc02d';
+      mockCtx.fillStyle = decorLight;
+      mockCtx.strokeStyle = adjustColor(decorLight, -0.15);
       mockCtx.lineWidth = 2;
       mockCtx.fill();
       mockCtx.stroke();
@@ -2247,7 +2907,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
           var px = -netW / 2 + netW * (gx2 + 0.5) / cells;
           var py = -netH / 2 + netH * (gy2 + 0.5) / cells;
           mockCtx.beginPath();
-          mockCtx.fillStyle = '#fff9c4';
+            mockCtx.fillStyle = decorLight;
           mockCtx.arc(px, py, r * 0.06, 0, Math.PI * 2);
           mockCtx.fill();
         }
@@ -2256,7 +2916,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
     } else if (deco.kind === 'mini-tree') {
       var treeH = r * 1.7;
 
-      mockCtx.fillStyle = '#1b5e20';
+      mockCtx.fillStyle = decorBase;
       mockCtx.beginPath();
       mockCtx.moveTo(0, -treeH / 2);
       mockCtx.lineTo(-r * 0.7, treeH / 2);
@@ -2278,9 +2938,9 @@ if (glowFactor > 0.15) { // appears around mid-dusk
           mockCtx.beginPath();
           var colr;
           var m = (ry * bulbsPerRow + rb) % 3;
-          if (m === 0) colr = '#ff5252';
-          else if (m === 1) colr = '#ffeb3b';
-          else colr = '#69f0ae';
+          if (m === 0) colr = decorAccent;
+          else if (m === 1) colr = decorLight;
+          else colr = adjustColor(decorAccent, 0.25);
           mockCtx.fillStyle = colr;
           mockCtx.arc(bx, rowY, r * 0.07, 0, Math.PI * 2);
           mockCtx.fill();
@@ -2352,9 +3012,9 @@ if (glowFactor > 0.15) { // appears around mid-dusk
             mockDecorations = [];
             mockSelectedDecorId = null;
             mockLastPoint   = null;
+            mockSetPanMode(false);
             mockMode        = 'draw';
-            mockZoom        = 1;
-            mockApplyZoom();
+            mockSetZoom(1, true);
             mockDrawBase();
             mockSyncDecorationsToEstimate();
             mockSetInfo('Photo loaded. Draw runs, place decorations, or adjust.');
@@ -2397,59 +3057,99 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         };
       }
 
-      // CLICK = add line segments or decorations (desktop + tap)
-     mockCanvas.addEventListener('click', function (evt) {
-  // Prevent "ghost click" after touch on mobile
-  if (Date.now() < mockIgnoreClickUntil) return;
+      function getPinchDistance(touches) {
+        if (!touches || touches.length < 2) return 0;
+        var dx = touches[0].clientX - touches[1].clientX;
+        var dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
 
-  if (!mockImage) return;
-  var pt = mockCanvasPoint(evt); // existing helper is fine for click
+    // CLICK / TAP = add line segments or decorations (mouse + touch)
+      function handleMockTap(evt) {
+        if (!mockImage) return;
 
-  if (mockMode === 'decor-add') {
-    addDecorationAtPoint(pt);
-    return;
-  }
-  if (mockMode === 'adjust' || mockMode === 'decor-edit') {
-    return;
-  }
-  if (mockMode !== 'draw') {
-    mockMode = 'draw';
-  }
+        if (mockIsPanMode) return; // allow native scroll when panning
 
-  if (!mockLastPoint) {
-    mockLastPoint = pt;
-  } else {
-    var runType = mockRunTypeSelect ? mockRunTypeSelect.value : 'roof';
-    var seg = {
-      from: mockLastPoint,
-      to: pt,
-      type: runType
-    };
-    if (runType === 'ground' && mockGroundCurveEnabled) {
-      seg.curve = true; // curve only for new ground runs when toggle is ON
-    }
-    mockSegments.push(seg);
-    mockLastPoint = pt;
-  }
-  mockRedraw();
-});
+        if (evt.type === 'touchstart') {
+          mockIgnoreClickUntil = Date.now() + 700;
+        }
+        if (evt.type === 'click' && Date.now() < mockIgnoreClickUntil) {
+          return; // ignore ghost click after touch
+        }
+
+        var pt = getPointerPoint(evt);
+
+        if (mockMode === 'decor-add') {
+          addDecorationAtPoint(pt);
+          if (evt.cancelable) evt.preventDefault();
+          return;
+        }
+        if (mockMode === 'adjust' || mockMode === 'decor-edit') {
+          return;
+        }
+        if (mockMode !== 'draw') {
+          mockMode = 'draw';
+        }
+
+        if (!mockLastPoint) {
+          mockLastPoint = pt;
+        } else {
+          var runType = mockRunTypeSelect ? mockRunTypeSelect.value : 'roof';
+          var seg = {
+            from: mockLastPoint,
+            to: pt,
+            type: runType
+          };
+          if (runType === 'ground' && mockGroundCurveEnabled) {
+            seg.curve = true; // curve only for new ground runs when toggle is ON
+          }
+          mockSegments.push(seg);
+          mockLastPoint = pt;
+        }
+        mockRedraw();
+        if (evt.cancelable) evt.preventDefault();
+      }
+
+      mockCanvas.addEventListener('click', handleMockTap);
 
 
       // Shared DOWN handler (mouse + touch)
       function handleMockDown(evt) {
         if (!mockImage) return;
 
-         if (evt.type === 'touchstart') {
-        // Ignore the delayed click that iOS may fire after touch
-        mockIgnoreClickUntil = Date.now() + 600;
-      }
+        if (evt.touches && evt.touches.length > 1) {
+          mockIsPinching = true;
+          mockPinchStartDist = getPinchDistance(evt.touches);
+          mockPinchStartZoom = mockZoom;
+          setCanvasTouchLock(mockCanvas, true);
+          if (evt.cancelable) evt.preventDefault();
+          return;
+        }
+
+        if (mockIsPanMode) {
+          if (evt.type === 'touchstart') {
+            mockIgnoreClickUntil = Date.now() + 700;
+          }
+          return; // let the wrapper scroll naturally
+        }
+
+        if (evt.type === 'touchstart') {
+          // Ignore the delayed click that iOS may fire after touch
+          mockIgnoreClickUntil = Date.now() + 700;
+          setCanvasTouchLock(mockCanvas, true);
+        }
         var pt = getPointerPoint(evt);
 
         mockIsDraggingSegment = false;
         mockIsDraggingDecor   = false;
         mockIsResizingDecor   = false;
 
-       
+        // Draw / add modes: treat touchstart as a tap to place points
+        if ((mockMode === 'draw' || mockMode === 'decor-add') && evt.type === 'touchstart') {
+          handleMockTap(evt);
+          return;
+        }
+
         // Adjust mode: pick up a segment endpoint
         if (mockMode === 'adjust' && mockSegments.length) {
           var hitThreshold = 14;
@@ -2479,11 +3179,11 @@ if (glowFactor > 0.15) { // appears around mid-dusk
           if (hit && hit.deco) {
             mockSelectedDecorId = hit.deco.id;
             if (hit.mode === 'handle') {
-            mockIsResizingDecor = true;
-          var center = { x: hit.deco.x, y: hit.deco.y };
-            mockResizeStartDist = mockPointDistance(pt, center);
-            mockResizeStartSize = hit.deco.size || 1; // NEW: lock initial size
-          } else {
+              mockIsResizingDecor = true;
+              var center = { x: hit.deco.x, y: hit.deco.y };
+              mockResizeStartDist = mockPointDistance(pt, center);
+              mockResizeStartSize = hit.deco.size || 1; // NEW: lock initial size
+            } else {
               mockIsDraggingDecor = true;
               mockDecorDragOffset.x = pt.x - hit.deco.x;
               mockDecorDragOffset.y = pt.y - hit.deco.y;
@@ -2500,6 +3200,22 @@ if (glowFactor > 0.15) { // appears around mid-dusk
       // Shared MOVE handler (mouse + touch)
       function handleMockMove(evt) {
         if (!mockImage) return;
+
+        if (mockIsPinching && evt.touches && evt.touches.length > 1) {
+          var dist = getPinchDistance(evt.touches);
+          if (mockPinchStartDist > 0) {
+            var ratio = dist / mockPinchStartDist;
+            mockSetZoom(mockPinchStartZoom * ratio, true);
+          }
+          if (evt.cancelable) evt.preventDefault();
+          return;
+        }
+
+        if (mockIsPinching && (!evt.touches || evt.touches.length < 2)) {
+          mockIsPinching = false;
+          mockPinchStartDist = 0;
+        }
+        if (mockIsPanMode) return;
         var pt = getPointerPoint(evt);
 
         // Drag segment endpoints
@@ -2541,6 +3257,10 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
       // Shared UP handler (mouse + touch)
       function handleMockUp(evt) {
+        if (mockIsPinching) {
+          mockIsPinching = false;
+          mockPinchStartDist = 0;
+        }
         if (mockIsDraggingSegment) {
           mockIsDraggingSegment = false;
           mockDragSegmentIndex  = -1;
@@ -2553,6 +3273,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         mockResizeStartSize = 1;
         }
         mockRedraw();
+        setCanvasTouchLock(mockCanvas, false);
       }
 
       // Mouse events → shared handlers
@@ -2572,6 +3293,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
     // LIGHT RUNS CONTROL BUTTONS
     if (mockUndoBtn) {
       mockUndoBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         if (!mockSegments.length) {
           mockSetInfo('No segments to undo.');
           return;
@@ -2591,6 +3313,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
     if (mockNewRunBtn) {
       mockNewRunBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         mockLastPoint = null;
         mockMode = 'draw';
         mockSetInfo('New run started. Next click will begin a fresh light run.');
@@ -2600,6 +3323,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
     if (mockAdjustBtn) {
       mockAdjustBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         if (!mockImage) {
           mockSetInfo('Upload a photo first.');
           return;
@@ -2617,6 +3341,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
     if (mockClearBtn) {
       mockClearBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         mockSegments = [];
         mockLastPoint = null;
         mockMode = 'draw';
@@ -2628,6 +3353,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
     // DECORATION BUTTONS
     if (mockDecorPlaceBtn) {
       mockDecorPlaceBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         if (!mockImage) {
           mockSetInfo('Upload a photo first.');
           return;
@@ -2635,11 +3361,13 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         mockMode = 'decor-add';
         mockLastPoint = null;
         mockSetInfo('Decoration placement mode: click on the photo to drop icons.');
+        mockUpdateModeButtons();
       });
     }
 
     if (mockDecorEditBtn) {
       mockDecorEditBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         if (!mockImage) {
           mockSetInfo('Upload a photo first.');
           return;
@@ -2652,11 +3380,15 @@ if (glowFactor > 0.15) { // appears around mid-dusk
         mockLastPoint = null;
         mockSetInfo('Edit decorations: click/drag to move, drag the cyan square to resize.');
         mockRedraw();
+        mockUpdateModeButtons();
       });
     }
 
     if (mockDecorDeleteBtn) {
-      mockDecorDeleteBtn.addEventListener('click', deleteSelectedDecoration);
+      mockDecorDeleteBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
+        deleteSelectedDecoration();
+      });
     }
 
     if (mockDecorClearBtn) {
@@ -2750,15 +3482,50 @@ if (glowFactor > 0.15) { // appears around mid-dusk
             mockCustomDecorImage = img;
             mockSetInfo('Custom decoration image loaded. Choose "Custom image decoration" and place it on the photo.');
           };
-          img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+    function applyDecorPreset(name) {
+      if (!decorBaseColorInput || !decorAccentColorInput || !decorLightColorInput) return;
+
+      if (name === 'classic') {
+        decorBaseColorInput.value   = '#0b5b3b';
+        decorAccentColorInput.value = '#c62828';
+        decorLightColorInput.value  = '#ffe9a3';
+      } else if (name === 'warm') {
+        decorBaseColorInput.value   = '#6b5a3d';
+        decorAccentColorInput.value = '#b8860b';
+        decorLightColorInput.value  = '#f7e7ce';
+      } else if (name === 'ice') {
+        decorBaseColorInput.value   = '#5b6b7a';
+        decorAccentColorInput.value = '#7fb3ff';
+        decorLightColorInput.value  = '#d9f0ff';
+      }
+      mockRedraw();
+    }
+
+    if (decorPresetSelect) {
+      decorPresetSelect.addEventListener('change', function () {
+        var val = decorPresetSelect.value;
+        if (val !== 'custom') {
+          applyDecorPreset(val);
+        }
       });
+    }
+
+    function markDecorCustom() {
+      if (decorPresetSelect && decorPresetSelect.value !== 'custom') {
+        decorPresetSelect.value = 'custom';
+      }
     }
 
         // TREE / SHRUB LIGHTS – use line runs with mini-bulbs
     if (treeTraceBtn) {
       treeTraceBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         if (!mockImage) {
           mockSetInfo('Upload a front photo first, then add tree / shrub lights.');
           return;
@@ -2779,6 +3546,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
     if (treeTraceUndoBtn) {
       treeTraceUndoBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         if (!mockSegments.length) {
           mockSetInfo('No tree / shrub runs to undo yet.');
           return;
@@ -2799,6 +3567,7 @@ if (glowFactor > 0.15) { // appears around mid-dusk
 
     if (treeTraceClearBtn) {
       treeTraceClearBtn.addEventListener('click', function () {
+        mockEnsurePanOff();
         if (!mockSegments.length) {
           mockSetInfo('No tree / shrub runs to clear.');
           return;
@@ -2826,15 +3595,125 @@ if (glowFactor > 0.15) { // appears around mid-dusk
     // ZOOM
     if (mockZoomInBtn) {
       mockZoomInBtn.addEventListener('click', function () {
-        mockZoom = Math.min(mockZoom + 0.25, MOCK_ZOOM_MAX);
-        mockApplyZoom();
+        mockZoomBy(0.25);
       });
     }
 
     if (mockZoomOutBtn) {
       mockZoomOutBtn.addEventListener('click', function () {
-        mockZoom = Math.max(mockZoom - 0.25, MOCK_ZOOM_MIN);
-        mockApplyZoom();
+        mockZoomBy(-0.25);
+      });
+    }
+
+    if (mockZoomInInline) {
+      mockZoomInInline.addEventListener('click', function () {
+        mockZoomBy(0.25);
+      });
+    }
+
+    if (mockZoomOutInline) {
+      mockZoomOutInline.addEventListener('click', function () {
+        mockZoomBy(-0.25);
+      });
+    }
+
+    if (mockZoomInInlineMobile) {
+      mockZoomInInlineMobile.addEventListener('click', function () {
+        mockZoomBy(0.25);
+      });
+    }
+
+    if (mockZoomOutInlineMobile) {
+      mockZoomOutInlineMobile.addEventListener('click', function () {
+        mockZoomBy(-0.25);
+      });
+    }
+
+    if (mockPanBtn && mockCanvas) {
+      mockPanBtn.addEventListener('click', function () {
+        var enable = !mockIsPanMode;
+        mockSetPanMode(enable);
+        if (enable && mockCanvasWrapper) {
+          mockCanvasWrapper.scrollLeft += 0; // keep wrapper reference alive for mobile scrolling
+        }
+      });
+    }
+
+    if (mockPanInlineBtn && mockCanvas) {
+      mockPanInlineBtn.addEventListener('click', function () {
+        var enable = !mockIsPanMode;
+        mockSetPanMode(enable);
+      });
+    }
+
+    if (mockPanInlineMobile && mockCanvas) {
+      mockPanInlineMobile.addEventListener('click', function () {
+        var enable = !mockIsPanMode;
+        mockSetPanMode(enable);
+      });
+    }
+
+    // QUICK MODE BUTTONS (floating panel on the canvas)
+    function ensurePhotoLoaded() {
+      if (!mockImage) {
+        mockSetInfo('Upload a photo first.');
+        return false;
+      }
+      return true;
+    }
+
+    if (mockModeDrawBtn) {
+      mockModeDrawBtn.addEventListener('click', function () {
+        if (!ensurePhotoLoaded()) return;
+        mockEnsurePanOff();
+        mockMode = 'draw';
+        mockLastPoint = null;
+        mockSetInfo('Draw mode: tap to place points. Use Pan to reposition the photo.');
+        mockRedraw();
+      });
+    }
+
+    if (mockModeDrawMobile) {
+      mockModeDrawMobile.addEventListener('click', function () {
+        if (mockModeDrawBtn) mockModeDrawBtn.click();
+      });
+    }
+
+    if (mockModeAdjustBtn) {
+      mockModeAdjustBtn.addEventListener('click', function () {
+        if (!ensurePhotoLoaded()) return;
+        mockEnsurePanOff();
+        if (!mockSegments.length) {
+          mockSetInfo('Draw some runs first, then adjust the endpoints.');
+          return;
+        }
+        mockMode = 'adjust';
+        mockLastPoint = null;
+        mockSetInfo('Adjust mode: drag cyan endpoints.');
+        mockRedraw();
+      });
+    }
+
+    if (mockModeAdjustMobile) {
+      mockModeAdjustMobile.addEventListener('click', function () {
+        if (mockModeAdjustBtn) mockModeAdjustBtn.click();
+      });
+    }
+
+    if (mockModeDecorBtn) {
+      mockModeDecorBtn.addEventListener('click', function () {
+        if (!ensurePhotoLoaded()) return;
+        mockEnsurePanOff();
+        mockMode = 'decor-add';
+        mockLastPoint = null;
+        mockSetInfo('Decorate mode: tap to place icons. Use Edit decorations to move/resize.');
+        mockRedraw();
+      });
+    }
+
+    if (mockModeDecorMobile) {
+      mockModeDecorMobile.addEventListener('click', function () {
+        if (mockModeDecorBtn) mockModeDecorBtn.click();
       });
     }
 
@@ -2849,9 +3728,27 @@ if (glowFactor > 0.15) { // appears around mid-dusk
     mockAttachRedrawControl(mockColor1Input);
     mockAttachRedrawControl(mockColor2Input);
     mockAttachRedrawControl(mockColor3Input);
+    mockAttachRedrawControl(mockCustomPatternInput);
+    mockAttachRedrawControl(mockGroundColorInput);
+    mockAttachRedrawControl(mockGroundColorToggle);
+    mockAttachRedrawControl(mockGroundPatternSelect);
+    mockAttachRedrawControl(mockTreeColorInput);
+    mockAttachRedrawControl(mockTreeColorToggle);
+    mockAttachRedrawControl(mockTreePatternSelect);
     mockAttachRedrawControl(mockBulbSpacingSelect);
     mockAttachRedrawControl(mockBulbSizeSelect);
     mockAttachRedrawControl(mockShowWireCheckbox);
+
+    mockAttachRedrawControl(decorBaseColorInput);
+    mockAttachRedrawControl(decorAccentColorInput);
+    mockAttachRedrawControl(decorLightColorInput);
+
+    if (decorBaseColorInput) decorBaseColorInput.addEventListener('input', markDecorCustom);
+    if (decorAccentColorInput) decorAccentColorInput.addEventListener('input', markDecorCustom);
+    if (decorLightColorInput) decorLightColorInput.addEventListener('input', markDecorCustom);
+
+    // Initialize decoration palette to the default preset
+    applyDecorPreset('classic');
 
     if (mockRunTypeSelect) {
       mockRunTypeSelect.addEventListener('change', function () {

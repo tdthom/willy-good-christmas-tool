@@ -1,0 +1,29 @@
+{
+  "name": "Willy Good Christmas Lights",
+  "short_name": "Willy Good",
+  "description": "Estimate, measure, and mock up Christmas lights with quick mobile access.",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#004b80",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
