@@ -156,6 +156,15 @@
         font-weight: 600;
         color: #0c3c66;
       }
+      .controls-toggle {
+        display: none;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid #bfc6cc;
+        background: #ffffff;
+        font-weight: 600;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+      }
       .canvas-mobile-toggle {
         display: none;
         position: absolute;
@@ -397,6 +406,18 @@
     align-items: center;
     gap: 6px;
   }
+  .controls-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .controls-panel.collapsed {
+    display: none !important;
+  }
+  .canvas-layout.controls-collapsed {
+    grid-template-rows: 0fr 1fr;
+  }
 
   /* Prevent Safari zoom on focus by ensuring 16px+ form text */
   input[type="text"],
@@ -596,10 +617,14 @@
       </li>
     </ol>
 
-    <div class="canvas-layout" style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start; margin-top:0.75rem;">
+    <div id="roof-layout" class="canvas-layout" style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start; margin-top:0.75rem;">
+
+      <button type="button" class="controls-toggle" id="roof-controls-toggle" aria-controls="roof-controls-panel" aria-expanded="true">
+        Hide controls
+      </button>
 
       <!-- LEFT COLUMN: controls -->
-      <div class="controls-panel" style="min-width:260px; max-width:320px; max-height:80vh; overflow-y:auto; background:#ffffff; border:1px solid #ccc; padding:8px; box-sizing:border-box;">
+      <div class="controls-panel" id="roof-controls-panel" style="min-width:260px; max-width:320px; max-height:80vh; overflow-y:auto; background:#ffffff; border:1px solid #ccc; padding:8px; box-sizing:border-box;">
 
         <h3 style="margin-top:0;">Image &amp; scale</h3>
 
@@ -705,10 +730,14 @@
     <button id="mockup-print" type="button">Print / Save this mockup as PDF</button>
     <br><br>
 
-    <div class="canvas-layout" style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start;">
+    <div id="mockup-layout" class="canvas-layout" style="display:flex; flex-wrap:nowrap; gap:16px; align-items:flex-start;">
+
+      <button type="button" class="controls-toggle" id="mockup-controls-toggle" aria-controls="mockup-controls-panel" aria-expanded="true">
+        Hide controls
+      </button>
 
       <!-- Controls column -->
-      <div class="controls-panel" style="min-width:250px; max-width:320px; max-height:80vh; overflow-y:auto;">
+      <div class="controls-panel" id="mockup-controls-panel" style="min-width:250px; max-width:320px; max-height:80vh; overflow-y:auto;">
         <h3 style="margin-top:0;">Light style</h3>
 
         <label for="mockup-color-mode"><strong>Color pattern:</strong></label><br>
@@ -1042,6 +1071,37 @@
 
       toggleEl.addEventListener('click', function () {
         var collapsed = toolbarEl.getAttribute('data-collapsed') === 'true';
+        setCollapsed(!collapsed);
+      });
+
+      function handleViewportChange(e) {
+        if (e && e.matches === false) {
+          setCollapsed(false);
+          return;
+        }
+        setCollapsed(true);
+      }
+
+      handleViewportChange(mq);
+      if (mq.addEventListener) mq.addEventListener('change', handleViewportChange);
+      else if (mq.addListener) mq.addListener(handleViewportChange);
+    }
+    function setupControlsPanelToggle(opts) {
+      if (!opts || !opts.toggle || !opts.panel || !opts.layout) return;
+      var toggleEl = opts.toggle;
+      var panelEl = opts.panel;
+      var layoutEl = opts.layout;
+      var mq = window.matchMedia('(max-width: 900px)');
+
+      function setCollapsed(collapsed) {
+        panelEl.classList.toggle('collapsed', collapsed);
+        layoutEl.classList.toggle('controls-collapsed', collapsed);
+        toggleEl.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        toggleEl.textContent = collapsed ? 'Show controls' : 'Hide controls';
+      }
+
+      toggleEl.addEventListener('click', function () {
+        var collapsed = panelEl.classList.contains('collapsed');
         setCollapsed(!collapsed);
       });
 
@@ -1567,6 +1627,9 @@
     var roofAdjustInlineBtn  = document.getElementById('roof-mode-adjust-inline');
     var roofToolbarToggle    = document.getElementById('roof-toolbar-toggle');
     var roofToolbar          = document.getElementById('roof-toolbar');
+    var roofControlsToggle   = document.getElementById('roof-controls-toggle');
+    var roofControlsPanel    = document.getElementById('roof-controls-panel');
+    var roofLayout           = document.getElementById('roof-layout');
     var roofZoom        = 1;
     var ROOF_ZOOM_MIN   = 0.5;
     var ROOF_ZOOM_MAX   = 3;
@@ -1585,6 +1648,11 @@
     var roofIsPanMode    = false;
 
       setupToolbarToggle(roofToolbarToggle, roofToolbar);
+      setupControlsPanelToggle({
+        toggle: roofControlsToggle,
+        panel: roofControlsPanel,
+        layout: roofLayout
+      });
       function roofSetInfo(msg) {
         if (roofInfo) roofInfo.textContent = msg;
       }
@@ -2141,6 +2209,9 @@
     var mockPrintBtn      = document.getElementById('mockup-print');
     var mockupToolbarToggle = document.getElementById('mockup-toolbar-toggle');
     var mockupToolbar       = document.getElementById('mockup-toolbar');
+    var mockupControlsToggle = document.getElementById('mockup-controls-toggle');
+    var mockupControlsPanel  = document.getElementById('mockup-controls-panel');
+    var mockupLayout         = document.getElementById('mockup-layout');
 
     var mockModeDrawBtn   = document.getElementById('mockup-mode-draw');
     var mockModeAdjustBtn = document.getElementById('mockup-mode-adjust');
@@ -2172,6 +2243,11 @@
     var groundCurveToggle = document.getElementById('ground-curve-toggle');
     var decorImageInput   = document.getElementById('decor-image-input');
     setupToolbarToggle(mockupToolbarToggle, mockupToolbar);
+    setupControlsPanelToggle({
+      toggle: mockupControlsToggle,
+      panel: mockupControlsPanel,
+      layout: mockupLayout
+    });
 
     var mockImage       = null;
     var mockDrawParams  = null;
